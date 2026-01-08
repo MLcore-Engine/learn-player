@@ -74,7 +74,9 @@ const allowedReceiveChannels = [
   'learningStats',        // 新增：学习统计信息
   'watchingStats',        // 新增：观看统计信息
   'databaseStatus',       // 新增：数据库状态
-  'ai-stream'             // 新增：AI 流式事件
+  'ai-stream',            // 新增：AI 流式事件
+  'conversion-progress',  // 新增：视频转换进度
+  'conversion-complete'   // 新增：视频转换完成
 ];
 
 // 请求频率限制

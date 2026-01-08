@@ -7,6 +7,7 @@ import OCRResultModal from '../components/OCRResultModal';
 import { useTimeStats, useAI, useVideo } from '../contexts/AppContext';
 import { Box, Tabs, Tab } from '@mui/material';
 import aiService from '../services/aiService';
+import { ipcClient } from '../services/ipcClient';
 
 /**
  * 侧边面板组件
@@ -138,8 +139,8 @@ const SidePanel = React.memo(({ hasExternalSubtitles }) => {
       }, { language: lang });
       addRecord({ subtitle_text: text, explanation, timestamp: Date.now() });
       // 显式保存到数据库
-      if (window.electronAPI) {
-        window.electronAPI.saveAiQuery({
+      if (ipcClient.isAvailable()) {
+        ipcClient.saveAiQuery({
           query: text,
           explanation,
           timestamp: new Date().toISOString()

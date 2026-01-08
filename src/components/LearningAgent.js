@@ -40,6 +40,7 @@ import {
 import learningAnalyticsService from '../services/learningAnalyticsService';
 import studyPlanService from '../services/studyPlanService';
 import spacedRepetitionService from '../services/spacedRepetitionService';
+import { ipcClient } from '../services/ipcClient';
 
 // 清理文本中的特殊标记
 const clean = (raw) => raw.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
@@ -75,28 +76,28 @@ const LearningAgent = () => {
 
   // 加载学习数据
   const loadData = async () => {
-    if (!window.electronAPI) return;
+    if (!ipcClient.isAvailable()) return;
     
     setLoading(true);
     try {
       // 加载学习概况
-      const overviewData = await learningAnalyticsService.getLearningOverview(window.electronAPI);
+      const overviewData = await learningAnalyticsService.getLearningOverview();
       setOverview(overviewData);
       
       // 加载学习模式
-      const patternData = await learningAnalyticsService.analyzeLearningPattern(window.electronAPI);
+      const patternData = await learningAnalyticsService.analyzeLearningPattern();
       setPattern(patternData);
       
       // 加载学习报告
-      const reportData = await learningAnalyticsService.getLearningReport(window.electronAPI, { days: 7 });
+      const reportData = await learningAnalyticsService.getLearningReport({ days: 7 });
       setReport(reportData);
       
       // 加载当前学习计划
-      const planData = await studyPlanService.getCurrentStudyPlan(window.electronAPI);
+      const planData = await studyPlanService.getCurrentStudyPlan();
       setStudyPlan(planData);
       
       // 加载词汇统计
-      const statsData = await spacedRepetitionService.getLearningStats(window.electronAPI);
+      const statsData = await spacedRepetitionService.getLearningStats();
       setVocabStats(statsData);
       
       // 加载需要复习的单词
@@ -110,10 +111,10 @@ const LearningAgent = () => {
 
   // 加载复习单词
   const loadReviewWords = async () => {
-    if (!window.electronAPI) return;
+    if (!ipcClient.isAvailable()) return;
     
     try {
-      const words = await spacedRepetitionService.getWordsToReview(window.electronAPI, 20);
+      const words = await spacedRepetitionService.getWordsToReview(20);
       setReviewWords(words || []);
       setCurrentWordIndex(0);
       setShowAnswer(false);
@@ -124,11 +125,11 @@ const LearningAgent = () => {
 
   // 生成学习计划
   const handleGeneratePlan = async () => {
-    if (!window.electronAPI) return;
+    if (!ipcClient.isAvailable()) return;
     
     setGeneratingPlan(true);
     try {
-      const result = await studyPlanService.generateStudyPlan(window.electronAPI, {
+      const result = await studyPlanService.generateStudyPlan({
         days: 7,
         focus: 'comprehensive'
       });
@@ -151,13 +152,13 @@ const LearningAgent = () => {
 
   // 提交复习结果
   const handleSubmitReview = async (quality) => {
-    if (!window.electronAPI || reviewWords.length === 0) return;
+    if (!ipcClient.isAvailable() || reviewWords.length === 0) return;
     
     const currentWord = reviewWords[currentWordIndex];
     if (!currentWord) return;
     
     try {
-      await spacedRepetitionService.submitReview(window.electronAPI, currentWord.id, quality);
+      await spacedRepetitionService.submitReview(currentWord.id, quality);
       
       // 移动到下一个单词
       if (currentWordIndex < reviewWords.length - 1) {
@@ -170,7 +171,7 @@ const LearningAgent = () => {
       }
       
       // 更新统计
-      const statsData = await spacedRepetitionService.getLearningStats(window.electronAPI);
+      const statsData = await spacedRepetitionService.getLearningStats();
       setVocabStats(statsData);
     } catch (error) {
       console.error('提交复习结果失败:', error);
@@ -180,14 +181,14 @@ const LearningAgent = () => {
 
   // 从查询记录提取单词
   const handleExtractWords = async () => {
-    if (!window.electronAPI) return;
+    if (!ipcClient.isAvailable()) return;
     
     setExtractingWords(true);
     try {
-      const result = await spacedRepetitionService.extractWordsFromQueries(window.electronAPI, 50);
+      const result = await spacedRepetitionService.extractWordsFromQueries(50);
       alert(`成功提取 ${result} 个单词到学习列表！`);
       await loadReviewWords();
-      const statsData = await spacedRepetitionService.getLearningStats(window.electronAPI);
+      const statsData = await spacedRepetitionService.getLearningStats();
       setVocabStats(statsData);
     } catch (error) {
       console.error('提取单词失败:', error);
