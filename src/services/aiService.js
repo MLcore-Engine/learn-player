@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { ipcClient } from './ipcClient';
 
 // 创建 axios 实例
 const axiosInstance = axios.create({
@@ -238,15 +239,8 @@ class AIService {
     let apiKey = this.config.apiKey;
     let apiUrl = this.config.apiUrl;
 
-    if (window.electronAPI && typeof window.electronAPI.getApiKey === 'function') {
-      const response = await window.electronAPI.getApiKey();
-      if (response?.success === false) {
-        throw new Error(response.error || '获取API Key失败，请检查设置');
-      }
-      apiKey = response?.apiKey || apiKey;
-      apiUrl = response?.modelUrl || apiUrl;
-    } else if (window.electronAPI && typeof window.electronAPI.invoke === 'function') {
-      const response = await window.electronAPI.invoke('getApiKey');
+    if (ipcClient.isAvailable()) {
+      const response = await ipcClient.getApiKey();
       if (response?.success === false) {
         throw new Error(response.error || '获取API Key失败，请检查设置');
       }
@@ -276,9 +270,9 @@ class AIService {
       const raw = typeof text === 'string' ? text : '';
       const normalized = raw.trim();
       // 查询本地缓存
-      if (window.electronAPI && typeof window.electronAPI.getCachedAiQuery === 'function' && normalized) {
+      if (ipcClient.isAvailable() && normalized) {
         try {
-          const cache = await window.electronAPI.getCachedAiQuery({ query: normalized });
+          const cache = await ipcClient.getCachedAiQuery({ query: normalized });
           if (cache && cache.hit && typeof cache.explanation === 'string') {
             return cache.explanation;
           }
@@ -312,8 +306,8 @@ class AIService {
       // 发送请求
       let data;
       // 如果在 Electron 环境下，可通过主进程发起请求，避免 CORS
-      if (window.electronAPI && typeof window.electronAPI.performAIRequest === 'function') {
-        const result = await window.electronAPI.performAIRequest(requestData, apiUrl, apiKey);
+      if (ipcClient.isAvailable()) {
+        const result = await ipcClient.performAIRequest(requestData, apiUrl, apiKey);
         if (!result.success) {
           throw new Error(result.error || '主进程 AI 请求失败');
         }
@@ -387,16 +381,16 @@ class AIService {
    */
   async streamExplanation(text, handlers = {}, options = {}) {
     // 若不支持流式通道，回退到非流式
-    if (!window.electronAPI || typeof window.electronAPI.performAIStream !== 'function') {
+    if (!ipcClient.isAvailable()) {
       return this.getExplanation(text, options);
     }
 
     const raw = typeof text === 'string' ? text : '';
     const normalized = raw.trim();
     // 先查缓存，命中则模拟流式增量并返回
-    if (window.electronAPI && typeof window.electronAPI.getCachedAiQuery === 'function' && normalized) {
+    if (ipcClient.isAvailable() && normalized) {
       try {
-        const cache = await window.electronAPI.getCachedAiQuery({ query: normalized });
+        const cache = await ipcClient.getCachedAiQuery({ query: normalized });
         if (cache && cache.hit && typeof cache.explanation === 'string') {
           if (typeof handlers.onDelta === 'function') handlers.onDelta(cache.explanation, cache.explanation);
           if (typeof handlers.onDone === 'function') handlers.onDone(cache.explanation, { cached: true });
@@ -433,14 +427,14 @@ class AIService {
 
     return new Promise(async (resolve, reject) => {
       try {
-        const result = await window.electronAPI.performAIStream(requestData, apiUrl, apiKey);
+        const result = await ipcClient.performAIStream(requestData, apiUrl, apiKey);
         if (!result || result.success !== true) {
           throw new Error(result?.error || '主进程 AI 流式请求失败');
         }
         const { requestId } = result;
 
         // 监听流事件
-        unsubscribe = window.electronAPI.on('ai-stream', (payload) => {
+        unsubscribe = ipcClient.onAiStream((payload) => {
           try {
             if (!payload || payload.requestId !== requestId) return;
             if (payload.type === 'delta') {
@@ -476,8 +470,8 @@ class AIService {
   async generateVocabularyStory() {
     // 获取今日查询的词汇记录
     let records = [];
-    if (window.electronAPI?.getAiQueriesToday) {
-      records = await window.electronAPI.getAiQueriesToday();
+    if (ipcClient.isAvailable()) {
+      records = await ipcClient.getAiQueriesToday();
     }
     const words = records.map(r => r.query).join('\n');
     const prompt = 

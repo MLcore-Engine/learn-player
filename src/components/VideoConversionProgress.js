@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { LinearProgress, Typography, Box, Paper, Chip } from '@mui/material';
 import { styled } from '@mui/material/styles';
+import { ipcClient } from '../services/ipcClient';
 
 /**
  * 视频转换进度显示组件
@@ -15,7 +16,7 @@ const VideoConversionProgress = ({ isVisible, onCancel }) => {
     if (!isVisible) return;
 
     // 监听转换进度事件
-    const handleProgress = (event, progressData) => {
+    const handleProgress = (progressData) => {
       console.log('转换进度:', progressData);
 
       // 解析进度数据
@@ -48,7 +49,7 @@ const VideoConversionProgress = ({ isVisible, onCancel }) => {
     };
 
     // 监听转换完成事件
-    const handleConversionComplete = (event, result) => {
+    const handleConversionComplete = (result) => {
       if (result.success) {
         setProgress(100);
         setStatus('转换完成');
@@ -62,13 +63,13 @@ const VideoConversionProgress = ({ isVisible, onCancel }) => {
     };
 
     // 注册事件监听器
-    window.electronAPI?.on?.('conversion-progress', handleProgress);
-    window.electronAPI?.on?.('conversion-complete', handleConversionComplete);
+    const cleanupProgress = ipcClient.onConversionProgress(handleProgress);
+    const cleanupComplete = ipcClient.onConversionComplete(handleConversionComplete);
 
     // 清理函数
     return () => {
-      window.electronAPI?.removeAllListeners?.('conversion-progress');
-      window.electronAPI?.removeAllListeners?.('conversion-complete');
+      if (cleanupProgress) cleanupProgress();
+      if (cleanupComplete) cleanupComplete();
     };
   }, [isVisible, onCancel]);
 

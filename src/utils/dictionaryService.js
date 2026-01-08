@@ -1,3 +1,5 @@
+import { ipcClient } from '../services/ipcClient';
+
 // 移除 Node.js 模块导入
 // const { MDX } = require('js-mdict');
 // const path = require('path');
@@ -219,7 +221,7 @@ class DictionaryService {
 
     try {
       // 通过 IPC 调用主进程进行字典查询
-      const result = await window.electronAPI.invoke('lookupWord', word);
+      const result = await ipcClient.lookupWord(word);
       
       if (result.success && result.data) {
         const kk = extractKKPhonetic(result.data);
