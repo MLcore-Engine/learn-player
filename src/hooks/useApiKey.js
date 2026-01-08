@@ -16,10 +16,12 @@ export const useApiKey = () => {
     modelUrl, // 新增：模型 URL
     showInput, 
     status, 
+    configSource,
     setApiKey,
     setModelUrl, // 新增：设置模型 URL
     setShowInput, 
-    setStatus 
+    setStatus,
+    setConfigSource
   } = useApiKeyContext();
 
   // 使用 ref 存储缓存和防抖状态
@@ -45,6 +47,9 @@ export const useApiKey = () => {
     if (!force && cache.cachedResult && (now - cache.lastFetch < CACHE_DURATION)) {
       setStatus(cache.cachedResult.status);
       setModelUrl(cache.cachedResult.modelUrl);
+      if (cache.cachedResult.configSource) {
+        setConfigSource(cache.cachedResult.configSource);
+      }
       return;
     }
 
@@ -59,12 +64,14 @@ export const useApiKey = () => {
         const newStatus = result.apiKey ? '已设置' : '未设置';
         setStatus(newStatus);
         setModelUrl(result.modelUrl);
+        setConfigSource(result.source || { apiKey: 'default', modelUrl: 'default' });
         
         // 更新缓存
         cache.cachedResult = {
           status: newStatus,
           apiKey: result.apiKey,
-          modelUrl: result.modelUrl
+          modelUrl: result.modelUrl,
+          configSource: result.source || { apiKey: 'default', modelUrl: 'default' }
         };
         cache.lastFetch = now;
         
@@ -82,7 +89,7 @@ export const useApiKey = () => {
     } finally {
       cache.isFetching = false;
     }
-  }, [setStatus, setModelUrl]);
+  }, [setStatus, setModelUrl, setConfigSource]);
 
   // 保存API Key的函数
   const saveApiKey = useCallback(async () => {
@@ -131,6 +138,7 @@ export const useApiKey = () => {
     modelUrl,
     showInput,
     status,
+    configSource,
     setApiKey,
     setModelUrl,
     setShowInput,

@@ -83,6 +83,8 @@ export const apiKeyReducer = (state, action) => {
       return { ...state, showInput: action.payload };
     case 'SET_STATUS':
       return { ...state, status: action.payload };
+    case 'SET_CONFIG_SOURCE':
+      return { ...state, configSource: action.payload };
     default:
       return state;
   }
