@@ -134,7 +134,13 @@ export const ipcClient = {
   extractFrame: (videoPath, timestamp) => invoke(IPC_CHANNELS.invoke.extractFrame, { videoPath, timestamp }),
   saveLearningRecord: (record) => invoke(IPC_CHANNELS.invoke.saveLearningRecord, record),
   getLearningRecords: (videoId) => invoke(IPC_CHANNELS.invoke.getLearningRecords, { videoId }),
-  getWatchTime: (videoId) => invoke(IPC_CHANNELS.invoke.getWatchTime, { videoId }),
+  getWatchTime: (videoId) => {
+    const api = getElectronAPI();
+    if (api?.getWatchTime) {
+      return api.getWatchTime(videoId);
+    }
+    return invoke(IPC_CHANNELS.invoke.getWatchTime, { videoId });
+  },
   updateWatchTime: (watchTimeData) => send(IPC_CHANNELS.send.updateWatchTime, watchTimeData),
   loadSubtitle: (subtitlePath) => send(IPC_CHANNELS.send.loadSubtitle, { subtitlePath }),
   getCategories: () => send(IPC_CHANNELS.send.getCategories),
@@ -159,7 +165,13 @@ export const ipcClient = {
   readVideoFile: (filePath) => invoke(IPC_CHANNELS.invoke.readVideoFile, filePath),
   readVideoChunk: (videoPath, offset, length) =>
     invoke(IPC_CHANNELS.invoke.readVideoChunk, videoPath, offset, length),
-  getVideoServerPort: () => invoke(IPC_CHANNELS.invoke.getVideoServerPort),
+  getVideoServerPort: () => {
+    const api = getElectronAPI();
+    if (api?.getVideoServerPort) {
+      return api.getVideoServerPort();
+    }
+    return invoke(IPC_CHANNELS.invoke.getVideoServerPort);
+  },
   getVideoHttpUrl: (videoPath) => {
     const api = getElectronAPI();
     if (!api?.getVideoHttpUrl) {
