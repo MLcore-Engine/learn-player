@@ -17,7 +17,7 @@ import {
   DialogActions
 } from '@mui/material';
 import { ContentCopy, History, Summarize } from '@mui/icons-material';
-import aiService from '../utils/aiService';
+import aiService from '../services/aiService';
 
 // 清理文本中的特殊标记
 const clean = (raw) => raw.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
@@ -486,4 +486,3 @@ const LearningAssistant = React.memo(({
 });
 
 export default LearningAssistant; 
-

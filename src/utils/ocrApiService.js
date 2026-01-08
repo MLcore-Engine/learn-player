@@ -10,10 +10,10 @@ const axiosInstance = axios.create({
 
 // 默认OCR服务配置
 const defaultOcrConfig = {
-  apiKey: process.env.REACT_APP_AI_API_KEY || '',
-  apiUrl: process.env.REACT_APP_AI_API_URL || 'https://open.bigmodel.cn/api/paas/v4/chat/completions',
+  apiKey: '',
+  apiUrl: 'https://open.bigmodel.cn/api/paas/v4/chat/completions',
   ocrEndpoint: '/api/vision-ocr', // OCR专用端点（保留兼容性）
-  model: process.env.REACT_APP_AI_MODEL || 'GLM-4V-Flash'
+  model: 'GLM-4V-Flash'
 };
 
 // OCR识别接口配置
@@ -68,6 +68,37 @@ class OcrApiService {
     this.config.model = model;
   }
 
+  async getApiConfig() {
+    let apiKey = this.config.apiKey;
+    let apiUrl = this.config.apiUrl;
+
+    if (window.electronAPI && typeof window.electronAPI.getApiKey === 'function') {
+      const response = await window.electronAPI.getApiKey();
+      if (response?.success === false) {
+        throw new Error(response.error || '获取API Key失败，请检查设置');
+      }
+      apiKey = response?.apiKey || apiKey;
+      apiUrl = response?.modelUrl || apiUrl;
+    } else if (window.electronAPI && typeof window.electronAPI.invoke === 'function') {
+      const response = await window.electronAPI.invoke('getApiKey');
+      if (response?.success === false) {
+        throw new Error(response.error || '获取API Key失败，请检查设置');
+      }
+      apiKey = response?.apiKey || apiKey;
+      apiUrl = response?.modelUrl || apiUrl;
+    }
+
+    if (!apiKey) {
+      throw new Error('未设置API Key');
+    }
+
+    return {
+      apiKey,
+      apiUrl,
+      model: this.config.model
+    };
+  }
+
   /**
    * 接口1: OCR识别字幕句子
    * 从视频帧图像中识别英文字幕文本
@@ -81,9 +112,11 @@ class OcrApiService {
         throw new Error('图像数据不能为空');
       }
 
+      const { apiKey, apiUrl, model } = await this.getApiConfig();
+
       // 构造智谱AI视觉模型请求体
       const requestData = {
-        model: options.model || "GLM-4V-Flash", // 使用智谱AI的GLM-4V-Flash视觉模型
+        model: options.model || model, // 使用智谱AI的GLM-4V-Flash视觉模型
         messages: [
           {
             role: "user",
@@ -112,16 +145,16 @@ class OcrApiService {
       let data;
       // 如果在 Electron 环境下，可通过主进程发起请求，避免 CORS
       if (window.electronAPI && typeof window.electronAPI.performAIRequest === 'function') {
-        const result = await window.electronAPI.performAIRequest(requestData, this.config.apiUrl, this.config.apiKey);
+        const result = await window.electronAPI.performAIRequest(requestData, apiUrl, apiKey);
         if (!result.success) {
           throw new Error(result.error || '主进程 OCR 请求失败');
         }
         data = result.data;
       } else {
         const response = await axiosInstance.post(
-          this.config.apiUrl,
+          apiUrl,
           requestData,
-          { headers: { 'Authorization': `Bearer ${this.config.apiKey}` } }
+          { headers: { 'Authorization': `Bearer ${apiKey}` } }
         );
         data = response.data;
       }
@@ -174,7 +207,7 @@ class OcrApiService {
       }
 
       // 导入aiService进行解释 (复用现有逻辑)
-      const aiService = (await import('./aiService')).default;
+      const aiService = (await import('../services/aiService')).default;
 
       // 使用现有的解释接口
       const explanation = await aiService.getExplanation(recognizedText, {

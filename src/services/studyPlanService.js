@@ -1,4 +1,4 @@
-import aiService from '../utils/aiService';
+import aiService from './aiService';
 
 /**
  * 学习计划服务

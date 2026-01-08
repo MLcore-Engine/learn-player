@@ -1,6 +1,5 @@
 import { useEffect, useCallback, useRef } from 'react';
 import { useApiKey as useApiKeyContext } from '../contexts/AppContext';
-import aiService from '../utils/aiService';
 
 // 缓存持续时间（毫秒）
 const CACHE_DURATION = 30000; // 30秒
@@ -68,13 +67,7 @@ export const useApiKey = () => {
         };
         cache.lastFetch = now;
         
-        // 设置到aiService中
-        if (aiService && typeof aiService.setApiKey === 'function') {
-          aiService.setApiKey(result.apiKey || '');
-          if (result.modelUrl && typeof aiService.setModelUrl === 'function') {
-            aiService.setModelUrl(result.modelUrl);
-          }
-        }
+        // aiService 会在调用时从主进程读取配置，无需直接注入
       } else {
         setStatus(`获取失败: ${result.error}`);
       }
