@@ -3,7 +3,6 @@ import {
   videoReducer, 
   timeStatsReducer, 
   aiReducer, 
-  ocrReducer, 
   apiKeyReducer 
 } from '../reducers';
 import { ipcClient } from '../services/ipcClient';
@@ -12,7 +11,6 @@ import { ipcClient } from '../services/ipcClient';
 const VideoContext = createContext();
 const TimeStatsContext = createContext();
 const AIContext = createContext();
-const OCRContext = createContext();
 const ApiKeyContext = createContext();
 
 // 创建错误处理上下文
@@ -64,14 +62,6 @@ export const useAI = () => {
   const context = useContext(AIContext);
   if (!context) {
     throw new Error('useAI must be used within a AIProvider');
-  }
-  return context;
-};
-
-export const useOCR = () => {
-  const context = useContext(OCRContext);
-  if (!context) {
-    throw new Error('useOCR must be used within a OCRProvider');
   }
   return context;
 };
@@ -263,36 +253,6 @@ export const AIProvider = ({ children }) => {
   );
 };
 
-// OCR识别Provider
-export const OCRProvider = ({ children }) => {
-  const [state, dispatch] = useReducer(ocrReducer, {
-    result: '',
-    isModalOpen: false,
-    loading: false
-  });
-
-  const actions = {
-    setResult: (result) => {
-      dispatch({ type: 'SET_RESULT', payload: result });
-    },
-    setModalOpen: (isOpen) => {
-      dispatch({ type: 'SET_MODAL_OPEN', payload: isOpen });
-    },
-    setLoading: (loading) => {
-      dispatch({ type: 'SET_LOADING', payload: loading });
-    },
-    clearResult: () => {
-      dispatch({ type: 'CLEAR_RESULT' });
-    }
-  };
-
-  return (
-    <OCRContext.Provider value={{ ...state, ...actions }}>
-      {children}
-    </OCRContext.Provider>
-  );
-};
-
 // API Key设置Provider
 export const ApiKeyProvider = ({ children }) => {
   const [state, dispatch] = useReducer(apiKeyReducer, {
@@ -324,21 +284,4 @@ export const ApiKeyProvider = ({ children }) => {
   );
 };
 
-// 组合所有Provider的便捷组件
-export const AppProvider = ({ children }) => {
-  return (
-    <ErrorProvider>
-      <VideoProvider>
-        <TimeStatsProvider>
-          <AIProvider>
-            <OCRProvider>
-              <ApiKeyProvider>
-                {children}
-              </ApiKeyProvider>
-            </OCRProvider>
-          </AIProvider>
-        </TimeStatsProvider>
-      </VideoProvider>
-    </ErrorProvider>
-  );
-};
+// 旧OCR Context已移除，避免全局状态膨胀
