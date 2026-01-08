@@ -4,13 +4,23 @@ const ApiKeySettings = ({
   isVisible, 
   apiKey,
   modelUrl,
-  storedApiKeyStatus, 
+  storedApiKeyStatus,
+  configSource,
   onApiKeyChange,
   onModelUrlChange,
   onSave, 
   onCancel 
 }) => {
   if (!isVisible) return null;
+
+  const sourceLabels = {
+    store: '用户设置',
+    env: '环境变量',
+    default: '默认',
+    local: '本地'
+  };
+  const apiKeySourceLabel = sourceLabels[configSource?.apiKey] || '未知';
+  const modelUrlSourceLabel = sourceLabels[configSource?.modelUrl] || '未知';
   
   return (
     <div style={{
@@ -27,6 +37,9 @@ const ApiKeySettings = ({
     }}>
       <h5>设置API Key</h5>
       <p>当前状态: {storedApiKeyStatus}</p>
+      <p style={{ fontSize: '0.9em', color: '#bbb' }}>
+        当前来源: API Key 为 {apiKeySourceLabel}，模型 URL 为 {modelUrlSourceLabel}
+      </p>
       <div style={{ marginBottom: '15px' }}>
         <input
           type="password"
