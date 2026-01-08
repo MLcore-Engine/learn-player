@@ -72,22 +72,6 @@ export const aiReducer = (state, action) => {
   }
 };
 
-// OCR识别的reducer
-export const ocrReducer = (state, action) => {
-  switch (action.type) {
-    case 'SET_RESULT':
-      return { ...state, result: action.payload };
-    case 'SET_MODAL_OPEN':
-      return { ...state, isModalOpen: action.payload };
-    case 'SET_LOADING':
-      return { ...state, loading: action.payload };
-    case 'CLEAR_RESULT':
-      return { ...state, result: '' };
-    default:
-      return state;
-  }
-};
-
 // API Key设置的reducer
 export const apiKeyReducer = (state, action) => {
   switch (action.type) {
