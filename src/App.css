@@ -1,0 +1,257 @@
+/* @import "bootstrap.min.css"; */ /* <-- Commented out, remove if Bootstrap is not needed */
+
+.App{
+  text-align: center;
+}
+
+
+* { box-sizing: border-box; }
+/* html, body rules removed - handled by injected CSS */
+/* #root rule removed - handled by injected CSS */
+
+/* MUI component overrides (kept, verify if still needed) */
+.MuiBox-root { 
+  /* display: flex; */ /* Removed: Injected CSS handles this */
+  /* flex-direction: column; */ /* Removed: Injected CSS handles this */
+}
+
+.MuiGrid-container { 
+  /* flex: 1; */ /* Flex behavior might be better handled by sx prop or specific class */
+  min-height: 0; /* Keep: Crucial for flex item shrinking */
+  /* margin: 0 !important; */ /* Removed: Injected CSS handles this */
+  /* width: 100% !important; */ /* Removed: Injected CSS handles this */
+}
+
+.MuiGrid-item { 
+  /* display: flex !important; */ /* Removed: Injected CSS handles this */
+  /* flex-direction: column !important; */ /* Removed: Injected CSS handles this */
+  padding: 8px !important; /* Keep: Ensure consistent padding */
+}
+
+/* Video player container style (can be simplified or use sx) */
+.video-player-container {
+  flex: 1;
+  position: relative;
+  min-height: 0; /* Keep */
+}
+
+/* Card component override */
+.MuiCard-root {
+  display: flex; 
+  flex-direction: column;
+  height: 100%; 
+  overflow: hidden; 
+}
+
+/* TabPanel override */
+.MuiTabPanel-root { 
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden; 
+  padding: 16px;
+  min-height: 0; /* Keep */
+}
+
+/* Other custom styles (Kept) */
+.movie-title{
+  color: #faebd7;
+  font-size: 22px;
+  margin-top: 8px;
+  font-weight: 500;
+}
+
+.movie-item{
+  margin-bottom: 20px;
+}
+
+.categories-item{
+  margin-top: 15px;
+  margin-bottom: 15px;
+  color: #faebd7;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+.categories-head-title{
+  color: #968d81;
+  font-weight: 600;
+}
+
+.no-movies-message{
+  color: #faebd7;
+  text-transform: uppercase;
+  font-weight: 500;
+}
+
+.navigation-button{
+  background-color: transparent !important;
+  border: #968d81 2px solid !important;
+  color: #faebd7 !important;
+}
+
+.select-category-title{
+  color: #faebd7;
+  text-transform: uppercase;
+  font-weight: 500;
+}
+
+.movie-close-btn{
+  opacity: 0.4;
+}
+
+.movie-close-btn:hover{
+  opacity: 1;
+}
+
+/* Video player specific styles (Kept) */
+.react-player__preview {
+  background-size: cover;
+  background-position: center;
+}
+
+/* Subtitle selection styles (Kept) */
+.subtitle-selectable {
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.subtitle-selectable:hover {
+  background-color: rgba(144, 202, 249, 0.15);
+  border-radius: 2px;
+}
+
+.subtitle-selected {
+  background-color: rgba(144, 202, 249, 0.25);
+  border-radius: 2px;
+  padding: 2px 4px;
+}
+
+/* Message card styles (Kept) */
+.message-card {
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.message-card:hover {
+  transform: translateY(-px);
+  box-shadow: 0 5px 10px rgba(0, 0, 0, 0.2);
+}
+
+/* Animation styles (Kept) */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.fade-in {
+  animation: fadeIn 0.5s ease-in;
+}
+
+/* Scrollbar styles (Kept) */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* Highlight style (Kept) */
+mark {
+  background-color: rgba(255, 193, 7, 0.4);
+  color: inherit;
+  padding: 0 2px;
+  border-radius: 2px;
+}
+
+/* Grid container fix removed - handled by injected CSS */
+/* .app-content-grid { ... } */
+
+/* React component mount fixes removed - handled by injected CSS */
+/* .app-root-container, .app-main-container { ... } */
+
+/* Video player wrapper style (Kept, could use sx) */
+.video-player-wrapper {
+  display: flex;
+  flex-direction: column;
+}
+
+/* video.js overrides (Kept) */
+.video-js {
+  width: 100% !important;
+  height: 100% !important;
+  position: relative !important;
+}
+
+.video-js .vjs-tech {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+
+/* Learning assistant height fix (Kept) */
+.learning-assistant-container {
+  height: 1px; 
+  flex-grow: 1;
+}
+
+/* Dialog content fix (Kept) */
+.MuiDialogContent-root {
+  overflow-x: hidden;
+}
+
+/* 解决 video.js 样式问题的全局样式 */
+.video-container {
+  overflow: hidden;
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 300px;
+}
+
+/* 确保 video.js 播放器占满容器 */
+.video-js {
+  width: 100% !important;
+  height: 100% !important;
+  position: absolute !important;
+  top: 0;
+  left: 0;
+}
+
+/* 修复播放器技术层 */
+.video-js .vjs-tech {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain; /* 确保视频保持宽高比并完全可见 */
+}
+
+/* 确保控制栏位于底部 */
+.video-js .vjs-control-bar {
+  z-index: 3;
+}
+
+/* 确保播放按钮可见 */
+.video-js .vjs-big-play-button {
+  z-index: 3;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
