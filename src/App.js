@@ -1,6 +1,6 @@
 import React, { useEffect, useCallback, useState } from 'react';
 import 'video.js/dist/video-js.css';
-import { AppProvider } from './contexts/AppContext';
+import { AppProviders, VideoProviders, AIProviders } from './providers';
 import VideoContainer from './containers/VideoContainer';
 import SidePanel from './components/SidePanel';
 import ApiKeySettings from './components/ApiKeySettings';
@@ -67,7 +67,9 @@ const AppContent = () => {
         <VideoContainer onPlayerReady={handlePlayerReady} />
         
         {/* 侧边面板 */}
-        <SidePanel hasExternalSubtitles={hasExternalSubtitles} />
+        <AIProviders>
+          <SidePanel hasExternalSubtitles={hasExternalSubtitles} />
+        </AIProviders>
       </div>
     </>
   );
@@ -85,9 +87,11 @@ function App() {
 
   return (
     <ErrorBoundary>
-      <AppProvider>
-        <AppContent />
-      </AppProvider>
+      <AppProviders>
+        <VideoProviders>
+          <AppContent />
+        </VideoProviders>
+      </AppProviders>
     </ErrorBoundary>
   );
 }
