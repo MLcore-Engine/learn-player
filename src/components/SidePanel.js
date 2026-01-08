@@ -6,7 +6,7 @@ import LearningAgent from '../components/LearningAgent';
 import OCRResultModal from '../components/OCRResultModal';
 import { useTimeStats, useAI, useVideo } from '../contexts/AppContext';
 import { Box, Tabs, Tab } from '@mui/material';
-import aiService from '../utils/aiService';
+import aiService from '../services/aiService';
 
 /**
  * 侧边面板组件
