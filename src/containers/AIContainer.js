@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useRef } from 'react';
 import LearningAssistant from '../components/LearningAssistant';
 import { useAI, useVideo } from '../contexts/AppContext';
 import { useElectronIPC } from '../hooks/useElectronIPC';
-import aiService from '../utils/aiService';
+import aiService from '../services/aiService';
 
 /**
  * AI容器组件
