@@ -1,6 +1,7 @@
 import React, { useLayoutEffect, useRef, useEffect, useState, useCallback } from 'react';
 import videojs from 'video.js';
 import 'video.js/dist/video-js.css';
+import { ipcClient } from '../services/ipcClient';
 
 /**
  * 视频播放器组件
@@ -129,7 +130,7 @@ const VideoPlayer = React.memo(({
     setIsConverting(true);
     try {
       // 调用主进程的prepareVideo接口
-      const resultPath = await window.electronAPI.prepareVideo(inputPath);
+      const resultPath = await ipcClient.prepareVideo(inputPath);
 
       console.log('【VideoPlayer】视频格式处理结果:', resultPath);
       return resultPath;
@@ -146,8 +147,8 @@ const VideoPlayer = React.memo(({
   useEffect(() => {
     // 组件卸载时清理缓存
     return () => {
-      if (window.electronAPI.cleanupVideoCache) {
-        window.electronAPI.cleanupVideoCache().catch(error => {
+      if (ipcClient.isAvailable()) {
+        ipcClient.cleanupVideoCache().catch(error => {
           console.error('清理视频缓存失败:', error);
         });
       }
@@ -260,7 +261,7 @@ const VideoPlayer = React.memo(({
         
         // 加载并播放视频
         console.log('【VideoPlayer】加载视频URL');
-        const videoUrl = await window.electronAPI.getVideoHttpUrl(finalVideoPath);
+        const videoUrl = await ipcClient.getVideoHttpUrl(finalVideoPath);
         player.src({ src: videoUrl, type: 'video/mp4' });
         player.play().catch(e => console.error('播放失败:', e));
         

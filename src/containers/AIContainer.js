@@ -3,6 +3,7 @@ import LearningAssistant from '../components/LearningAssistant';
 import { useAI, useVideo } from '../contexts/AppContext';
 import { useElectronIPC } from '../hooks/useElectronIPC';
 import aiService from '../services/aiService';
+import { ipcClient } from '../services/ipcClient';
 
 /**
  * AI容器组件
@@ -59,8 +60,8 @@ const AIContainer = React.memo(() => {
       });
 
       // 保存查询记录到数据库
-      if (window.electronAPI) {
-        await window.electronAPI.saveAiQuery({
+      if (ipcClient.isAvailable()) {
+        await ipcClient.saveAiQuery({
           query: text,
           explanation: result,
           timestamp: new Date().toISOString()
