@@ -18,6 +18,7 @@ import {
 } from '@mui/material';
 import { ContentCopy, History, Summarize } from '@mui/icons-material';
 import aiService from '../services/aiService';
+import { ipcClient } from '../services/ipcClient';
 
 // 清理文本中的特殊标记
 const clean = (raw) => raw.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
@@ -118,17 +119,17 @@ const LearningAssistant = React.memo(({
   // 切换历史记录显示
   const handleToggleHistory = async () => {
     if (!showHistory) {
-      if (window.electronAPI && window.electronAPI.getAiQueriesToday) {
+      if (ipcClient.isAvailable()) {
         try {
           // 先检查数据库状态
-          const dbStatus = await window.electronAPI.invoke('checkDatabaseStatus');
+          const dbStatus = await ipcClient.checkDatabaseStatus();
           if (!dbStatus.isConnected) {
             console.error('数据库未连接');
             alert('数据库未连接，无法获取历史记录');
             return;
           }
 
-          const records = await window.electronAPI.getAiQueriesToday();
+          const records = await ipcClient.getAiQueriesToday();
           if (!records || records.length === 0) {
             console.log('没有找到今日的查询记录');
             setChatHistory([]);
@@ -189,19 +190,19 @@ const LearningAssistant = React.memo(({
   // 导出今日学习记录为 PDF（直接保存到本地）
   const handleExportPdf = async () => {
     try {
-      const dbStatus = await window.electronAPI.invoke('checkDatabaseStatus');
+      const dbStatus = await ipcClient.checkDatabaseStatus();
       if (!dbStatus || !dbStatus.isConnected) {
         alert('数据库未连接，无法导出');
         return;
       }
-      const records = await window.electronAPI.getAiQueriesToday();
+      const records = await ipcClient.getAiQueriesToday();
       if (!records || records.length === 0) {
         alert('今天没有学习记录可导出');
         return;
       }
       const html = buildPrintableHtml(records);
       const today = new Date().toISOString().slice(0, 10);
-      const result = await window.electronAPI.invoke('export-learning-today-pdf', {
+      const result = await ipcClient.exportLearningTodayPdf({
         html,
         title: '今日学习记录',
         suggestedName: `learning-${today}.pdf`

@@ -1,6 +1,7 @@
 // src/hooks/useSubtitle.js
 import { useState, useEffect, useCallback } from 'react';
 import { useVideo } from '../contexts/AppContext';
+import { ipcClient } from '../services/ipcClient';
 
 export const useSubtitle = () => {
   const [subtitles, setSubtitles] = useState([]);
@@ -11,9 +12,9 @@ export const useSubtitle = () => {
   
   // 监听主进程发送的字幕加载完成事件
   useEffect(() => {
-    if (!window.electronAPI) return;
+    if (!ipcClient.isAvailable()) return;
     
-    const cleanup = window.electronAPI.on('subtitleLoaded', (result) => {
+    const cleanup = ipcClient.onSubtitleLoaded((result) => {
       setLoading(false);
       
       if (result.success) {
@@ -30,7 +31,7 @@ export const useSubtitle = () => {
   
   // 选择并加载字幕
   const selectAndLoadSubtitle = useCallback(async () => {
-    if (!window.electronAPI) {
+    if (!ipcClient.isAvailable()) {
       setError('Electron API不可用');
       return false;
     }
@@ -39,7 +40,7 @@ export const useSubtitle = () => {
     
     try {
       // 1. 选择字幕文件
-      const result = await window.electronAPI.invoke('selectSubtitle', { videoPath });
+      const result = await ipcClient.selectSubtitle(videoPath);
       
       if (!result.success) {
         setLoading(false);
@@ -50,7 +51,7 @@ export const useSubtitle = () => {
       }
       
       // 2. 加载字幕内容
-      window.electronAPI.send('loadSubtitle', { subtitlePath: result.path });
+      ipcClient.loadSubtitle(result.path);
       return true;
     } catch (error) {
       setLoading(false);
@@ -61,13 +62,13 @@ export const useSubtitle = () => {
   
   // 直接加载指定路径的字幕
   const loadSubtitle = useCallback((subtitlePath) => {
-    if (!window.electronAPI || !subtitlePath) {
+    if (!ipcClient.isAvailable() || !subtitlePath) {
       setError('无效的字幕路径或Electron API不可用');
       return;
     }
     
     setLoading(true);
-    window.electronAPI.send('loadSubtitle', { subtitlePath });
+    ipcClient.loadSubtitle(subtitlePath);
   }, []);
   
   return {

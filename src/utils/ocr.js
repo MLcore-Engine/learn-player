@@ -1,3 +1,5 @@
+import { ipcClient } from '../services/ipcClient';
+
 // 使用服务端中转进行 OCR 的辅助函数
 // 期望服务端接口(建议)：POST /api/vision-ocr
 // Header: Authorization: Bearer <apiKey>
@@ -10,13 +12,14 @@
 // }
 // 响应(JSON) 推荐之一：{ text: string, usage?: {...}, requestId?: string }
 // 兼容其他格式：{ data: { text } } 或 { result: { text } }
+
 async function recognizeViaServer(imageDataUrl) {
-  if (typeof window === 'undefined' || !window.electronAPI) {
+  if (!ipcClient.isAvailable()) {
     throw new Error('electronAPI 不可用');
   }
 
   // 读取 API Key 与服务端基础地址（沿用 modelUrl 作为基址）
-  const cfg = await window.electronAPI.getApiKey();
+  const cfg = await ipcClient.getApiKey();
   if (!cfg || cfg.success === false) {
     throw new Error(cfg?.error || '无法获取 API 配置');
   }
@@ -71,7 +74,7 @@ async function recognizeViaServer(imageDataUrl) {
     };
   }
 
-  const result = await window.electronAPI.performAIRequest(requestData, performUrl, apiKey);
+  const result = await ipcClient.performAIRequest(requestData, performUrl, apiKey);
   if (!result || result.success !== true) {
     throw new Error(result?.error || '服务端 OCR 请求失败');
   }

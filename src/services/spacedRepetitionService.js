@@ -1,88 +1,36 @@
+import { ipcClient } from './ipcClient';
+
 /**
- * 间隔重复学习服务（Anki算法）
- * 实现SM-2算法的间隔重复，用于背单词
+ * 间隔重复服务
+ * 实现类似Anki的间隔重复算法，管理单词记忆
  */
 
 class SpacedRepetitionService {
-  /**
-   * SM-2算法参数
-   */
-  static SM2_CONFIG = {
-    INITIAL_EASE: 2.5,      // 初始易度因子
-    MIN_EASE: 1.3,          // 最小易度因子
-    EASE_CHANGE: 0.15,      // 易度因子变化量
-    MIN_INTERVAL: 1,        // 最小间隔（天）
-    MAX_INTERVAL: 365,      // 最大间隔（天）
-    GRADE_AGAIN: 0,         // 重来
-    GRADE_HARD: 1,          // 困难
-    GRADE_GOOD: 2,          // 良好
-    GRADE_EASY: 3           // 简单
-  };
-
-  /**
-   * 计算下次复习时间（SM-2算法）
-   * @param {Object} card - 单词卡片 { ease, interval, repetitions, lastReview }
-   * @param {number} quality - 评分 (0-3)
-   * @returns {Object} 更新后的卡片数据
-   */
-  calculateNextReview(card, quality) {
-    const config = SpacedRepetitionService.SM2_CONFIG;
-    let { ease = config.INITIAL_EASE, interval = 0, repetitions = 0 } = card;
-
-    // 根据评分调整易度因子
-    if (quality < config.GRADE_GOOD) {
-      // 重来或困难：降低易度因子
-      ease = Math.max(config.MIN_EASE, ease - (config.EASE_CHANGE * (config.GRADE_GOOD - quality)));
-      repetitions = 0;
-      interval = config.MIN_INTERVAL;
-    } else {
-      // 良好或简单：增加易度因子和间隔
-      if (quality === config.GRADE_EASY) {
-        ease += config.EASE_CHANGE;
-      }
-      
-      repetitions += 1;
-      
-      // 计算新的间隔
-      if (repetitions === 1) {
-        interval = 1;
-      } else if (repetitions === 2) {
-        interval = 6;
-      } else {
-        interval = Math.round(interval * ease);
-      }
-      
-      // 限制间隔范围
-      interval = Math.min(Math.max(interval, config.MIN_INTERVAL), config.MAX_INTERVAL);
-    }
-
-    // 计算下次复习时间
-    const now = new Date();
-    const nextReview = new Date(now);
-    nextReview.setDate(nextReview.getDate() + interval);
-
-    return {
-      ease,
-      interval,
-      repetitions,
-      nextReview: nextReview.toISOString(),
-      lastReview: now.toISOString()
+  constructor() {
+    // 用户记忆质量评级
+    this.qualityRatings = {
+      AGAIN: 0, // 完全不记得
+      HARD: 1,  // 记得模糊
+      GOOD: 2,  // 记得
+      EASY: 3   // 轻松记得
     };
+
+    // 间隔重复算法参数
+    this.eFactorMin = 1.3; // 最小难度系数
   }
 
   /**
    * 获取需要复习的单词
-   * @param {Function} electronAPI - Electron API 函数
-   * @param {number} limit - 返回数量限制
-   * @returns {Promise<Array>} 需要复习的单词列表
+   * @param {number} limit - 复习单词数量限制
+   * @returns {Promise<Array>} 待复习单词列表
    */
-  async getWordsToReview(electronAPI, limit = 20) {
-    if (!electronAPI || !electronAPI.invoke) {
+  async getWordsToReview(limit = 20) {
+    if (!ipcClient.isAvailable()) {
       throw new Error('Electron API不可用');
     }
 
     try {
-      const words = await electronAPI.invoke('getWordsToReview', { limit });
+      const words = await ipcClient.getWordsToReview({ limit });
       return words;
     } catch (error) {
       console.error('获取复习单词失败:', error);
@@ -92,28 +40,25 @@ class SpacedRepetitionService {
 
   /**
    * 提交单词复习结果
-   * @param {Function} electronAPI - Electron API 函数
    * @param {string} wordId - 单词ID
-   * @param {number} quality - 评分 (0-3)
-   * @returns {Promise<Object>} 更新后的单词数据
+   * @param {number} quality - 记忆质量评级
+   * @returns {Promise<Object>} 更新结果
    */
-  async submitReview(electronAPI, wordId, quality) {
-    if (!electronAPI || !electronAPI.invoke) {
+  async submitReview(wordId, quality) {
+    if (!ipcClient.isAvailable()) {
       throw new Error('Electron API不可用');
     }
 
     try {
-      // 获取当前单词卡片数据
-      const card = await electronAPI.invoke('getVocabularyCard', { wordId });
-      
-      // 计算下次复习时间
-      const updated = this.calculateNextReview(card, quality);
-      
-      // 保存更新
-      const result = await electronAPI.invoke('updateVocabularyCard', {
+      const card = await ipcClient.getVocabularyCard({ wordId });
+      if (!card) {
+        throw new Error('单词卡片不存在');
+      }
+
+      const updatedCard = this.calculateNextReview(card, quality);
+      const result = await ipcClient.updateVocabularyCard({
         wordId,
-        ...updated,
-        quality
+        ...updatedCard
       });
 
       return result;
@@ -124,69 +69,114 @@ class SpacedRepetitionService {
   }
 
   /**
-   * 添加单词到学习列表
-   * @param {Function} electronAPI - Electron API 函数
-   * @param {Object} wordData - 单词数据 { word, phonetic, meaning, example }
-   * @returns {Promise<Object>} 创建的单词卡片
+   * 添加新单词
+   * @param {Object} wordData - 单词数据
+   * @returns {Promise<Object>} 添加结果
    */
-  async addWord(electronAPI, wordData) {
-    if (!electronAPI || !electronAPI.invoke) {
+  async addWord(wordData) {
+    if (!ipcClient.isAvailable()) {
       throw new Error('Electron API不可用');
     }
 
     try {
-      const card = await electronAPI.invoke('addVocabularyWord', {
+      const card = {
         ...wordData,
-        ease: SpacedRepetitionService.SM2_CONFIG.INITIAL_EASE,
-        interval: 0,
         repetitions: 0,
-        nextReview: new Date().toISOString()
+        interval: 1,
+        eFactor: 2.5,
+        nextReviewDate: new Date().toISOString()
+      };
+
+      const result = await ipcClient.addVocabularyWord({
+        ...card
       });
 
-      return card;
+      return result;
     } catch (error) {
-      console.error('添加单词失败:', error);
+      console.error('添加新单词失败:', error);
       throw error;
     }
   }
 
   /**
-   * 从AI查询记录中提取单词并添加到学习列表
-   * @param {Function} electronAPI - Electron API 函数
-   * @param {number} limit - 提取数量限制
-   * @returns {Promise<number>} 成功添加的单词数量
+   * 从AI查询记录中提取单词
+   * @param {number} limit - 最大提取数量
+   * @returns {Promise<Object>} 提取结果
    */
-  async extractWordsFromQueries(electronAPI, limit = 50) {
-    if (!electronAPI || !electronAPI.invoke) {
+  async extractWordsFromQueries(limit = 50) {
+    if (!ipcClient.isAvailable()) {
       throw new Error('Electron API不可用');
     }
 
     try {
-      const result = await electronAPI.invoke('extractWordsFromQueries', { limit });
-      return result.count || 0;
+      const result = await ipcClient.extractWordsFromQueries({ limit });
+      return result;
     } catch (error) {
-      console.error('从查询记录提取单词失败:', error);
+      console.error('提取单词失败:', error);
       throw error;
     }
   }
 
   /**
-   * 获取学习统计
-   * @param {Function} electronAPI - Electron API 函数
-   * @returns {Promise<Object>} 学习统计
+   * 获取学习统计数据
+   * @returns {Promise<Object>} 统计数据
    */
-  async getLearningStats(electronAPI) {
-    if (!electronAPI || !electronAPI.invoke) {
+  async getLearningStats() {
+    if (!ipcClient.isAvailable()) {
       throw new Error('Electron API不可用');
     }
 
     try {
-      const stats = await electronAPI.invoke('getVocabularyStats');
+      const stats = await ipcClient.getVocabularyStats();
       return stats;
     } catch (error) {
       console.error('获取学习统计失败:', error);
       throw error;
     }
+  }
+
+  /**
+   * 计算下一次复习时间
+   * @param {Object} card - 单词卡片
+   * @param {number} quality - 记忆质量评级
+   * @returns {Object} 更新后的卡片数据
+   */
+  calculateNextReview(card, quality) {
+    // 简化的间隔重复算法
+    let { repetitions, interval, eFactor } = card;
+
+    if (quality < 2) {
+      // 如果记忆质量差，重置复习
+      repetitions = 0;
+      interval = 1;
+    } else {
+      // 增加复习次数
+      repetitions += 1;
+
+      // 计算新间隔
+      if (repetitions === 1) {
+        interval = 1;
+      } else if (repetitions === 2) {
+        interval = 6;
+      } else {
+        interval = Math.round(interval * eFactor);
+      }
+
+      // 更新难度系数
+      eFactor = eFactor + (0.1 - (3 - quality) * (0.08 + (3 - quality) * 0.02));
+      if (eFactor < this.eFactorMin) eFactor = this.eFactorMin;
+    }
+
+    // 计算下次复习日期
+    const nextReviewDate = new Date();
+    nextReviewDate.setDate(nextReviewDate.getDate() + interval);
+
+    return {
+      repetitions,
+      interval,
+      eFactor,
+      nextReviewDate: nextReviewDate.toISOString()
+    };
   }
 }
 

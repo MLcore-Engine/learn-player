@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import dictionaryService from '../utils/dictionaryService';
+import { ipcClient } from '../services/ipcClient';
 
 const OCRResultModal = React.memo(({ isOpen, result, onExplain, onClose, style, isLoading }) => {
   const [dictResult, setDictResult] = useState(null);
@@ -34,7 +35,7 @@ const OCRResultModal = React.memo(({ isOpen, result, onExplain, onClose, style, 
         setDictResult(formattedResult);
         
         // 保存到数据库
-        await window.electronAPI.invoke('saveAiQuery', {
+        await ipcClient.saveAiQuery({
           query: txt,
           explanation: formattedResult,
           timestamp: new Date().toISOString()

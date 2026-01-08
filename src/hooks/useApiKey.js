@@ -1,5 +1,6 @@
 import { useEffect, useCallback, useRef } from 'react';
 import { useApiKey as useApiKeyContext } from '../contexts/AppContext';
+import { ipcClient } from '../services/ipcClient';
 
 // 缓存持续时间（毫秒）
 const CACHE_DURATION = 30000; // 30秒
@@ -30,7 +31,7 @@ export const useApiKey = () => {
 
   // 获取API Key的函数
   const fetchApiKey = useCallback(async (force = false) => {
-    if (!window.electronAPI) return;
+    if (!ipcClient.isAvailable()) return;
     
     const now = Date.now();
     const cache = cacheRef.current;
@@ -51,7 +52,7 @@ export const useApiKey = () => {
       cache.isFetching = true;
       setStatus('正在获取...');
       
-      const result = await window.electronAPI.invoke('getApiKey');
+      const result = await ipcClient.getApiKey();
       console.log('getApiKey result', result);
       
       if (result.success) {
@@ -85,10 +86,10 @@ export const useApiKey = () => {
 
   // 保存API Key的函数
   const saveApiKey = useCallback(async () => {
-    if (!window.electronAPI) return;
+    if (!ipcClient.isAvailable()) return;
     
     try {
-      const result = await window.electronAPI.invoke('saveApiKey', { apiKey, modelUrl });
+      const result = await ipcClient.saveApiKey({ apiKey, modelUrl });
       if (result.success) {
         alert('设置保存成功！');
         setApiKey('');
@@ -114,9 +115,9 @@ export const useApiKey = () => {
 
   // 监听主进程发送的打开API Key设置事件
   useEffect(() => {
-    if (!window.electronAPI) return;
+    if (!ipcClient.isAvailable()) return;
     
-    const cleanup = window.electronAPI.on('openApiKeySettings', () => {
+    const cleanup = ipcClient.onOpenApiKeySettings(() => {
       // 强制刷新API Key状态
       fetchApiKey(true);
       setShowInput(true);
