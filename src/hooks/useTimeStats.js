@@ -1,6 +1,7 @@
 import { useEffect, useCallback, useRef } from 'react';
 import { useTimeStats as useTimeStatsContext } from '../contexts/AppContext';
 import { useVideo } from '../contexts/AppContext';
+import { ipcClient } from '../services/ipcClient';
 
 /**
  * 时间统计钩子
@@ -25,10 +26,10 @@ export const useTimeStats = () => {
 
   // 从主进程获取时间统计数据
   const fetchTimeStats = useCallback(async () => {
-    if (!window.electronAPI || !videoPath) return;
+    if (!ipcClient.isAvailable() || !videoPath) return;
     
     try {
-      const data = await window.electronAPI.invoke('getWatchTime', { videoId: videoPath });
+      const data = await ipcClient.getWatchTime(videoPath);
       updateStats({
         totalTime: data.totalTime || 0,
         sessionTime: data.sessionTime || 0
@@ -44,7 +45,7 @@ export const useTimeStats = () => {
 
   // 更新观看时长到主进程（仅用于暂停/结束/卸载时刷新进度，不再做周期性累计）
   const updateWatchTime = useCallback(async () => {
-    if (!window.electronAPI || !videoPath || !videoRef.current) return;
+    if (!ipcClient.isAvailable() || !videoPath || !videoRef.current) return;
     
     const currentTime = Date.now();
     // 确保两次更新之间至少间隔 30 秒
@@ -60,7 +61,7 @@ export const useTimeStats = () => {
     };
     
     try {
-      window.electronAPI.updateWatchTime(data);
+      ipcClient.updateWatchTime(data);
       lastUpdateTimeRef.current = currentTime;
       errorCountRef.current = 0; // 重置错误计数
     } catch (error) {

@@ -6,6 +6,7 @@ import {
   ocrReducer, 
   apiKeyReducer 
 } from '../reducers';
+import { ipcClient } from '../services/ipcClient';
 
 // 创建各个功能模块的上下文
 const VideoContext = createContext();
@@ -189,8 +190,8 @@ export const TimeStatsProvider = ({ children }) => {
         const currentPosition = Math.floor(videoRef.current.currentTime);
 
         // 更新到数据库（以增量为准，避免被0覆盖历史累计）
-        if (window.electronAPI) {
-          window.electronAPI.updateWatchTime({
+        if (ipcClient.isAvailable()) {
+          ipcClient.updateWatchTime({
             videoId: videoPath,
             deltaSeconds: 60,
             currentPosition

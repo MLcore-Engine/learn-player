@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { ipcClient } from '../services/ipcClient';
 
 // 创建 axios 实例
 const axiosInstance = axios.create({
@@ -72,15 +73,8 @@ class OcrApiService {
     let apiKey = this.config.apiKey;
     let apiUrl = this.config.apiUrl;
 
-    if (window.electronAPI && typeof window.electronAPI.getApiKey === 'function') {
-      const response = await window.electronAPI.getApiKey();
-      if (response?.success === false) {
-        throw new Error(response.error || '获取API Key失败，请检查设置');
-      }
-      apiKey = response?.apiKey || apiKey;
-      apiUrl = response?.modelUrl || apiUrl;
-    } else if (window.electronAPI && typeof window.electronAPI.invoke === 'function') {
-      const response = await window.electronAPI.invoke('getApiKey');
+    if (ipcClient.isAvailable()) {
+      const response = await ipcClient.getApiKey();
       if (response?.success === false) {
         throw new Error(response.error || '获取API Key失败，请检查设置');
       }
@@ -144,8 +138,8 @@ class OcrApiService {
       // 发送请求
       let data;
       // 如果在 Electron 环境下，可通过主进程发起请求，避免 CORS
-      if (window.electronAPI && typeof window.electronAPI.performAIRequest === 'function') {
-        const result = await window.electronAPI.performAIRequest(requestData, apiUrl, apiKey);
+      if (ipcClient.isAvailable()) {
+        const result = await ipcClient.performAIRequest(requestData, apiUrl, apiKey);
         if (!result.success) {
           throw new Error(result.error || '主进程 OCR 请求失败');
         }
