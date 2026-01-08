@@ -259,7 +259,8 @@ export const ApiKeyProvider = ({ children }) => {
     apiKey: '',
     modelUrl: 'http://58.211.207.202:20000/api/chat', // 默认值
     showInput: false,
-    status: '正在加载...'
+    status: '正在加载...',
+    configSource: { apiKey: 'default', modelUrl: 'default' }
   });
 
   const actions = {
@@ -274,6 +275,9 @@ export const ApiKeyProvider = ({ children }) => {
     },
     setStatus: (status) => {
       dispatch({ type: 'SET_STATUS', payload: status });
+    },
+    setConfigSource: (configSource) => {
+      dispatch({ type: 'SET_CONFIG_SOURCE', payload: configSource });
     }
   };
 

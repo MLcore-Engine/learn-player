@@ -1,4 +1,5 @@
 import { ipcClient } from '../services/ipcClient';
+import resolveAiConfig from '../services/aiConfigService';
 
 // 使用服务端中转进行 OCR 的辅助函数
 // 期望服务端接口(建议)：POST /api/vision-ocr
@@ -18,13 +19,9 @@ async function recognizeViaServer(imageDataUrl) {
     throw new Error('electronAPI 不可用');
   }
 
-  // 读取 API Key 与服务端基础地址（沿用 modelUrl 作为基址）
-  const cfg = await ipcClient.getApiKey();
-  if (!cfg || cfg.success === false) {
-    throw new Error(cfg?.error || '无法获取 API 配置');
-  }
+  const cfg = await resolveAiConfig({ requireApiKey: true });
   const apiKey = cfg.apiKey || '';
-  const baseUrl = cfg.modelUrl || '';
+  const baseUrl = cfg.apiUrl || '';
 
   // 如果是智谱官方地址，直接调用 GLM-4V-Flash（chat completions）
   let isZhipu = false;
