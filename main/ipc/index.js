@@ -12,6 +12,7 @@ const algorithm = 'aes-256-cbc';
 const encryptionSecret = crypto.createHash('sha256').update('lep-very-secret-key-replace-me').digest('base64').substring(0, 32);
 // IV 必须是 16 字节
 const iv = Buffer.from('lepinitialvector', 'utf8'); // 固定 IV 也是不推荐的，但简化了演示
+const DEFAULT_AI_MODEL_URL = 'https://open.bigmodel.cn/api/paas/v4/chat/completions';
 
 // 加密函数
 function encrypt(text) {
@@ -37,6 +38,50 @@ function decrypt(encryptedHex) {
     console.error('解密失败:', error);
     return null;
   }
+}
+
+function getEnvValue(keys) {
+  for (const key of keys) {
+    const value = process.env[key];
+    if (typeof value === 'string' && value.trim()) {
+      return value.trim();
+    }
+  }
+  return '';
+}
+
+function resolveAiConfig(store) {
+  const encryptedApiKey = store.get('encryptedApiKey');
+  let storedApiKey = null;
+  if (encryptedApiKey) {
+    const decryptedApiKey = decrypt(encryptedApiKey);
+    if (decryptedApiKey !== null) {
+      storedApiKey = decryptedApiKey;
+    } else {
+      console.error('【主进程】解密 API Key 失败');
+      store.delete('encryptedApiKey');
+    }
+  }
+
+  const storedModelUrl = store.get('modelUrl');
+  const envApiKey = getEnvValue(['AI_API_KEY', 'REACT_APP_OPENAI_API_KEY']);
+  const envModelUrl = getEnvValue(['AI_MODEL_URL', 'REACT_APP_OPENAI_API_URL']);
+
+  const apiKeySource = storedApiKey ? 'store' : envApiKey ? 'env' : 'default';
+  const modelUrlSource = storedModelUrl ? 'store' : envModelUrl ? 'env' : 'default';
+
+  if (apiKeySource === 'env' || modelUrlSource === 'env') {
+    console.warn('【主进程】正在使用环境变量中的 AI 配置，请在设置中保存以避免生产环境误用');
+  }
+
+  return {
+    apiKey: storedApiKey || envApiKey || null,
+    modelUrl: storedModelUrl || envModelUrl || DEFAULT_AI_MODEL_URL,
+    source: {
+      apiKey: apiKeySource,
+      modelUrl: modelUrlSource
+    }
+  };
 }
 
 // 缓存管理配置
@@ -156,22 +201,13 @@ function registerIpcHandlers({ app, ipcMain, dialog, BrowserWindow, store, state
   ipcMain.handle('getApiKey', (event) => {
     console.log('【主进程】收到 getApiKey 请求');
     try {
-      const encryptedApiKey = store.get('encryptedApiKey');
-      const modelUrl = store.get('modelUrl') || 'https://open.bigmodel.cn/api/paas/v4/chat/completions'; // 默认值改为智谱官方
-      if (encryptedApiKey) {
-        const decryptedApiKey = decrypt(encryptedApiKey);
-        if (decryptedApiKey !== null) {
-          console.log('【主进程】成功解密并返回 API Key');
-          return { success: true, apiKey: decryptedApiKey, modelUrl };
-        } else {
-          console.error('【主进程】解密 API Key 失败');
-          store.delete('encryptedApiKey');
-          return { success: false, error: '解密失败，Key 已被清除', modelUrl };
-        }
+      const resolved = resolveAiConfig(store);
+      if (resolved.apiKey) {
+        console.log('【主进程】成功返回 API Key');
       } else {
-        console.log('【主进程】未找到已存储的 API Key');
-        return { success: true, apiKey: null, modelUrl };
+        console.log('【主进程】未找到可用的 API Key');
       }
+      return { success: true, apiKey: resolved.apiKey, modelUrl: resolved.modelUrl, source: resolved.source };
     } catch (error) {
       console.error('【主进程】获取 API Key 时出错:', error);
       return { success: false, error: error.message };

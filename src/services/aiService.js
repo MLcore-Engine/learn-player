@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { ipcClient } from './ipcClient';
+import resolveAiConfig from './aiConfigService';
 
 // 创建 axios 实例
 const axiosInstance = axios.create({
@@ -236,27 +237,13 @@ class AIService {
   }
 
   async getApiConfig() {
-    let apiKey = this.config.apiKey;
-    let apiUrl = this.config.apiUrl;
-
-    if (ipcClient.isAvailable()) {
-      const response = await ipcClient.getApiKey();
-      if (response?.success === false) {
-        throw new Error(response.error || '获取API Key失败，请检查设置');
-      }
-      apiKey = response?.apiKey || apiKey;
-      apiUrl = response?.modelUrl || apiUrl;
-    }
-
-    if (!apiKey) {
-      throw new Error('未设置API Key');
-    }
-
-    return {
-      apiKey,
-      apiUrl,
+    const { apiKey, apiUrl, model } = await resolveAiConfig({
+      apiKey: this.config.apiKey,
+      apiUrl: this.config.apiUrl,
       model: this.config.model
-    };
+    });
+
+    return { apiKey, apiUrl, model };
   }
 
   /**
