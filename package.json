@@ -17,7 +17,7 @@
     "postinstall": "electron-builder install-app-deps && npm run prune-deps",
     "build:web": "react-app-rewired build",
     "build:electron": "npm run build:web && cp -r main build/ && cp main.js build/ && cp preload.js build/",
-    "clean": "rimraf build dist",
+    "clean": "rm -rf build dist",
     "prebuild": "npm run clean",
     "build:mac": "npm run package -- --mac",
     "build:win": "npm run package -- --win",
