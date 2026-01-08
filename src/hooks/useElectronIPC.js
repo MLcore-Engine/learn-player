@@ -1,6 +1,7 @@
 import { useEffect, useCallback, useRef } from 'react';
 import { useVideo } from '../contexts/AppContext';
 import { ipcClient } from '../services/ipcClient';
+import { isElectronAvailable } from '../services/electronApi';
 
 /**
  * Electron IPC通信钩子
@@ -14,7 +15,7 @@ export const useElectronIPC = () => {
 
   // 监听主进程发送的视频选择事件
   useEffect(() => {
-    if (!ipcClient.isAvailable()) return;
+    if (!isElectronAvailable()) return;
     console.log('注册videoSelectedFromMenu事件监听');
     const cleanup = ipcClient.onVideoSelectedFromMenu(({ success, path }) => {
       if (success && path) {
@@ -32,7 +33,7 @@ export const useElectronIPC = () => {
 
   // 选择视频文件
   const selectVideo = useCallback(async () => {
-    if (!ipcClient.isAvailable()) {
+    if (!isElectronAvailable()) {
       console.error('electronAPI不可用');
       return { success: false, error: 'Electron API不可用' };
     }
@@ -50,7 +51,7 @@ export const useElectronIPC = () => {
 
   // 保存学习记录
   const saveLearningRecord = useCallback(async (record) => {
-    if (!ipcClient.isAvailable()) {
+    if (!isElectronAvailable()) {
       return { success: false, error: 'Electron API不可用' };
     }
     try {
@@ -63,7 +64,7 @@ export const useElectronIPC = () => {
 
   // 获取学习记录 - 添加防抖和缓存机制
   const getLearningRecords = useCallback(async (videoId) => {
-    if (!ipcClient.isAvailable()) {
+    if (!isElectronAvailable()) {
       return [];
     }
     const now = Date.now();
@@ -88,7 +89,7 @@ export const useElectronIPC = () => {
 
   // 提取视频帧
   const extractFrame = useCallback(async (videoPath, timestamp) => {
-    if (!ipcClient.isAvailable()) {
+    if (!isElectronAvailable()) {
       return { success: false, error: 'Electron API不可用' };
     }
     try {
@@ -100,7 +101,7 @@ export const useElectronIPC = () => {
   }, []);
 
   const checkFileExists = useCallback(async (filePath) => {
-    if (!ipcClient.isAvailable()) return false;
+    if (!isElectronAvailable()) return false;
     return await ipcClient.checkFileExists(filePath);
   }, []);
 

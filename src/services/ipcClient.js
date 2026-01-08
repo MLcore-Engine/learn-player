@@ -7,6 +7,8 @@
  * - send: fire-and-forget channels
  * - receive: event channels pushed from main process
  */
+import { getElectronAPI, isElectronAvailable } from './electronApi';
+
 export const IPC_CHANNELS = {
   invoke: {
     readVideoFile: 'readVideoFile',
@@ -76,13 +78,6 @@ export const IPC_CHANNELS = {
   }
 };
 
-const getElectronAPI = () => {
-  if (typeof window === 'undefined' || !window.electronAPI) {
-    return null;
-  }
-  return window.electronAPI;
-};
-
 const createUnavailableError = () => new Error('Electron API不可用');
 
 const invoke = async (channel, ...args) => {
@@ -120,7 +115,7 @@ const removeAllListeners = (channel) => {
 };
 
 export const ipcClient = {
-  isAvailable: () => Boolean(getElectronAPI()),
+  isAvailable: () => isElectronAvailable(),
   onVideoSelectedFromMenu: (listener) => on(IPC_CHANNELS.receive.videoSelectedFromMenu, listener),
   onSubtitleLoaded: (listener) => on(IPC_CHANNELS.receive.subtitleLoaded, listener),
   onOpenApiKeySettings: (listener) => on(IPC_CHANNELS.receive.openApiKeySettings, listener),
