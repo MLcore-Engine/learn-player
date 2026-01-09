@@ -24,7 +24,7 @@ const VideoPlayer = React.memo(({
   const onSubtitleSelectRef = useRef(onSubtitleSelect); // 存储字幕选择回调
   const subtitleTrackRef = useRef(null);
   const subtitleCueHandlerRef = useRef(null);
-  const [isPlaying, setIsPlaying] = useState(false);
+  const subtitlesRef = useRef(subtitles);
 
   // 使用外部的转换状态，如果没有提供则使用内部状态
   const [internalIsConverting, setInternalIsConverting] = useState(false);
@@ -67,17 +67,14 @@ const VideoPlayer = React.memo(({
     };
   }, [videoPath]);
 
-  // 监听字幕变化
   useEffect(() => {
-    setIsPlaying(subtitles && subtitles.length > 0);
+    subtitlesRef.current = subtitles;
   }, [subtitles]);
 
-  // 将状态传递给父组件
-  useEffect(() => {
-    if (onPlayerReadyRef.current) {
-      onPlayerReadyRef.current(playerRef.current, { isPlaying });
-    }
-  }, [isPlaying]);
+  const getPlayerReadyInfo = useCallback((player) => ({
+    isPlaying: player ? !player.paused() : false,
+    hasExternalSubtitles: Boolean(subtitlesRef.current && subtitlesRef.current.length > 0)
+  }), []);
 
   const { playerRef, playerInitializedRef } = useVideoJsPlayer({
     videoPath,
@@ -85,6 +82,7 @@ const VideoPlayer = React.memo(({
     videoRef,
     onTimeUpdateRef,
     onPlayerReadyRef,
+    getPlayerReadyInfo,
     handleVideoConversion
   });
 

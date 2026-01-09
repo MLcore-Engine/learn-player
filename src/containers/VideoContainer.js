@@ -60,7 +60,7 @@ const VideoContainer = React.memo(({ onPlayerReady }) => {
   }, []);
 
   // 从VideoPlayer获取播放器实例的回调 - 稳定化
-  const handlePlayerReady = useCallback((player) => {
+  const handlePlayerReady = useCallback((player, info) => {
     if (!player) return;
     
     // 新视频加载，重置加载状态
@@ -111,7 +111,7 @@ const VideoContainer = React.memo(({ onPlayerReady }) => {
 
     // 调用父组件的 onPlayerReady 回调
     if (onPlayerReady) {
-      onPlayerReady(player, { hasExternalSubtitles: subtitles && subtitles.length > 0 });
+      onPlayerReady(player, info);
     }
     
     // 返回清理函数
@@ -123,7 +123,7 @@ const VideoContainer = React.memo(({ onPlayerReady }) => {
       player.off('error', handleErrorEvent);
       stopWatchTimer();
     };
-  }, [setIsPlaying, setDuration, setVideoLoaded, startWatchTimer, stopWatchTimer, updateWatchTime, videoRef, onPlayerReady, subtitles, setPlayer]);
+  }, [setIsPlaying, setDuration, setVideoLoaded, startWatchTimer, stopWatchTimer, updateWatchTime, videoRef, onPlayerReady, setPlayer]);
 
   // 如果没有视频路径，显示提示
   if (!videoPath) {
