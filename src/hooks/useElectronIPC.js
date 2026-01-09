@@ -76,11 +76,16 @@ export const useElectronIPC = () => {
     try {
       console.log(`请求学习记录: ${videoId}`);
       const records = await ipcClient.getLearningRecords(videoId);
+      const safeRecords = Array.isArray(records) ? records : [];
+      if (!Array.isArray(records)) {
+        console.warn('获取学习记录返回非数组，已兜底为空数组:', records);
+      }
+      console.log(`获取学习记录响应: ${videoId}, 记录数: ${safeRecords.length}`);
       cache[videoId] = {
         timestamp: now,
-        data: records
+        data: safeRecords
       };
-      return records;
+      return safeRecords;
     } catch (error) {
       console.error('获取学习记录失败:', error);
       return [];
