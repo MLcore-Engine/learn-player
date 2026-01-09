@@ -6,12 +6,38 @@ import { ipcClient } from '../services/ipcClient';
 const useExplainFlow = ({ hasExternalSubtitles }) => {
   const [ocrModalOpen, setOcrModalOpen] = useState(false);
   const [ocrResult, setOcrResult] = useState('');
-  const [ocrLoading, setOcrLoading] = useState(false);
+  const [ocrStatus, setOcrStatus] = useState('idle');
+  const [ocrError, setOcrError] = useState('');
   const [explainLoading, setExplainLoading] = useState(false);
   const { setSelectedText, setExplanation, setLoading: setAiLoading, addRecord } = useAI();
   const { isLoaded: isVideoLoaded, playerRef } = useVideo();
 
-  const handleOCRRecognize = useCallback((recognizedText) => {
+  const handleOCRRecognize = useCallback((payload) => {
+    if (typeof payload === 'string') {
+      setOcrStatus('success');
+      setOcrError('');
+      setOcrResult(payload);
+      setOcrModalOpen(true);
+      return;
+    }
+
+    if (payload?.status === 'loading') {
+      setOcrStatus('loading');
+      setOcrError('');
+      return;
+    }
+
+    if (payload?.status === 'error') {
+      const errorMessage = payload.error || '识别失败: 未知错误';
+      setOcrStatus('error');
+      setOcrError(errorMessage);
+      setOcrResult(errorMessage);
+      setOcrModalOpen(true);
+      return;
+    }
+
+    const recognizedText = payload?.text || '';
+
     if (hasExternalSubtitles && playerRef.current) {
       try {
         const player = playerRef.current;
@@ -21,6 +47,8 @@ const useExplainFlow = ({ hasExternalSubtitles }) => {
             const track = tracks[i];
             if (track.label === '外挂字幕' && track.activeCues && track.activeCues.length > 0) {
               const text = track.activeCues[0].text;
+              setOcrStatus('success');
+              setOcrError('');
               setOcrResult(text);
               setOcrModalOpen(true);
               return;
@@ -29,17 +57,17 @@ const useExplainFlow = ({ hasExternalSubtitles }) => {
         }
       } catch (error) {
         console.error('获取字幕轨道失败:', error);
+        setOcrStatus('error');
+        setOcrError('获取字幕轨道失败');
+        setOcrResult('获取字幕轨道失败，请重试');
+        setOcrModalOpen(true);
+        return;
       }
     }
-
-    if (recognizedText === '识别中...') {
-      setOcrLoading(true);
-      return;
-    }
-
+    setOcrStatus('success');
+    setOcrError('');
     setOcrResult(recognizedText);
     setOcrModalOpen(true);
-    setOcrLoading(false);
   }, [hasExternalSubtitles, playerRef]);
 
   const handleExplain = useCallback(async (lang, selectedText) => {
@@ -75,12 +103,16 @@ const useExplainFlow = ({ hasExternalSubtitles }) => {
       setExplainLoading(false);
       setOcrModalOpen(false);
       setOcrResult('');
+      setOcrStatus('idle');
+      setOcrError('');
     }
   }, [addRecord, ocrResult, setAiLoading, setExplanation, setSelectedText]);
 
   const handleCloseModal = useCallback(() => {
     setOcrModalOpen(false);
     setOcrResult('');
+    setOcrStatus('idle');
+    setOcrError('');
     setExplainLoading(false);
   }, []);
 
@@ -90,9 +122,11 @@ const useExplainFlow = ({ hasExternalSubtitles }) => {
     handleExplain,
     handleOCRRecognize,
     isVideoLoaded,
-    ocrLoading,
+    ocrLoading: ocrStatus === 'loading',
     ocrModalOpen,
-    ocrResult
+    ocrResult,
+    ocrStatus,
+    ocrError
   };
 };
 
