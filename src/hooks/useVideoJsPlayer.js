@@ -8,6 +8,7 @@ const useVideoJsPlayer = ({
   videoRef,
   onTimeUpdateRef,
   onPlayerReadyRef,
+  getPlayerReadyInfo,
   handleVideoConversion
 }) => {
   const playerRef = useRef(null);
@@ -219,7 +220,8 @@ const useVideoJsPlayer = ({
         player.play().catch(e => console.error('播放失败:', e));
 
         if (onPlayerReadyRef.current && !canceled) {
-          const cleanup = onPlayerReadyRef.current(player);
+          const info = getPlayerReadyInfo ? getPlayerReadyInfo(player) : undefined;
+          const cleanup = onPlayerReadyRef.current(player, info);
           if (typeof cleanup === 'function') {
             cleanupFunctionRef.current = cleanup;
           }
@@ -241,7 +243,7 @@ const useVideoJsPlayer = ({
       canceled = true;
       cleanupPlayer();
     };
-  }, [videoPath, createVideoElement, handleVideoConversion, initVideoJsPlayer, cleanupPlayer, onPlayerReadyRef]);
+  }, [videoPath, createVideoElement, handleVideoConversion, initVideoJsPlayer, cleanupPlayer, onPlayerReadyRef, getPlayerReadyInfo]);
 
   return {
     playerRef,
