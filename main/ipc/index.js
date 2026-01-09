@@ -6,7 +6,7 @@ const path = require('path');
 const { parseSync } = require('subtitle');
 const { extractFrame, cleanupTempFile } = require('../videoFrameExtractor');
 const { ffmpeg } = require('../media/ffmpeg');
-const { VIDEO_SERVER_PORT } = require('../services/videoServer');
+const { getVideoServerPort, getVideoServerError } = require('../services/videoServer');
 
 const algorithm = 'aes-256-cbc';
 const encryptionSecret = crypto.createHash('sha256').update('lep-very-secret-key-replace-me').digest('base64').substring(0, 32);
@@ -216,7 +216,17 @@ function registerIpcHandlers({ app, ipcMain, dialog, BrowserWindow, store, state
   });
 
   // IPC: 获取视频服务器端口
-  ipcMain.handle('getVideoServerPort', () => VIDEO_SERVER_PORT);
+  ipcMain.handle('getVideoServerPort', () => {
+    const port = getVideoServerPort();
+    const error = getVideoServerError();
+    if (error || !port) {
+      const message = error
+        ? `视频服务端口不可用: ${error.message}`
+        : '视频服务端口尚未就绪';
+      throw new Error(message);
+    }
+    return port;
+  });
 
   // 选择视频文件
   ipcMain.handle('selectVideo', async (event) => {
