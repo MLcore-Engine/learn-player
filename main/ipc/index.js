@@ -166,9 +166,10 @@ function registerIpcHandlers({ app, ipcMain, dialog, BrowserWindow, store, state
   // 定期清理缓存
   setInterval(cleanupCache, CACHE_CONFIG.cleanupInterval);
 
-  ipcMain.handle('saveApiKey', (event, { apiKey, modelUrl }) => {
+  ipcMain.handle('saveApiKey', (event, payload) => {
     console.log('【主进程】收到 saveApiKey 请求');
     try {
+      const { apiKey, modelUrl } = typeof payload === 'string' ? { apiKey: payload } : (payload || {});
       // 保存 Model URL
       if (modelUrl) {
         store.set('modelUrl', modelUrl);
