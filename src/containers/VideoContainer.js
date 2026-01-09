@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback, useRef, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import VideoPlayer from '../components/VideoPlayer';
 import VideoConversionProgress from '../components/VideoConversionProgress';
 import { useVideo, useTimeStats as useContextTimeStats } from '../contexts/AppContext';
@@ -196,4 +196,4 @@ const VideoContainer = React.memo(({ onPlayerReady }) => {
   );
 });
 
-export default VideoContainer; 
+export default VideoContainer;
