@@ -175,6 +175,9 @@ export const TimeStatsProvider = ({ children }) => {
       if (watchTimerRef.current || !videoPath || !videoRef.current) return;
       
       watchTimerRef.current = setInterval(() => {
+        if (!videoRef.current) {
+          return;
+        }
         const newTotal = timeStatsRef.current.totalTime + 60;
         const newSession = timeStatsRef.current.sessionTime + 60;
         const currentPosition = Math.floor(videoRef.current.currentTime);

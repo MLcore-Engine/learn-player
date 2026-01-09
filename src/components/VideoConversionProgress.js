@@ -20,7 +20,7 @@ const VideoConversionProgress = ({ isVisible, onCancel }) => {
       console.log('转换进度:', progressData);
 
       // 解析进度数据
-      if (progressData.percent) {
+      if (typeof progressData.percent === 'number') {
         setProgress(progressData.percent);
       } else if (progressData.timemark) {
         // 从时间戳估算进度（需要知道总时长）
