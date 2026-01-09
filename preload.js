@@ -202,7 +202,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
 
   // API Key相关
-  saveApiKey: (apiKey) => ipcRenderer.invoke('saveApiKey', apiKey),
+  saveApiKey: ({ apiKey, modelUrl }) => ipcRenderer.invoke('saveApiKey', { apiKey, modelUrl }),
   getApiKey: () => ipcRenderer.invoke('getApiKey'),
   
   // ============== 具体功能 API (简化) ============== 
