@@ -4,9 +4,16 @@ const path = require('path');
 const urlModule = require('url');
 
 const VIDEO_SERVER_PORT = 6459;
+let videoServer = null;
+let videoServerPort = null;
+let videoServerError = null;
 
-function startVideoServer() {
-  const videoServer = http.createServer((req, res) => {
+function startVideoServer(preferredPort = VIDEO_SERVER_PORT) {
+  if (videoServer) {
+    return { server: videoServer, port: videoServerPort };
+  }
+
+  videoServer = http.createServer((req, res) => {
     // 添加 CORS 支持
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS');
@@ -48,14 +55,33 @@ function startVideoServer() {
     return fs.createReadStream(filePath, { start, end }).pipe(res);
   });
 
-  videoServer.listen(VIDEO_SERVER_PORT, '127.0.0.1', () => {
-    console.log('【主进程】视频 HTTP 服务启动，端口:', VIDEO_SERVER_PORT);
+  videoServer.once('error', (error) => {
+    videoServerError = error;
+    console.error(`【主进程】视频 HTTP 服务启动失败，端口 ${preferredPort} 不可用:`, error);
   });
 
-  return { server: videoServer, port: VIDEO_SERVER_PORT };
+  videoServer.listen(preferredPort, '127.0.0.1', () => {
+    videoServerPort = videoServer.address().port;
+    console.log('【主进程】视频 HTTP 服务启动，端口:', videoServerPort);
+  });
+
+  return { server: videoServer, port: videoServerPort };
+}
+
+function getVideoServerPort() {
+  if (videoServer && videoServer.listening) {
+    return videoServer.address().port;
+  }
+  return videoServerPort;
+}
+
+function getVideoServerError() {
+  return videoServerError;
 }
 
 module.exports = {
   startVideoServer,
+  getVideoServerPort,
+  getVideoServerError,
   VIDEO_SERVER_PORT
 };

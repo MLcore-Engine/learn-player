@@ -243,9 +243,15 @@ contextBridge.exposeInMainWorld('electronAPI', {
   readVideoChunk: (videoPath, offset, length) => ipcRenderer.invoke('readVideoChunk', videoPath, offset, length),
   
   // 获取本地视频 HTTP 服务端口
-  getVideoServerPort: () => Promise.resolve(6459),
+  getVideoServerPort: () => ipcRenderer.invoke('getVideoServerPort'),
   // 生成本地视频 HTTP URL
-  getVideoHttpUrl: (videoPath) => Promise.resolve(`http://127.0.0.1:6459/video?path=${encodeURIComponent(videoPath)}`),
+  getVideoHttpUrl: async (videoPath) => {
+    const port = await ipcRenderer.invoke('getVideoServerPort');
+    if (!port) {
+      throw new Error('视频服务端口不可用，无法生成播放地址');
+    }
+    return `http://127.0.0.1:${port}/video?path=${encodeURIComponent(videoPath)}`;
+  },
   
   // 视频格式预处理：将 mkv/avi 转换为 mp4
   prepareVideo: (filePath) => ipcRenderer.invoke('prepareVideo', filePath),
