@@ -46,6 +46,12 @@ index.js (主进程)
 ```
 
 ---  
+## 代码规范
+
+1. 渲染进程获取 API Key 时统一使用 `window.electronAPI.getApiKey()`，不要通过通用 `invoke` 走 IPC。
+2. 通用 `invoke` 仅用于新增通道开发时的临时接入，完成后应暴露明确的 API 方法并替换调用。
+
+---
 ## 三、流程图（Mermaid）  
 
 ```mermaid
