@@ -3,7 +3,7 @@
  * All IPC channel names are centralized here to avoid string literals in callers.
  *
  * Channel definitions:
- * - invoke: request/response channels
+ * - invoke: request/response channels (only for new channels when there is no dedicated API yet)
  * - send: fire-and-forget channels
  * - receive: event channels pushed from main process
  */
@@ -151,7 +151,13 @@ export const ipcClient = {
   performAIStream: (requestData, apiUrl, apiKey) =>
     invoke(IPC_CHANNELS.invoke.performAIStream, { requestData, apiUrl, apiKey }),
 
-  getApiKey: () => invoke(IPC_CHANNELS.invoke.getApiKey),
+  getApiKey: () => {
+    const api = getElectronAPI();
+    if (!api?.getApiKey) {
+      throw createUnavailableError();
+    }
+    return api.getApiKey();
+  },
   saveApiKey: (payload) => invoke(IPC_CHANNELS.invoke.saveApiKey, payload),
 
   checkDatabaseStatus: () => invoke(IPC_CHANNELS.invoke.checkDatabaseStatus),
