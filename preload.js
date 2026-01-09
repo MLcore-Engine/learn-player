@@ -228,7 +228,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   saveAiQuery: (data) => ipcRenderer.invoke('saveAiQuery', data),
   getCachedAiQuery: (payload) => ipcRenderer.invoke('getCachedAiQuery', payload),
   getAiQueriesToday: () => ipcRenderer.invoke('getAiQueriesToday'),
-  getLearningRecords: (videoId) => ipcRenderer.invoke('getLearningRecords', videoId),
+  getLearningRecords: (videoId) => ipcRenderer.invoke('getLearningRecords', { videoId }),
   
   // 系统信息
   platform: process.platform,
