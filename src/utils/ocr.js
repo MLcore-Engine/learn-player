@@ -131,6 +131,9 @@ export async function recognizeSubtitleFromVideo(videoElement) {
   canvas.width = width;
   canvas.height = cropHeight;
   const ctx = canvas.getContext('2d');
+  if (!ctx) {
+    throw new Error('Canvas context unavailable');
+  }
   
   // 截取底部区域，上移 3% 以确保完全捕捉字幕（包括双行字幕的上一行）
   // 从视频底部向上截取 20% 的区域，起始位置稍微上移 3% 作为安全边距
@@ -159,6 +162,9 @@ export async function recognizeSubtitleFromVideo(videoElement) {
   scaledCanvas.width = scaledWidth;
   scaledCanvas.height = scaledHeight;
   const scaledCtx = scaledCanvas.getContext('2d');
+  if (!scaledCtx) {
+    throw new Error('Canvas context unavailable');
+  }
   scaledCtx.imageSmoothingEnabled = false; // 禁用平滑以保持边缘清晰
   scaledCtx.drawImage(canvas, 0, 0, scaledWidth, scaledHeight);
 
