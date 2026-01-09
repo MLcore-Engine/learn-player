@@ -35,7 +35,7 @@ export const useElectronIPC = () => {
   const selectVideo = useCallback(async () => {
     if (!isElectronAvailable()) {
       console.error('electronAPI不可用');
-      return { success: false, error: 'Electron API不可用' };
+      return { success: false, path: null, error: 'Electron API不可用' };
     }
     try {
       const result = await ipcClient.selectVideo();
@@ -45,7 +45,7 @@ export const useElectronIPC = () => {
       return result;
     } catch (error) {
       console.error('选择视频失败:', error);
-      return { success: false, error: error.message };
+      return { success: false, path: null, error: error.message };
     }
   }, [setVideoPath]);
 

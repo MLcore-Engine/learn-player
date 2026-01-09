@@ -80,6 +80,37 @@ export const IPC_CHANNELS = {
 
 const createUnavailableError = () => new Error('Electron API不可用');
 
+const normalizeSelectVideoResult = (rawResult) => {
+  if (!rawResult || typeof rawResult !== 'object') {
+    console.warn('selectVideo 返回结构异常，已兜底:', rawResult);
+    return { success: false, path: null, error: '返回结构异常' };
+  }
+
+  if (rawResult.success === true) {
+    if (typeof rawResult.path === 'string' && rawResult.path.length > 0) {
+      return { success: true, path: rawResult.path, error: null };
+    }
+    console.warn('selectVideo 返回缺少路径，已兜底:', rawResult);
+    return { success: false, path: null, error: '返回缺少路径' };
+  }
+
+  if (rawResult.canceled) {
+    return { success: false, path: null, error: '用户取消选择' };
+  }
+
+  if (typeof rawResult.path === 'string' && rawResult.path.length > 0) {
+    console.warn('selectVideo 返回缺少 success 字段，已兼容:', rawResult);
+    return { success: true, path: rawResult.path, error: null };
+  }
+
+  if (typeof rawResult.error === 'string' && rawResult.error.length > 0) {
+    return { success: false, path: null, error: rawResult.error };
+  }
+
+  console.warn('selectVideo 返回未知结构，已兜底:', rawResult);
+  return { success: false, path: null, error: '未知错误' };
+};
+
 const invoke = async (channel, ...args) => {
   const api = getElectronAPI();
   if (!api?.invoke) {
@@ -124,7 +155,10 @@ export const ipcClient = {
   onConversionComplete: (listener) => on(IPC_CHANNELS.receive.conversionComplete, listener),
   removeAllListeners: (channel) => removeAllListeners(channel),
 
-  selectVideo: () => invoke(IPC_CHANNELS.invoke.selectVideo),
+  selectVideo: async () => {
+    const result = await invoke(IPC_CHANNELS.invoke.selectVideo);
+    return normalizeSelectVideoResult(result);
+  },
   selectSubtitle: (videoPath) => invoke(IPC_CHANNELS.invoke.selectSubtitle, { videoPath }),
   extractFrame: (videoPath, timestamp) => invoke(IPC_CHANNELS.invoke.extractFrame, { videoPath, timestamp }),
   saveLearningRecord: (record) => invoke(IPC_CHANNELS.invoke.saveLearningRecord, record),
