@@ -41,6 +41,12 @@ const VideoPlayer = React.memo(({
   const handleVideoConversion = useCallback(async (inputPath) => {
     setIsConverting(true);
     try {
+      if (!window.electronAPI?.prepareVideo) {
+        console.warn('Electron API不可用，跳过视频转换');
+        alert('当前环境不支持视频转换，将直接播放原视频');
+        return inputPath;
+      }
+
       // 调用主进程的prepareVideo接口
       const resultPath = await ipcClient.prepareVideo(inputPath);
 
