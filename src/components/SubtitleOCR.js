@@ -20,14 +20,14 @@ const SubtitleOCR = React.memo(({ videoRef, onRecognize, isLoading: externalLoad
     // 检查视频是否已加载
     if (!isVideoReady) {
       console.warn('SubtitleOCR: 视频未加载，无法进行OCR识别');
-      onRecognize && onRecognize('请先加载视频');
+      onRecognize && onRecognize({ status: 'error', error: '请先加载视频' });
       return;
     }
     
     // 检查视频元素是否可用
     if (!videoRef.current) {
       console.error('SubtitleOCR: videoRef.current 为空');
-      onRecognize && onRecognize('视频元素不可用');
+      onRecognize && onRecognize({ status: 'error', error: '视频元素不可用' });
       return;
     }
     
@@ -44,11 +44,11 @@ const SubtitleOCR = React.memo(({ videoRef, onRecognize, isLoading: externalLoad
         videoHeight: videoRef.current.videoHeight,
         readyState: videoRef.current.readyState
       });
-      onRecognize && onRecognize('视频尺寸未就绪，请稍后重试');
+      onRecognize && onRecognize({ status: 'error', error: '视频尺寸未就绪，请稍后重试' });
       return;
     }
     
-    onRecognize && onRecognize('识别中...');
+    onRecognize && onRecognize({ status: 'loading' });
     
     if (externalLoading === undefined) {
       setInternalLoading(true);
@@ -59,14 +59,14 @@ const SubtitleOCR = React.memo(({ videoRef, onRecognize, isLoading: externalLoad
       // 处理未识别到文本的情况
       if (!result) {
         console.warn('【OCR】未识别到文本，可能原因：1) 截图区域未包含字幕 2) 字幕颜色/对比度不足 3) OCR服务识别失败');
-        onRecognize && onRecognize('未检测到字幕，请确认视频正在播放有字幕的画面，然后重试');
+        onRecognize && onRecognize({ status: 'error', error: '未检测到字幕，请确认视频正在播放有字幕的画面，然后重试' });
       } else {
         console.log('【OCR】识别成功:', result);
-        onRecognize && onRecognize(result);
+        onRecognize && onRecognize({ status: 'success', text: result });
       }
     } catch (err) {
       console.error('OCR 识别失败', err);
-      onRecognize && onRecognize('识别失败: ' + (err.message || '未知错误'));
+      onRecognize && onRecognize({ status: 'error', error: `识别失败: ${err.message || '未知错误'}` });
     } finally {
       if (externalLoading === undefined) {
         setInternalLoading(false);
