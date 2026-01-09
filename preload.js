@@ -109,7 +109,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   invoke: async (channel, ...args) => {
     if (allowedInvokeChannels.includes(channel)) {
       try {
-        checkRateLimit(channel);
+        if (checkRateLimit(channel)) {
+          console.warn(`【Preload】通道被限流: ${channel}`);
+          throw new Error(`Rate limit exceeded for channel: ${channel}`);
+        }
         console.log(`【Preload】调用 invoke 通道: ${channel}`, args);
         const result = await ipcRenderer.invoke(channel, ...args);
         return result;
@@ -144,7 +147,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   send: (channel, ...args) => {
     if (allowedSendChannels.includes(channel)) {
       try {
-        checkRateLimit(channel);
+        if (checkRateLimit(channel)) {
+          console.warn(`【Preload】通道被限流: ${channel}`);
+          throw new Error(`Rate limit exceeded for channel: ${channel}`);
+        }
         console.log(`【Preload】发送到 send 通道: ${channel}`, args);
         ipcRenderer.send(channel, ...args);
       } catch (error) {
