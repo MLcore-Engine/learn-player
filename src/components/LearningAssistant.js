@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Box,
   Card,
@@ -11,7 +11,7 @@ import {
   Stack,
   TextField,
 } from '@mui/material';
-import { ContentCopy, History } from '@mui/icons-material';
+import { ContentCopy } from '@mui/icons-material';
 import { ipcClient } from '../services/ipcClient';
 
 // 清理文本中的特殊标记
@@ -76,15 +76,22 @@ function buildPrintableHtml(records, dateLabel) {
  * 学习助手组件
  * 显示AI解释内容和学习记录
  */
-const LearningAssistant = React.memo(({ 
-  explanation
+const LearningAssistant = React.memo(({
+  explanation,
+  viewMode
 }) => {
   // 状态管理
   const [chatHistory, setChatHistory] = useState([]);
   const [historyDate, setHistoryDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [exportDate, setExportDate] = useState(() => new Date().toISOString().slice(0, 10));
-  const [viewMode, setViewMode] = useState('chat');
   const [historyLoaded, setHistoryLoaded] = useState(false);
+
+  useEffect(() => {
+    if (viewMode === 'history') {
+      setHistoryLoaded(false);
+      setChatHistory([]);
+    }
+  }, [viewMode]);
 
   // 复制文本到剪贴板
   const handleCopyText = (text) => {
@@ -156,24 +163,6 @@ const LearningAssistant = React.memo(({
     }
   };
   
-  const handleHistoryClick = () => {
-    if (viewMode === 'history') {
-      setViewMode('chat');
-      return;
-    }
-    setHistoryLoaded(false);
-    setChatHistory([]);
-    setViewMode('history');
-  };
-
-  const handleExportClick = () => {
-    if (viewMode === 'export') {
-      setViewMode('chat');
-      return;
-    }
-    setViewMode('export');
-  };
-
   // 渲染当前对话内容
   const renderCurrentDialogue = () => {
     if (viewMode === 'history') {
@@ -379,30 +368,6 @@ const LearningAssistant = React.memo(({
       flexDirection: 'column',
       overflow: 'hidden'
     }}>
-      <Box sx={{ px: 2, py: 1.5, borderBottom: 1, borderColor: 'divider' }}>
-        <Stack direction="row" spacing={2} alignItems="center" justifyContent="space-between">
-          <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-            AI助手
-          </Typography>
-          <Stack direction="row" spacing={1.5}>
-            <Button
-              variant="outlined"
-              startIcon={<History />}
-              onClick={handleHistoryClick}
-              size="small"
-            >
-              {viewMode === 'history' ? '返回对话' : '查看记录'}
-            </Button>
-            <Button
-              variant="outlined"
-              onClick={handleExportClick}
-              size="small"
-            >
-              {viewMode === 'export' ? '返回对话' : '导出PDF'}
-            </Button>
-          </Stack>
-        </Stack>
-      </Box>
       {/* 主要内容区域 */}
       <Box sx={{ 
         flexGrow: 1, 
