@@ -24,6 +24,7 @@ export const IPC_CHANNELS = {
     getCachedAiQuery: 'getCachedAiQuery',
     getLearningRecords: 'getLearningRecords',
     getAiQueriesToday: 'getAiQueriesToday',
+    getAiQueriesByDate: 'getAiQueriesByDate',
     saveApiKey: 'saveApiKey',
     getApiKey: 'getApiKey',
     checkDatabaseStatus: 'checkDatabaseStatus',
@@ -179,6 +180,7 @@ export const ipcClient = {
   saveAiQuery: (data) => invoke(IPC_CHANNELS.invoke.saveAiQuery, data),
   getCachedAiQuery: (payload) => invoke(IPC_CHANNELS.invoke.getCachedAiQuery, payload),
   getAiQueriesToday: () => invoke(IPC_CHANNELS.invoke.getAiQueriesToday),
+  getAiQueriesByDate: (date) => invoke(IPC_CHANNELS.invoke.getAiQueriesByDate, { date }),
 
   performAIRequest: (requestData, apiUrl, apiKey) =>
     invoke(IPC_CHANNELS.invoke.performAIRequest, { requestData, apiUrl, apiKey }),

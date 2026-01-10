@@ -1,6 +1,5 @@
 import React from 'react';
 import AIContainer from '../containers/AIContainer';
-import LearningAgent from './LearningAgent';
 import { Box } from '@mui/material';
 
 const SidePanelContent = ({ panelTab }) => (
@@ -11,11 +10,7 @@ const SidePanelContent = ({ panelTab }) => (
     flexDirection: 'column',
     backgroundColor: 'background.default'
   }}>
-    {panelTab === 0 ? (
-      <AIContainer />
-    ) : (
-      <LearningAgent />
-    )}
+    <AIContainer />
   </Box>
 );
 
