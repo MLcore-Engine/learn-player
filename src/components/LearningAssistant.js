@@ -10,10 +10,6 @@ import {
   IconButton,
   Stack,
   TextField,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions
 } from '@mui/material';
 import { ContentCopy, History } from '@mui/icons-material';
 import { ipcClient } from '../services/ipcClient';
@@ -84,12 +80,11 @@ const LearningAssistant = React.memo(({
   explanation
 }) => {
   // 状态管理
-  const [showHistory, setShowHistory] = useState(false);
   const [chatHistory, setChatHistory] = useState([]);
   const [historyDate, setHistoryDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [exportDate, setExportDate] = useState(() => new Date().toISOString().slice(0, 10));
-  const [openHistoryDialog, setOpenHistoryDialog] = useState(false);
-  const [openExportDialog, setOpenExportDialog] = useState(false);
+  const [viewMode, setViewMode] = useState('chat');
+  const [historyLoaded, setHistoryLoaded] = useState(false);
 
   // 复制文本到剪贴板
   const handleCopyText = (text) => {
@@ -122,7 +117,7 @@ const LearningAssistant = React.memo(({
           created_at: rec.created_at
         })));
       }
-      setShowHistory(true);
+      setHistoryLoaded(true);
     } catch (error) {
       console.error('获取历史记录失败:', error);
       alert('获取历史记录失败: ' + error.message);
@@ -162,29 +157,74 @@ const LearningAssistant = React.memo(({
   };
   
   const handleHistoryClick = () => {
-    if (showHistory) {
-      setShowHistory(false);
+    if (viewMode === 'history') {
+      setViewMode('chat');
       return;
     }
-    setOpenHistoryDialog(true);
-  };
-
-  const handleHistoryConfirm = async () => {
-    setOpenHistoryDialog(false);
-    await loadHistoryByDate(historyDate);
+    setHistoryLoaded(false);
+    setChatHistory([]);
+    setViewMode('history');
   };
 
   const handleExportClick = () => {
-    setOpenExportDialog(true);
-  };
-
-  const handleExportConfirm = async () => {
-    setOpenExportDialog(false);
-    await handleExportPdf(exportDate);
+    if (viewMode === 'export') {
+      setViewMode('chat');
+      return;
+    }
+    setViewMode('export');
   };
 
   // 渲染当前对话内容
   const renderCurrentDialogue = () => {
+    if (viewMode === 'history') {
+      return (
+        <Box sx={{ p: 2 }}>
+          <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 2 }}>
+            <TextField
+              label="日期"
+              type="date"
+              value={historyDate}
+              onChange={(event) => {
+                setHistoryDate(event.target.value);
+                setHistoryLoaded(false);
+              }}
+              size="small"
+              InputLabelProps={{ shrink: true }}
+            />
+            <Button variant="outlined" onClick={() => loadHistoryByDate(historyDate)}>
+              开始查看记录
+            </Button>
+          </Stack>
+          {historyLoaded ? renderHistory() : (
+            <Typography variant="body2" color="text.secondary">
+              选择日期后开始查看记录
+            </Typography>
+          )}
+        </Box>
+      );
+    }
+    if (viewMode === 'export') {
+      return (
+        <Box sx={{ p: 2 }}>
+          <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 2 }}>
+            <TextField
+              label="日期"
+              type="date"
+              value={exportDate}
+              onChange={(event) => setExportDate(event.target.value)}
+              size="small"
+              InputLabelProps={{ shrink: true }}
+            />
+            <Button variant="outlined" onClick={() => handleExportPdf(exportDate)}>
+              开始导出
+            </Button>
+          </Stack>
+          <Typography variant="body2" color="text.secondary">
+            选择日期后导出学习记录 PDF
+          </Typography>
+        </Box>
+      );
+    }
     if (!explanation) {
       return (
         <Typography variant="body2" color="text.secondary" align="center">
@@ -351,14 +391,14 @@ const LearningAssistant = React.memo(({
               onClick={handleHistoryClick}
               size="small"
             >
-              {showHistory ? '返回对话' : '查看记录'}
+              {viewMode === 'history' ? '返回对话' : '查看记录'}
             </Button>
             <Button
               variant="outlined"
               onClick={handleExportClick}
               size="small"
             >
-              导出PDF
+              {viewMode === 'export' ? '返回对话' : '导出PDF'}
             </Button>
           </Stack>
         </Stack>
@@ -371,46 +411,8 @@ const LearningAssistant = React.memo(({
         display: 'flex', 
         flexDirection: 'column' 
       }}>
-        {showHistory ? renderHistory() : renderCurrentDialogue()}
+        {renderCurrentDialogue()}
       </Box>
-
-      <Dialog open={openHistoryDialog} onClose={() => setOpenHistoryDialog(false)}>
-        <DialogTitle>选择记录日期</DialogTitle>
-        <DialogContent>
-          <TextField
-            margin="dense"
-            label="日期"
-            type="date"
-            value={historyDate}
-            onChange={(event) => setHistoryDate(event.target.value)}
-            fullWidth
-            InputLabelProps={{ shrink: true }}
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpenHistoryDialog(false)}>取消</Button>
-          <Button onClick={handleHistoryConfirm} autoFocus>开始查看记录</Button>
-        </DialogActions>
-      </Dialog>
-
-      <Dialog open={openExportDialog} onClose={() => setOpenExportDialog(false)}>
-        <DialogTitle>选择导出日期</DialogTitle>
-        <DialogContent>
-          <TextField
-            margin="dense"
-            label="日期"
-            type="date"
-            value={exportDate}
-            onChange={(event) => setExportDate(event.target.value)}
-            fullWidth
-            InputLabelProps={{ shrink: true }}
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpenExportDialog(false)}>取消</Button>
-          <Button onClick={handleExportConfirm} autoFocus>开始导出</Button>
-        </DialogActions>
-      </Dialog>
 
     </Card>
   );
