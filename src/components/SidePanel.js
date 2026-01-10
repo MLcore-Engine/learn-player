@@ -13,7 +13,7 @@ import useResizablePanel from '../hooks/useResizablePanel';
  */
 const SidePanel = React.memo(({ hasExternalSubtitles }) => {
   const { totalTime, sessionTime, remainingSeconds, formatTime } = useTimeStats();
-  const [panelTab, setPanelTab] = useState(0); // 0=AI助手, 1=学习Agent
+  const [panelTab, setPanelTab] = useState(0); // 0=AI助手, 1=查看记录, 2=导出PDF
   const { width, isDragging, handleDragStart } = useResizablePanel();
   const {
     explainLoading,
@@ -33,11 +33,19 @@ const SidePanel = React.memo(({ hasExternalSubtitles }) => {
     formatTime
   };
   
+  // 护眼色主题
+  const eyeCareColors = {
+    background: '#FDF8E8',      // 主背景 - 淡米黄
+    headerBg: '#F8F3E3',        // 头部背景 - 略深
+    border: '#E8E0C8',          // 边框色
+    dragBar: '#D4C9A8'          // 拖动条色
+  };
+  
   return (
     <Box sx={{ 
       width: width, 
-      borderLeft: '1px solid #444', 
-      backgroundColor: '#111', 
+      borderLeft: `1px solid ${eyeCareColors.border}`, 
+      backgroundColor: eyeCareColors.background, 
       display: 'flex', 
       flexDirection: 'column',
       overflow: 'hidden',
@@ -53,10 +61,10 @@ const SidePanel = React.memo(({ hasExternalSubtitles }) => {
           bottom: 0,
           width: '4px',
           cursor: 'col-resize',
-          backgroundColor: isDragging ? '#666' : 'transparent',
+          backgroundColor: isDragging ? eyeCareColors.dragBar : 'transparent',
           transition: 'background-color 0.2s',
           '&:hover': {
-            backgroundColor: '#666'
+            backgroundColor: eyeCareColors.dragBar
           }
         }}
         onMouseDown={handleDragStart}
