@@ -81,7 +81,6 @@ function buildPrintableHtml(records, dateLabel) {
  * 显示AI解释内容和学习记录
  */
 const LearningAssistant = React.memo(({ 
- 
   explanation
 }) => {
   // 状态管理
@@ -340,6 +339,30 @@ const LearningAssistant = React.memo(({
       flexDirection: 'column',
       overflow: 'hidden'
     }}>
+      <Box sx={{ px: 2, py: 1.5, borderBottom: 1, borderColor: 'divider' }}>
+        <Stack direction="row" spacing={2} alignItems="center" justifyContent="space-between">
+          <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+            AI助手
+          </Typography>
+          <Stack direction="row" spacing={1.5}>
+            <Button
+              variant="outlined"
+              startIcon={<History />}
+              onClick={handleHistoryClick}
+              size="small"
+            >
+              {showHistory ? '返回对话' : '查看记录'}
+            </Button>
+            <Button
+              variant="outlined"
+              onClick={handleExportClick}
+              size="small"
+            >
+              导出PDF
+            </Button>
+          </Stack>
+        </Stack>
+      </Box>
       {/* 主要内容区域 */}
       <Box sx={{ 
         flexGrow: 1, 
@@ -349,27 +372,6 @@ const LearningAssistant = React.memo(({
         flexDirection: 'column' 
       }}>
         {showHistory ? renderHistory() : renderCurrentDialogue()}
-      </Box>
-
-      {/* 底部按钮区域 */}
-      <Box sx={{ p: 2, borderTop: 1, borderColor: 'divider' }}>
-        <Stack direction="row" spacing={2} justifyContent="center">
-          <Button
-            variant="outlined"
-            startIcon={<History />}
-            onClick={handleHistoryClick}
-            size="small"
-          >
-            {showHistory ? '返回对话' : '查看记录'}
-          </Button>
-          <Button
-            variant="outlined"
-            onClick={handleExportClick}
-            size="small"
-          >
-            导出PDF
-          </Button>
-        </Stack>
       </Box>
 
       <Dialog open={openHistoryDialog} onClose={() => setOpenHistoryDialog(false)}>
