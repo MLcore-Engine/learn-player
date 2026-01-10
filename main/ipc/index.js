@@ -1104,6 +1104,12 @@ function registerIpcHandlers({ app, ipcMain, dialog, BrowserWindow, store, state
       if (!fs.existsSync(outputPath)) {
         await new Promise((resolve, reject) => {
           ffmpeg(inputPath)
+            .outputOptions([
+              '-preset veryfast',
+              '-crf 28',
+              '-movflags faststart',
+              '-threads 0'
+            ])
             .output(outputPath)
             .videoCodec('libx264')
             .audioCodec('aac')
