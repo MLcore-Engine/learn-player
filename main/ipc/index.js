@@ -750,6 +750,19 @@ function registerIpcHandlers({ app, ipcMain, dialog, BrowserWindow, store, state
     }
   });
 
+  ipcMain.handle('getAiQueriesByDate', (event, { date }) => {
+    const db = getDb();
+    if (!db) return [];
+    if (!date) return [];
+    try {
+      const stmt = db.prepare("SELECT * FROM ai_queries WHERE date(created_at) = date(?) ORDER BY created_at DESC");
+      return stmt.all(date);
+    } catch (error) {
+      console.error('【主进程】获取指定日期 AI 查询记录失败:', error);
+      return [];
+    }
+  });
+
   // 添加IPC处理器让渲染进程可以触发安装更新
   ipcMain.handle('install-update', () => {
     autoUpdater.quitAndInstall();

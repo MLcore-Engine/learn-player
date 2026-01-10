@@ -18,10 +18,6 @@ const SidePanelTabs = ({ panelTab, onChange }) => (
         label="AI助手"
         sx={{ fontSize: '0.875rem', py: 1, textTransform: 'none' }}
       />
-      <Tab
-        label="学习Agent"
-        sx={{ fontSize: '0.875rem', py: 1, textTransform: 'none' }}
-      />
     </Tabs>
   </Box>
 );

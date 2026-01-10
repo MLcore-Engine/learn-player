@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   Box,
   Card,
@@ -9,15 +9,13 @@ import {
   ListItemText,
   IconButton,
   Stack,
-  CircularProgress,
+  TextField,
   Dialog,
   DialogTitle,
   DialogContent,
-  DialogContentText,
   DialogActions
 } from '@mui/material';
-import { ContentCopy, History, Summarize } from '@mui/icons-material';
-import aiService from '../services/aiService';
+import { ContentCopy, History } from '@mui/icons-material';
 import { ipcClient } from '../services/ipcClient';
 
 // 清理文本中的特殊标记
@@ -32,9 +30,9 @@ function toHtml(text) {
 }
 
 // 构建可打印HTML
-function buildPrintableHtml(records) {
-  const today = new Date().toISOString().slice(0, 10);
-  const parts = [`<h1>今日学习记录 (${today})</h1>`];
+function buildPrintableHtml(records, dateLabel) {
+  const dateText = dateLabel || new Date().toISOString().slice(0, 10);
+  const parts = [`<h1>学习记录 (${dateText})</h1>`];
   for (const rec of records || []) {
     const q = (rec.query || '').trim();
     let body = toHtml(clean(rec.explanation || rec.text || ''));
@@ -89,123 +87,67 @@ const LearningAssistant = React.memo(({
   // 状态管理
   const [showHistory, setShowHistory] = useState(false);
   const [chatHistory, setChatHistory] = useState([]);
-  const [summary, setSummary] = useState('');
-  const [showSummary, setShowSummary] = useState(false);
-  const [isSummarizing, setIsSummarizing] = useState(false);
-  const [openConfirm, setOpenConfirm] = useState(false);
-  const [hasSummarizedToday, setHasSummarizedToday] = useState(false);
-
-  // 初始化：检查本地存储是否已生成今日总结
-  useEffect(() => {
-    const lastDate = localStorage.getItem('lastSummaryDate');
-    const today = new Date().toISOString().slice(0, 10);
-    if (lastDate === today) {
-      setHasSummarizedToday(true);
-    }
-  }, []);
-
-  // 当 explanation 更新时，隐藏今日总结视图
-  useEffect(() => {
-    if (showSummary) {
-      setShowSummary(false);
-    }
-  }, [explanation, showSummary]);
+  const [historyDate, setHistoryDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [exportDate, setExportDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [openHistoryDialog, setOpenHistoryDialog] = useState(false);
+  const [openExportDialog, setOpenExportDialog] = useState(false);
 
   // 复制文本到剪贴板
   const handleCopyText = (text) => {
     navigator.clipboard.writeText(text);
   };
 
-  // 切换历史记录显示
-  const handleToggleHistory = async () => {
-    if (!showHistory) {
-      if (ipcClient.isAvailable()) {
-        try {
-          // 先检查数据库状态
-          const dbStatus = await ipcClient.checkDatabaseStatus();
-          if (!dbStatus.isConnected) {
-            console.error('数据库未连接');
-            alert('数据库未连接，无法获取历史记录');
-            return;
-          }
-
-          const records = await ipcClient.getAiQueriesToday();
-          if (!records || records.length === 0) {
-            console.log('没有找到今日的查询记录');
-            setChatHistory([]);
-          } else {
-            console.log('获取到查询记录:', records.length, '条');
-            setChatHistory(records.map(rec => ({
-              type: 'history',
-              id: rec.id,
-              query: rec.query,
-              text: rec.explanation,
-              created_at: rec.created_at
-            })));
-          }
-        } catch (error) {
-          console.error('获取历史记录失败:', error);
-          alert('获取历史记录失败: ' + error.message);
-          return;
-        }
-      }
-    }
-    // 切换历史记录时，隐藏今日总结
-    setShowSummary(false);
-    setShowHistory(!showHistory);
-  };
-
-  // 处理今日总结：弹出确认或提示已使用
-  const handleSummarize = () => {
-    if (hasSummarizedToday) {
-      alert('今日总结每天只能使用一次');
+  const loadHistoryByDate = async (selectedDate) => {
+    if (!ipcClient.isAvailable()) {
       return;
     }
-    setOpenConfirm(true);
-  };
-
-  // 确认生成今日总结
-  const handleConfirmSummarize = async () => {
-    setOpenConfirm(false);
-    setIsSummarizing(true);
     try {
-      const result = await aiService.generateVocabularyStory();
-      setSummary(result);
-      setShowSummary(true);
-      const today = new Date().toISOString().slice(0, 10);
-      localStorage.setItem('lastSummaryDate', today);
-      setHasSummarizedToday(true);
-    } catch (error) {
-      console.error('生成今日总结失败:', error);
-    } finally {
-      setIsSummarizing(false);
-    }
-  };
+      const dbStatus = await ipcClient.checkDatabaseStatus();
+      if (!dbStatus.isConnected) {
+        console.error('数据库未连接');
+        alert('数据库未连接，无法获取历史记录');
+        return;
+      }
 
-  // 取消生成
-  const handleCancelSummarize = () => {
-    setOpenConfirm(false);
+      const records = await ipcClient.getAiQueriesByDate(selectedDate);
+      if (!records || records.length === 0) {
+        console.log('没有找到查询记录');
+        setChatHistory([]);
+      } else {
+        console.log('获取到查询记录:', records.length, '条');
+        setChatHistory(records.map(rec => ({
+          type: 'history',
+          id: rec.id,
+          query: rec.query,
+          text: rec.explanation,
+          created_at: rec.created_at
+        })));
+      }
+      setShowHistory(true);
+    } catch (error) {
+      console.error('获取历史记录失败:', error);
+      alert('获取历史记录失败: ' + error.message);
+    }
   };
   
   // 导出今日学习记录为 PDF（直接保存到本地）
-  const handleExportPdf = async () => {
+  const handleExportPdf = async (selectedDate) => {
     try {
       const dbStatus = await ipcClient.checkDatabaseStatus();
       if (!dbStatus || !dbStatus.isConnected) {
         alert('数据库未连接，无法导出');
         return;
       }
-      const records = await ipcClient.getAiQueriesToday();
+      const records = await ipcClient.getAiQueriesByDate(selectedDate);
       if (!records || records.length === 0) {
-        alert('今天没有学习记录可导出');
+        alert('当天没有学习记录可导出');
         return;
       }
-      const html = buildPrintableHtml(records);
-      const today = new Date().toISOString().slice(0, 10);
+      const html = buildPrintableHtml(records, selectedDate);
       const result = await ipcClient.exportLearningTodayPdf({
         html,
-        title: '今日学习记录',
-        suggestedName: `learning-${today}.pdf`
+        title: `学习记录 ${selectedDate}`,
+        suggestedName: `learning-${selectedDate}.pdf`
       });
       if (result && result.success) {
         alert('已保存到: ' + result.filePath);
@@ -220,55 +162,30 @@ const LearningAssistant = React.memo(({
     }
   };
   
+  const handleHistoryClick = () => {
+    if (showHistory) {
+      setShowHistory(false);
+      return;
+    }
+    setOpenHistoryDialog(true);
+  };
+
+  const handleHistoryConfirm = async () => {
+    setOpenHistoryDialog(false);
+    await loadHistoryByDate(historyDate);
+  };
+
+  const handleExportClick = () => {
+    setOpenExportDialog(true);
+  };
+
+  const handleExportConfirm = async () => {
+    setOpenExportDialog(false);
+    await handleExportPdf(exportDate);
+  };
+
   // 渲染当前对话内容
   const renderCurrentDialogue = () => {
-    if (showSummary) {
-      if (isSummarizing) {
-        return (
-          <Typography variant="body2" color="text.secondary" align="center">
-            正在生成总结...
-          </Typography>
-        );
-      }
-      // 提取标签内内容并渲染
-      const storyHtml = summary.replace(/<\/?shengcheng>/g, '');
-      return (
-        <Box sx={{ p: 2 }}>
-          <Typography
-            variant="body2"
-            component="div"
-            sx={{ 
-              whiteSpace: 'pre-wrap',
-              fontSize: '1rem',
-              lineHeight: 1.6,
-              '& strong': {
-                color: 'primary.main',
-                fontWeight: 600,
-                fontSize: '1.05rem'
-              },
-              '& code': {
-                backgroundColor: 'rgba(0, 0, 0, 0.04)',
-                padding: '2px 4px',
-                borderRadius: 1,
-                fontFamily: 'monospace',
-                fontSize: '0.95rem'
-              }
-            }}
-            dangerouslySetInnerHTML={{
-              __html: storyHtml
-                .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-                .replace(/`(.+?)`/g, '<code>$1</code>')
-                .replace(/\n/g, '<br/>')
-            }}
-          />
-          <Box sx={{ mt: 1, display: 'flex', justifyContent: 'flex-end' }}>
-            <IconButton size="small" onClick={() => handleCopyText(storyHtml)}>
-              <ContentCopy fontSize="small" />
-            </IconButton>
-          </Box>
-        </Box>
-      );
-    }
     if (!explanation) {
       return (
         <Typography variant="body2" color="text.secondary" align="center">
@@ -440,23 +357,14 @@ const LearningAssistant = React.memo(({
           <Button
             variant="outlined"
             startIcon={<History />}
-            onClick={handleToggleHistory}
+            onClick={handleHistoryClick}
             size="small"
           >
             {showHistory ? '返回对话' : '查看记录'}
           </Button>
           <Button
             variant="outlined"
-            startIcon={isSummarizing ? <CircularProgress size={16} /> : <Summarize />}
-            onClick={handleSummarize}
-            size="small"
-            disabled={isSummarizing}
-          >
-            {isSummarizing ? '生成中...' : '今日总结'}
-          </Button>
-          <Button
-            variant="outlined"
-            onClick={handleExportPdf}
+            onClick={handleExportClick}
             size="small"
           >
             导出PDF
@@ -464,17 +372,41 @@ const LearningAssistant = React.memo(({
         </Stack>
       </Box>
 
-      {/* 确认对话框：每日最后一次使用 */}
-      <Dialog open={openConfirm} onClose={handleCancelSummarize}>
-        <DialogTitle>确认生成今日总结</DialogTitle>
+      <Dialog open={openHistoryDialog} onClose={() => setOpenHistoryDialog(false)}>
+        <DialogTitle>选择记录日期</DialogTitle>
         <DialogContent>
-          <DialogContentText>
-            今日总结只能在今天学习完成后最后使用，并且每天只能使用一次，确认要继续吗？
-          </DialogContentText>
+          <TextField
+            margin="dense"
+            label="日期"
+            type="date"
+            value={historyDate}
+            onChange={(event) => setHistoryDate(event.target.value)}
+            fullWidth
+            InputLabelProps={{ shrink: true }}
+          />
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleCancelSummarize}>取消</Button>
-          <Button onClick={handleConfirmSummarize} autoFocus>确认</Button>
+          <Button onClick={() => setOpenHistoryDialog(false)}>取消</Button>
+          <Button onClick={handleHistoryConfirm} autoFocus>开始查看记录</Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={openExportDialog} onClose={() => setOpenExportDialog(false)}>
+        <DialogTitle>选择导出日期</DialogTitle>
+        <DialogContent>
+          <TextField
+            margin="dense"
+            label="日期"
+            type="date"
+            value={exportDate}
+            onChange={(event) => setExportDate(event.target.value)}
+            fullWidth
+            InputLabelProps={{ shrink: true }}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenExportDialog(false)}>取消</Button>
+          <Button onClick={handleExportConfirm} autoFocus>开始导出</Button>
         </DialogActions>
       </Dialog>
 
