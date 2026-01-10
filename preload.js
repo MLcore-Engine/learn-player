@@ -20,6 +20,7 @@ const allowedInvokeChannels = [
   'getCachedAiQuery',
   'getLearningRecords',
   'getAiQueriesToday',
+  'getAiQueriesByDate',
   'saveApiKey',
   'getApiKey',
   'install-update',          // 新增：用于触发更新安装
@@ -32,6 +33,8 @@ const allowedInvokeChannels = [
   'lookupWord',             // 添加：字典查询通道
   'export-learning-today-pdf', // 添加：导出PDF通道
   // 学习Agent相关
+  'checkVideoFormat',
+  'convertVideo',
   'getLearningOverview',
   'analyzeLearningPattern',
   'getLearningReport',
@@ -228,6 +231,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   saveAiQuery: (data) => ipcRenderer.invoke('saveAiQuery', data),
   getCachedAiQuery: (payload) => ipcRenderer.invoke('getCachedAiQuery', payload),
   getAiQueriesToday: () => ipcRenderer.invoke('getAiQueriesToday'),
+  getAiQueriesByDate: (date) => ipcRenderer.invoke('getAiQueriesByDate', { date }),
   getLearningRecords: (videoId) => ipcRenderer.invoke('getLearningRecords', { videoId }),
   
   // 系统信息

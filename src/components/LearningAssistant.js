@@ -1,219 +1,22 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import {
   Box,
   Card,
   Typography,
-  Button,
-  List,
-  ListItem,
-  ListItemText,
-  IconButton,
-  Stack,
-  TextField,
 } from '@mui/material';
-import { ContentCopy } from '@mui/icons-material';
-import { ipcClient } from '../services/ipcClient';
 
 // 清理文本中的特殊标记
 const clean = (raw) => raw.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
 
-// 将富文本(**, `code`)转为简单HTML
-function toHtml(text) {
-  return (text || '')
-    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-    .replace(/`(.+?)`/g, '<code>$1</code>')
-    .replace(/\n/g, '<br/>');
-}
-
-// 构建可打印HTML
-function buildPrintableHtml(records, dateLabel) {
-  const dateText = dateLabel || new Date().toISOString().slice(0, 10);
-  const parts = [`<h1>学习记录 (${dateText})</h1>`];
-  for (const rec of records || []) {
-    const q = (rec.query || '').trim();
-    let body = toHtml(clean(rec.explanation || rec.text || ''));
-    // 高亮音标：将 /.../ 包裹并着色（尽量避免误伤URL等，限制长度40字符以内）
-    // 仅在不属于HTML标签的斜杠内高亮音标：排除 </tag> 与自闭合 />，并排除URL中的 ://
-    try {
-      body = body.replace(/(?<!<)\/([^/<>\n:]{1,40})\/(?!>)/g, '<span class="phonetic">/$1/</span>');
-    } catch (_) {
-      // 若运行环境不支持负向回溯，则退化为更保守的匹配（不处理）
-    }
-    if (!q && !body) continue;
-    parts.push(`<div class="record">`);
-    if (q) parts.push(`<h2>${q}</h2>`);
-    if (body) parts.push(`<div>${body}</div>`);
-    parts.push(`</div>`);
-  }
-  return parts.join('\n');
-}
-
-// （保留空位以便未来添加其它导出方式）
-
-// 选项卡内容组件
-// function TabPanel(props) {
-//   const { children, value, index, ...other } = props;
-
-//   return (
-//     <div
-//       role="tabpanel"
-//       hidden={value !== index}
-//       id={`assistant-tabpanel-${index}`}
-//       aria-labelledby={`assistant-tab-${index}`}
-//       style={{ display: value === index ? 'flex' : 'none', flexDirection: 'column', height: '100%', overflow: 'hidden' }}
-//       {...other}
-//     >
-//       {value === index && (
-//         <Box sx={{ p: 2, display: 'flex', flexDirection: 'column', flexGrow: 1, overflow: 'hidden' }}>
-//           {children}
-//         </Box>
-//       )}
-//     </div>
-//   );
-// }
-
 /**
  * 学习助手组件
- * 显示AI解释内容和学习记录
+ * 只显示AI解释内容
  */
 const LearningAssistant = React.memo(({
-  explanation,
-  viewMode
+  explanation
 }) => {
-  // 状态管理
-  const [chatHistory, setChatHistory] = useState([]);
-  const [historyDate, setHistoryDate] = useState(() => new Date().toISOString().slice(0, 10));
-  const [exportDate, setExportDate] = useState(() => new Date().toISOString().slice(0, 10));
-  const [historyLoaded, setHistoryLoaded] = useState(false);
-
-  useEffect(() => {
-    if (viewMode === 'history') {
-      setHistoryLoaded(false);
-      setChatHistory([]);
-    }
-  }, [viewMode]);
-
-  // 复制文本到剪贴板
-  const handleCopyText = (text) => {
-    navigator.clipboard.writeText(text);
-  };
-
-  const loadHistoryByDate = async (selectedDate) => {
-    if (!ipcClient.isAvailable()) {
-      return;
-    }
-    try {
-      const dbStatus = await ipcClient.checkDatabaseStatus();
-      if (!dbStatus.isConnected) {
-        console.error('数据库未连接');
-        alert('数据库未连接，无法获取历史记录');
-        return;
-      }
-
-      const records = await ipcClient.getAiQueriesByDate(selectedDate);
-      if (!records || records.length === 0) {
-        console.log('没有找到查询记录');
-        setChatHistory([]);
-      } else {
-        console.log('获取到查询记录:', records.length, '条');
-        setChatHistory(records.map(rec => ({
-          type: 'history',
-          id: rec.id,
-          query: rec.query,
-          text: rec.explanation,
-          created_at: rec.created_at
-        })));
-      }
-      setHistoryLoaded(true);
-    } catch (error) {
-      console.error('获取历史记录失败:', error);
-      alert('获取历史记录失败: ' + error.message);
-    }
-  };
-  
-  // 导出今日学习记录为 PDF（直接保存到本地）
-  const handleExportPdf = async (selectedDate) => {
-    try {
-      const dbStatus = await ipcClient.checkDatabaseStatus();
-      if (!dbStatus || !dbStatus.isConnected) {
-        alert('数据库未连接，无法导出');
-        return;
-      }
-      const records = await ipcClient.getAiQueriesByDate(selectedDate);
-      if (!records || records.length === 0) {
-        alert('当天没有学习记录可导出');
-        return;
-      }
-      const html = buildPrintableHtml(records, selectedDate);
-      const result = await ipcClient.exportLearningTodayPdf({
-        html,
-        title: `学习记录 ${selectedDate}`,
-        suggestedName: `learning-${selectedDate}.pdf`
-      });
-      if (result && result.success) {
-        alert('已保存到: ' + result.filePath);
-      } else if (result && result.canceled) {
-        // 用户取消保存
-      } else {
-        alert('导出失败: ' + (result?.error || '未知错误'));
-      }
-    } catch (e) {
-      console.error('导出 PDF 失败:', e);
-      alert('导出 PDF 失败: ' + (e?.message || e));
-    }
-  };
-  
   // 渲染当前对话内容
   const renderCurrentDialogue = () => {
-    if (viewMode === 'history') {
-      return (
-        <Box sx={{ p: 2 }}>
-          <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 2 }}>
-            <TextField
-              label="日期"
-              type="date"
-              value={historyDate}
-              onChange={(event) => {
-                setHistoryDate(event.target.value);
-                setHistoryLoaded(false);
-              }}
-              size="small"
-              InputLabelProps={{ shrink: true }}
-            />
-            <Button variant="outlined" onClick={() => loadHistoryByDate(historyDate)}>
-              开始查看记录
-            </Button>
-          </Stack>
-          {historyLoaded ? renderHistory() : (
-            <Typography variant="body2" color="text.secondary">
-              选择日期后开始查看记录
-            </Typography>
-          )}
-        </Box>
-      );
-    }
-    if (viewMode === 'export') {
-      return (
-        <Box sx={{ p: 2 }}>
-          <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 2 }}>
-            <TextField
-              label="日期"
-              type="date"
-              value={exportDate}
-              onChange={(event) => setExportDate(event.target.value)}
-              size="small"
-              InputLabelProps={{ shrink: true }}
-            />
-            <Button variant="outlined" onClick={() => handleExportPdf(exportDate)}>
-              开始导出
-            </Button>
-          </Stack>
-          <Typography variant="body2" color="text.secondary">
-            选择日期后导出学习记录 PDF
-          </Typography>
-        </Box>
-      );
-    }
     if (!explanation) {
       return (
         <Typography variant="body2" color="text.secondary" align="center">
@@ -238,7 +41,7 @@ const LearningAssistant = React.memo(({
               sx={{ 
                 mb: 2,
                 pb: 2,
-                borderBottom: index < parts.length - 1 ? '1px solid rgba(0, 0, 0, 0.12)' : 'none'
+                borderBottom: index < parts.length - 1 ? '1px solid #E8E0C8' : 'none'
               }}
             >
               <Typography
@@ -254,11 +57,12 @@ const LearningAssistant = React.memo(({
                     fontSize: '1.05rem'
                   },
                   '& code': {
-                    backgroundColor: 'rgba(0, 0, 0, 0.04)',
-                    padding: '2px 4px',
+                    backgroundColor: '#F0E8D0',
+                    padding: '2px 6px',
                     borderRadius: 1,
                     fontFamily: 'monospace',
-                    fontSize: '0.95rem'
+                    fontSize: '0.95rem',
+                    border: '1px solid #E0D8C0'
                   }
                 }}
                 dangerouslySetInnerHTML={{
@@ -271,120 +75,33 @@ const LearningAssistant = React.memo(({
             </Box>
           );
         })}
-        <Box sx={{ mt: 1, display: 'flex', justifyContent: 'flex-end' }}>
-          <IconButton 
-            size="small" 
-            onClick={() => handleCopyText(clean(explanation))}
-          >
-            <ContentCopy fontSize="small" />
-          </IconButton>
-        </Box>
       </Box>
     );
   };
-
-  // 渲染历史记录列表
-  const renderHistory = () => (
-    <List>
-      {chatHistory.map((message, index) => (
-        <ListItem 
-          key={index} 
-          alignItems="flex-start"
-          sx={{ 
-            backgroundColor: message.type === 'user' ? 'rgba(0, 0, 0, 0.05)' : 'transparent',
-            borderRadius: 1,
-            mb: 2,
-            p: 2,
-            border: '1px solid rgba(0, 0, 0, 0.12)',
-            '&:hover': {
-              backgroundColor: 'rgba(0, 0, 0, 0.02)'
-            }
-          }}
-        >
-          <ListItemText
-            primary={
-              <Typography 
-                variant="subtitle2" 
-                color="text.secondary"
-                sx={{ mb: 1 }}
-              >
-                {message.query}
-              </Typography>
-            }
-            secondary={
-              <Box sx={{ mt: 1 }}>
-                <Typography
-                  variant="body2"
-                  component="div"
-                  sx={{ 
-                    whiteSpace: 'pre-wrap',
-                    fontSize: '1rem',
-                    lineHeight: 1.6,
-                    '& strong': {
-                      color: 'primary.main',
-                      fontWeight: 600,
-                      fontSize: '1.05rem'
-                    },
-                    '& code': {
-                      backgroundColor: 'rgba(0, 0, 0, 0.04)',
-                      padding: '2px 4px',
-                      borderRadius: 1,
-                      fontFamily: 'monospace',
-                      fontSize: '0.95rem'
-                    }
-                  }}
-                  dangerouslySetInnerHTML={{
-                    __html: clean(message.text)
-                      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-                      .replace(/`(.+?)`/g, '<code>$1</code>')
-                      .replace(/\n/g, '<br/>')
-                  }}
-                />
-                <Box sx={{ mt: 2, display: 'flex', justifyContent: 'flex-end' }}>
-                  <IconButton 
-                    size="small" 
-                    onClick={() => handleCopyText(clean(message.text))}
-                    sx={{
-                      '&:hover': {
-                        backgroundColor: 'rgba(0, 0, 0, 0.04)'
-                      }
-                    }}
-                  >
-                    <ContentCopy fontSize="small" />
-                  </IconButton>
-                </Box>
-              </Box>
-            }
-          />
-        </ListItem>
-      ))}
-    </List>
-  );
 
   return (
     <Card sx={{ 
       height: '100%', 
       display: 'flex', 
       flexDirection: 'column',
-      overflow: 'hidden'
+      overflow: 'hidden',
+      backgroundColor: '#FDF8E8',
+      boxShadow: 'none',
+      borderRadius: 0
     }}>
       {/* 主要内容区域 */}
       <Box sx={{ 
         flexGrow: 1, 
         overflow: 'auto', 
-        mb: 2, 
         display: 'flex', 
         flexDirection: 'column' 
       }}>
         {renderCurrentDialogue()}
       </Box>
-
     </Card>
   );
 }, (prevProps, nextProps) => {
-  return prevProps.selectedText === nextProps.selectedText &&
-         prevProps.explanation === nextProps.explanation &&
-         prevProps.isLoading === nextProps.isLoading;
+  return prevProps.explanation === nextProps.explanation;
 });
 
 export default LearningAssistant; 

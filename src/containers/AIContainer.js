@@ -1,7 +1,6 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef } from 'react';
 import LearningAssistant from '../components/LearningAssistant';
-import { Box, Button, Stack, Typography } from '@mui/material';
-import { History } from '@mui/icons-material';
+import { Box } from '@mui/material';
 import { useAI, useVideo } from '../contexts/AppContext';
 import { useElectronIPC } from '../hooks/useElectronIPC';
 import aiService from '../services/aiService';
@@ -25,7 +24,6 @@ const AIContainer = React.memo(() => {
   } = useAI();
   
   const { getLearningRecords } = useElectronIPC();
-  const [viewMode, setViewMode] = useState('chat');
   
   // 使用ref存储最新的属性和方法，避免useEffect依赖过多导致的循环
   const stableRef = useRef({
@@ -140,38 +138,12 @@ const AIContainer = React.memo(() => {
   const assistantProps = {
     selectedText,
     explanation,
-    // learningRecords: records,
     isLoading: loading,
-    onQueryExplanation: handleQueryExplanation,
-    viewMode
+    onQueryExplanation: handleQueryExplanation
   };
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      <Box sx={{ px: 2, py: 1.5, borderBottom: 1, borderColor: 'divider' }}>
-        <Stack direction="row" spacing={2} alignItems="center" justifyContent="space-between">
-          <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-            AI助手
-          </Typography>
-          <Stack direction="row" spacing={1.5}>
-            <Button
-              variant="outlined"
-              startIcon={<History />}
-              onClick={() => setViewMode(viewMode === 'history' ? 'chat' : 'history')}
-              size="small"
-            >
-              {viewMode === 'history' ? '返回对话' : '查看记录'}
-            </Button>
-            <Button
-              variant="outlined"
-              onClick={() => setViewMode(viewMode === 'export' ? 'chat' : 'export')}
-              size="small"
-            >
-              {viewMode === 'export' ? '返回对话' : '导出PDF'}
-            </Button>
-          </Stack>
-        </Stack>
-      </Box>
       <Box sx={{ flexGrow: 1, overflow: 'hidden' }}>
         <LearningAssistant {...assistantProps} />
       </Box>
