@@ -275,6 +275,7 @@ app.whenReady().then(async () => {
       contextIsolation: true,
       enableRemoteModule: false,
       preload: path.join(__dirname, 'preload.js'),
+      webviewTag: true,
       webSecurity: true, // 启用 webSecurity
     }
   });
@@ -303,7 +304,7 @@ app.whenReady().then(async () => {
           return callback({ responseHeaders: details.responseHeaders });
         }
         // 对其他请求，添加 CSP，允许 lep: 和 media-src
-        const csp = "default-src 'self' lep:; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; media-src 'self' lep: data: blob: http://127.0.0.1:* http://localhost:*;";
+        const csp = "default-src 'self' lep:; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; media-src 'self' lep: data: blob: http://127.0.0.1:* http://localhost:*; frame-src https: http:; child-src https: http:;";
         callback({
           responseHeaders: {
             ...details.responseHeaders,
