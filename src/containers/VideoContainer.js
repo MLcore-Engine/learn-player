@@ -130,34 +130,65 @@ const VideoContainer = React.memo(({ onPlayerReady }) => {
     return (
       <div style={{ 
         flex: 1, 
-        backgroundColor: '#000',
+        backgroundColor: '#0a0a0a',
         display: 'flex',
         justifyContent: 'center',
         alignItems: 'center',
         flexDirection: 'column',
-        color: '#fff'
+        color: '#fff',
+        borderRadius: 16,
+        overflow: 'hidden'
       }}>
-        <strong>文件 → 打开视频</strong>
-        <button 
-          onClick={selectVideo} 
-          style={{ 
-            marginTop: '20px', 
-            padding: '10px 20px',
-            backgroundColor: '#333',
-            color: '#fff',
-            border: 'none',
-            borderRadius: '4px',
-            cursor: 'pointer'
-          }}
-        >
-          选择视频文件
-        </button>
+        <div style={{
+          padding: '40px 60px',
+          backgroundColor: 'rgba(255,255,255,0.03)',
+          borderRadius: 20,
+          border: '1px solid rgba(255,255,255,0.08)',
+          textAlign: 'center'
+        }}>
+          <div style={{ 
+            fontSize: 48, 
+            marginBottom: 16,
+            opacity: 0.6 
+          }}>🎬</div>
+          <strong style={{ 
+            fontSize: 16, 
+            opacity: 0.8,
+            fontWeight: 500
+          }}>文件 → 打开视频</strong>
+          <button 
+            onClick={selectVideo} 
+            style={{ 
+              marginTop: 20, 
+              padding: '12px 32px',
+              backgroundColor: '#1976d2',
+              color: '#fff',
+              border: 'none',
+              borderRadius: 12,
+              cursor: 'pointer',
+              fontSize: 14,
+              fontWeight: 600,
+              boxShadow: '0 4px 12px rgba(25, 118, 210, 0.3)',
+              transition: 'all 0.2s ease',
+              display: 'block',
+              width: '100%'
+            }}
+          >
+            选择视频文件
+          </button>
+        </div>
       </div>
     );
   }
 
   return (
-    <div style={{ flex: 1, backgroundColor: '#000', position: 'relative' }}>
+    <div style={{ 
+      flex: 1, 
+      backgroundColor: '#0a0a0a', 
+      position: 'relative',
+      borderRadius: 16,
+      overflow: 'hidden'
+    }}>
       <>
         <VideoPlayer
           videoPath={videoPath}
@@ -179,16 +210,20 @@ const VideoContainer = React.memo(({ onPlayerReady }) => {
         {subtitleText && (
           <div style={{
             position: 'absolute',
-            bottom: '60px',
+            bottom: '70px',
             left: '50%',
             transform: 'translateX(-50%)',
-            backgroundColor: 'rgba(0, 0, 0, 0.7)',
+            backgroundColor: 'rgba(0, 0, 0, 0.75)',
+            backdropFilter: 'blur(8px)',
             color: '#fff',
-            padding: '8px 16px',
-            borderRadius: '4px',
+            padding: '10px 20px',
+            borderRadius: 12,
             maxWidth: '80%',
             textAlign: 'center',
-            zIndex: 1000
+            zIndex: 1000,
+            fontSize: 15,
+            fontWeight: 500,
+            boxShadow: '0 4px 20px rgba(0,0,0,0.3)'
           }}>
             {subtitleText}
           </div>

@@ -44,27 +44,32 @@ const SidePanel = React.memo(({ hasExternalSubtitles }) => {
   return (
     <Box sx={{ 
       width: width, 
-      borderLeft: `1px solid ${eyeCareColors.border}`, 
       backgroundColor: eyeCareColors.background, 
       display: 'flex', 
       flexDirection: 'column',
       overflow: 'hidden',
       position: 'relative',
-      height: '100%'
+      height: '100%',
+      borderRadius: 4,
+      boxShadow: '0 4px 20px rgba(0,0,0,0.08)'
     }}>
       {/* 拖动条 */}
       <Box
         sx={{
           position: 'absolute',
-          left: 0,
-          top: 0,
-          bottom: 0,
-          width: '4px',
+          left: -6,
+          top: '50%',
+          transform: 'translateY(-50%)',
+          width: '6px',
+          height: '60px',
           cursor: 'col-resize',
-          backgroundColor: isDragging ? eyeCareColors.dragBar : 'transparent',
-          transition: 'background-color 0.2s',
+          backgroundColor: isDragging ? '#888' : '#ccc',
+          borderRadius: 3,
+          transition: 'all 0.2s',
+          opacity: isDragging ? 1 : 0.5,
           '&:hover': {
-            backgroundColor: eyeCareColors.dragBar
+            backgroundColor: '#888',
+            opacity: 1
           }
         }}
         onMouseDown={handleDragStart}

@@ -41,6 +41,7 @@ import learningAnalyticsService from '../services/learningAnalyticsService';
 import studyPlanService from '../services/studyPlanService';
 import spacedRepetitionService from '../services/spacedRepetitionService';
 import { ipcClient } from '../services/ipcClient';
+import { useMessage } from '../contexts/MessageContext';
 
 // 清理文本中的特殊标记
 const clean = (raw) => raw.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
@@ -52,6 +53,7 @@ const clean = (raw) => raw.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
 const LearningAgent = () => {
   const [tabValue, setTabValue] = useState(0);
   const [loading, setLoading] = useState(false);
+  const { showSuccess, showError, showInfo } = useMessage();
   
   // 学习分析状态
   const [overview, setOverview] = useState(null);
@@ -141,10 +143,10 @@ const LearningAgent = () => {
         createdAt: new Date().toISOString()
       });
       
-      alert('学习计划生成成功！');
+      showSuccess('学习计划生成成功！');
     } catch (error) {
       console.error('生成学习计划失败:', error);
-      alert('生成学习计划失败: ' + error.message);
+      showError('生成学习计划失败: ' + error.message);
     } finally {
       setGeneratingPlan(false);
     }
@@ -167,7 +169,7 @@ const LearningAgent = () => {
       } else {
         // 复习完成，重新加载
         await loadReviewWords();
-        alert('本轮复习完成！');
+        showSuccess('本轮复习完成！');
       }
       
       // 更新统计
@@ -175,7 +177,7 @@ const LearningAgent = () => {
       setVocabStats(statsData);
     } catch (error) {
       console.error('提交复习结果失败:', error);
-      alert('提交失败: ' + error.message);
+      showError('提交失败: ' + error.message);
     }
   };
 
@@ -186,13 +188,13 @@ const LearningAgent = () => {
     setExtractingWords(true);
     try {
       const result = await spacedRepetitionService.extractWordsFromQueries(50);
-      alert(`成功提取 ${result} 个单词到学习列表！`);
+      showSuccess(`成功提取 ${result} 个单词到学习列表！`);
       await loadReviewWords();
       const statsData = await spacedRepetitionService.getLearningStats();
       setVocabStats(statsData);
     } catch (error) {
       console.error('提取单词失败:', error);
-      alert('提取单词失败: ' + error.message);
+      showError('提取单词失败: ' + error.message);
     } finally {
       setExtractingWords(false);
     }

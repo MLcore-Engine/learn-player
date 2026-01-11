@@ -1,6 +1,7 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import 'video.js/dist/video-js.css';
 import { ipcClient } from '../services/ipcClient';
+import { useMessage } from '../contexts/MessageContext';
 import useVideoJsPlayer from '../hooks/useVideoJsPlayer';
 
 /**
@@ -30,6 +31,9 @@ const VideoPlayer = React.memo(({
   const [internalIsConverting, setInternalIsConverting] = useState(false);
   const isConverting = externalIsConverting !== undefined ? externalIsConverting : internalIsConverting;
   const setIsConverting = onConversionStateChange || setInternalIsConverting;
+  
+  // 使用全局消息
+  const { showWarning, showError } = useMessage();
 
   // 更新refs
   onTimeUpdateRef.current = onTimeUpdate;
@@ -43,7 +47,7 @@ const VideoPlayer = React.memo(({
     try {
       if (!window.electronAPI?.prepareVideo) {
         console.warn('Electron API不可用，跳过视频转换');
-        alert('当前环境不支持视频转换，将直接播放原视频');
+        showWarning('当前环境不支持视频转换，将直接播放原视频');
         return inputPath;
       }
 
@@ -54,12 +58,12 @@ const VideoPlayer = React.memo(({
       return resultPath;
     } catch (error) {
       console.error('视频格式处理错误:', error);
-      alert(error.message || '视频处理失败');
+      showError(error.message || '视频处理失败');
       throw error;
     } finally {
       setIsConverting(false);
     }
-  }, [setIsConverting]);
+  }, [setIsConverting, showWarning, showError]);
 
   // 监听 videoPath 变化
   useEffect(() => {
@@ -196,11 +200,13 @@ const VideoPlayer = React.memo(({
         width: '100%', 
         height: '100%',
         minHeight: '300px',
-        backgroundColor: '#000',
+        backgroundColor: '#0a0a0a',
         position: 'relative',
         display: 'flex',
         alignItems: 'center',
-        justifyContent: 'center'
+        justifyContent: 'center',
+        borderRadius: 16,
+        overflow: 'hidden'
       }}
     >
       {isConverting && (
@@ -211,9 +217,13 @@ const VideoPlayer = React.memo(({
           transform: 'translate(-50%, -50%)',
           color: '#fff',
           textAlign: 'center',
-          zIndex: 1000
+          zIndex: 1000,
+          backgroundColor: 'rgba(0,0,0,0.7)',
+          padding: '20px 40px',
+          borderRadius: 16,
+          backdropFilter: 'blur(8px)'
         }}>
-          <div>正在转换视频格式...</div>
+          <div style={{ fontSize: 14, fontWeight: 500 }}>正在转换视频格式...</div>
         </div>
       )}
       

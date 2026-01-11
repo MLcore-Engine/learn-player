@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import dictionaryService from '../utils/dictionaryService';
 import { ipcClient } from '../services/ipcClient';
+import { useMessage } from '../contexts/MessageContext';
 
 const OCRResultModal = React.memo(({ isOpen, result, onExplain, onClose, style, isLoading }) => {
   const [dictResult, setDictResult] = useState(null);
   const [dictLoading, setDictLoading] = useState(false);
+  const { showWarning, showError } = useMessage();
 
   // 当模态框关闭或结果更新时，重置字典查询结果
   useEffect(() => {
@@ -22,7 +24,7 @@ const OCRResultModal = React.memo(({ isOpen, result, onExplain, onClose, style, 
   const handleDictionaryLookup = async () => {
     const txt = getSelectedText();
     if (!txt) {
-      alert('请先在上方结果里选中要查询的单词');
+      showWarning('请先在上方结果里选中要查询的单词');
       return;
     }
 
@@ -43,7 +45,7 @@ const OCRResultModal = React.memo(({ isOpen, result, onExplain, onClose, style, 
       }
     } catch (error) {
       console.error('字典查询失败:', error);
-      alert('字典查询失败: ' + error.message);
+      showError('字典查询失败: ' + error.message);
     } finally {
       setDictLoading(false);
     }
@@ -182,7 +184,7 @@ const OCRResultModal = React.memo(({ isOpen, result, onExplain, onClose, style, 
             e.stopPropagation();
             const txt = getSelectedText();
             if (!txt) {
-              alert('请先在上方结果里选中要解释的文字');
+              showWarning('请先在上方结果里选中要解释的文字');
               return;
             }
             onExplain('zh', txt);
@@ -213,7 +215,7 @@ const OCRResultModal = React.memo(({ isOpen, result, onExplain, onClose, style, 
             e.stopPropagation();
             const txt = getSelectedText();
             if (!txt) {
-              alert('请先在上方结果里选中要解释的文字');
+              showWarning('请先在上方结果里选中要解释的文字');
               return;
             }
             onExplain('en', txt);

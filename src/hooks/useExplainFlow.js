@@ -1,9 +1,11 @@
 import { useCallback, useState } from 'react';
 import { useAI, useVideo } from '../contexts/AppContext';
+import { useMessage } from '../contexts/MessageContext';
 import aiService from '../services/aiService';
 import { ipcClient } from '../services/ipcClient';
 
 const useExplainFlow = ({ hasExternalSubtitles }) => {
+  const { showWarning } = useMessage();
   const [ocrModalOpen, setOcrModalOpen] = useState(false);
   const [ocrResult, setOcrResult] = useState('');
   const [ocrStatus, setOcrStatus] = useState('idle');
@@ -73,7 +75,7 @@ const useExplainFlow = ({ hasExternalSubtitles }) => {
   const handleExplain = useCallback(async (lang, selectedText) => {
     const text = selectedText || ocrResult;
     if (!text) {
-      alert('没有可解释的文字');
+      showWarning('没有可解释的文字');
       return;
     }
     setExplainLoading(true);
@@ -106,7 +108,7 @@ const useExplainFlow = ({ hasExternalSubtitles }) => {
       setOcrStatus('idle');
       setOcrError('');
     }
-  }, [addRecord, ocrResult, setAiLoading, setExplanation, setSelectedText]);
+  }, [addRecord, ocrResult, setAiLoading, setExplanation, setSelectedText, showWarning]);
 
   const handleCloseModal = useCallback(() => {
     setOcrModalOpen(false);
