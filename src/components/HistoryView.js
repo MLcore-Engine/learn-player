@@ -10,6 +10,7 @@ import {
   Stack,
 } from '@mui/material';
 import DateWheelPicker from './DateWheelPicker';
+import { useMessage } from '../contexts/MessageContext';
 import { ipcClient } from '../services/ipcClient';
 
 // 清理文本中的特殊标记
@@ -24,6 +25,7 @@ const HistoryView = React.memo(() => {
   const [chatHistory, setChatHistory] = useState([]);
   const [historyLoaded, setHistoryLoaded] = useState(false);
   const [loading, setLoading] = useState(false);
+  const { showError } = useMessage();
 
   const loadHistoryByDate = async (selectedDate) => {
     if (!ipcClient.isAvailable()) {
@@ -36,7 +38,7 @@ const HistoryView = React.memo(() => {
       const dbStatus = await ipcClient.checkDatabaseStatus();
       if (!dbStatus.isConnected) {
         console.error('数据库未连接');
-        alert('数据库未连接，无法获取历史记录');
+        showError('数据库未连接，无法获取历史记录');
         return;
       }
 
@@ -56,7 +58,7 @@ const HistoryView = React.memo(() => {
       setHistoryLoaded(true);
     } catch (error) {
       console.error('获取历史记录失败:', error);
-      alert('获取历史记录失败: ' + error.message);
+      showError('获取历史记录失败: ' + error.message);
     } finally {
       setLoading(false);
     }

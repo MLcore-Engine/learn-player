@@ -147,7 +147,7 @@
   animation: fadeIn 0.5s ease-in;
 }
 
-/* Scrollbar styles (Kept) */
+/* Scrollbar styles - 暗色背景 */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
@@ -165,6 +165,30 @@
 
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.3);
+}
+
+/* 护眼区域滚动条样式 */
+.MuiCard-root::-webkit-scrollbar,
+.MuiBox-root::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.MuiCard-root::-webkit-scrollbar-track,
+.MuiBox-root::-webkit-scrollbar-track {
+  background: rgba(200, 180, 140, 0.1);
+  border-radius: 3px;
+}
+
+.MuiCard-root::-webkit-scrollbar-thumb,
+.MuiBox-root::-webkit-scrollbar-thumb {
+  background: rgba(180, 160, 120, 0.3);
+  border-radius: 3px;
+}
+
+.MuiCard-root::-webkit-scrollbar-thumb:hover,
+.MuiBox-root::-webkit-scrollbar-thumb:hover {
+  background: rgba(180, 160, 120, 0.5);
 }
 
 /* Highlight style (Kept) */
@@ -220,6 +244,7 @@ mark {
   width: 100%;
   height: 100%;
   min-height: 300px;
+  border-radius: 16px;
 }
 
 /* 确保 video.js 播放器占满容器 */
@@ -229,6 +254,8 @@ mark {
   position: absolute !important;
   top: 0;
   left: 0;
+  border-radius: 16px;
+  overflow: hidden;
 }
 
 /* 修复播放器技术层 */
@@ -239,19 +266,108 @@ mark {
   width: 100%;
   height: 100%;
   object-fit: contain; /* 确保视频保持宽高比并完全可见 */
+  border-radius: 16px;
 }
 
-/* 确保控制栏位于底部 */
+/* 确保控制栏位于底部 - 现代化样式 */
 .video-js .vjs-control-bar {
   z-index: 3;
+  background: linear-gradient(to top, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.4) 50%, transparent 100%) !important;
+  height: 50px !important;
+  padding: 0 12px;
+  border-bottom-left-radius: 16px;
+  border-bottom-right-radius: 16px;
 }
 
-/* 确保播放按钮可见 */
+/* 控制条按钮样式 */
+.video-js .vjs-button > .vjs-icon-placeholder:before {
+  font-size: 1.6em;
+}
+
+/* 进度条样式 */
+.video-js .vjs-progress-control {
+  position: absolute;
+  bottom: 40px;
+  left: 12px;
+  right: 12px;
+  width: auto;
+  height: 6px;
+}
+
+.video-js .vjs-progress-holder {
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(255,255,255,0.2);
+}
+
+.video-js .vjs-play-progress {
+  background: linear-gradient(90deg, #1976d2, #42a5f5) !important;
+  border-radius: 3px;
+}
+
+.video-js .vjs-play-progress:before {
+  font-size: 12px;
+  top: -3px;
+}
+
+.video-js .vjs-load-progress {
+  background: rgba(255,255,255,0.3);
+  border-radius: 3px;
+}
+
+/* 确保播放按钮可见 - 现代化样式 */
 .video-js .vjs-big-play-button {
   z-index: 3;
   position: absolute;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
+  width: 70px !important;
+  height: 70px !important;
+  border-radius: 50% !important;
+  border: none !important;
+  background: rgba(25, 118, 210, 0.9) !important;
+  box-shadow: 0 4px 20px rgba(25, 118, 210, 0.4);
+  transition: all 0.3s ease;
+}
+
+.video-js .vjs-big-play-button:hover {
+  background: rgba(25, 118, 210, 1) !important;
+  transform: translate(-50%, -50%) scale(1.1);
+  box-shadow: 0 6px 30px rgba(25, 118, 210, 0.5);
+}
+
+.video-js .vjs-big-play-button .vjs-icon-placeholder:before {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2.5em;
+}
+
+/* 时间显示样式 */
+.video-js .vjs-time-control {
+  font-size: 12px;
+  font-weight: 500;
+  padding: 0 8px;
+}
+
+/* 音量控制样式 */
+.video-js .vjs-volume-panel {
+  width: auto;
+}
+
+.video-js .vjs-volume-bar {
+  background: rgba(255,255,255,0.3);
+  border-radius: 3px;
+}
+
+.video-js .vjs-volume-level {
+  background: #1976d2;
+  border-radius: 3px;
+}
+
+/* 全屏按钮样式 */
+.video-js .vjs-fullscreen-control {
+  order: 10;
 }
 

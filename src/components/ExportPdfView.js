@@ -7,6 +7,7 @@ import {
   Stack,
 } from '@mui/material';
 import DateWheelPicker from './DateWheelPicker';
+import { useMessage } from '../contexts/MessageContext';
 import { ipcClient } from '../services/ipcClient';
 
 // 清理文本中的特殊标记
@@ -49,6 +50,7 @@ function buildPrintableHtml(records, dateLabel) {
 const ExportPdfView = React.memo(() => {
   const [exportDate, setExportDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [exporting, setExporting] = useState(false);
+  const { showSuccess, showWarning, showError } = useMessage();
 
   // 导出学习记录为 PDF
   const handleExportPdf = async (selectedDate) => {
@@ -57,13 +59,13 @@ const ExportPdfView = React.memo(() => {
     try {
       const dbStatus = await ipcClient.checkDatabaseStatus();
       if (!dbStatus || !dbStatus.isConnected) {
-        alert('数据库未连接，无法导出');
+        showError('数据库未连接，无法导出');
         return;
       }
       
       const records = await ipcClient.getAiQueriesByDate(selectedDate);
       if (!records || records.length === 0) {
-        alert('当天没有学习记录可导出');
+        showWarning('当天没有学习记录可导出');
         return;
       }
       
@@ -75,15 +77,15 @@ const ExportPdfView = React.memo(() => {
       });
       
       if (result && result.success) {
-        alert('已保存到: ' + result.filePath);
+        showSuccess('已保存到: ' + result.filePath);
       } else if (result && result.canceled) {
         // 用户取消保存
       } else {
-        alert('导出失败: ' + (result?.error || '未知错误'));
+        showError('导出失败: ' + (result?.error || '未知错误'));
       }
     } catch (e) {
       console.error('导出 PDF 失败:', e);
-      alert('导出 PDF 失败: ' + (e?.message || e));
+      showError('导出 PDF 失败: ' + (e?.message || e));
     } finally {
       setExporting(false);
     }
