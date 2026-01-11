@@ -3,6 +3,7 @@ import {
   Box,
   Card,
   Typography,
+  CircularProgress,
 } from '@mui/material';
 
 // 清理文本中的特殊标记
@@ -13,10 +14,31 @@ const clean = (raw) => raw.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
  * 只显示AI解释内容
  */
 const LearningAssistant = React.memo(({
-  explanation
+  explanation,
+  isLoading,
+  selectedText
 }) => {
   // 渲染当前对话内容
   const renderCurrentDialogue = () => {
+    // 显示加载状态
+    if (isLoading && !explanation) {
+      return (
+        <Box sx={{ 
+          display: 'flex', 
+          flexDirection: 'column', 
+          alignItems: 'center', 
+          justifyContent: 'center',
+          py: 4,
+          gap: 2
+        }}>
+          <CircularProgress size={32} sx={{ color: '#8B7355' }} />
+          <Typography variant="body2" sx={{ color: '#6B5D45', fontWeight: 500 }}>
+            {selectedText ? `正在解释: "${selectedText.slice(0, 30)}${selectedText.length > 30 ? '...' : ''}"` : '生成中...'}
+          </Typography>
+        </Box>
+      );
+    }
+
     if (!explanation) {
       return (
         <Typography variant="body2" color="text.secondary" align="center">
@@ -75,6 +97,22 @@ const LearningAssistant = React.memo(({
             </Box>
           );
         })}
+        
+        {/* 流式输出时显示生成中提示 */}
+        {isLoading && (
+          <Box sx={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: 1,
+            py: 1,
+            color: '#8B7355'
+          }}>
+            <CircularProgress size={16} sx={{ color: '#8B7355' }} />
+            <Typography variant="body2" sx={{ fontStyle: 'italic' }}>
+              生成中...
+            </Typography>
+          </Box>
+        )}
       </Box>
     );
   };
@@ -101,7 +139,9 @@ const LearningAssistant = React.memo(({
     </Card>
   );
 }, (prevProps, nextProps) => {
-  return prevProps.explanation === nextProps.explanation;
+  return prevProps.explanation === nextProps.explanation &&
+         prevProps.isLoading === nextProps.isLoading &&
+         prevProps.selectedText === nextProps.selectedText;
 });
 
 export default LearningAssistant; 

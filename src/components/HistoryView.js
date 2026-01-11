@@ -28,21 +28,21 @@ const HistoryView = React.memo(() => {
   const { showError } = useMessage();
 
   const loadHistoryByDate = async (selectedDate) => {
+    console.log('开始查询历史记录, 日期:', selectedDate);
+    
     if (!ipcClient.isAvailable()) {
+      console.error('ipcClient 不可用');
+      showError('应用服务未就绪，请稍后重试');
       return;
     }
     
     setLoading(true);
     
     try {
-      const dbStatus = await ipcClient.checkDatabaseStatus();
-      if (!dbStatus.isConnected) {
-        console.error('数据库未连接');
-        showError('数据库未连接，无法获取历史记录');
-        return;
-      }
-
+      console.log('调用 getAiQueriesByDate...');
       const records = await ipcClient.getAiQueriesByDate(selectedDate);
+      console.log('查询结果:', records);
+      
       if (!records || records.length === 0) {
         console.log('没有找到查询记录');
         setChatHistory([]);
@@ -58,7 +58,7 @@ const HistoryView = React.memo(() => {
       setHistoryLoaded(true);
     } catch (error) {
       console.error('获取历史记录失败:', error);
-      showError('获取历史记录失败: ' + error.message);
+      showError('获取历史记录失败: ' + (error?.message || '未知错误'));
     } finally {
       setLoading(false);
     }

@@ -25,21 +25,55 @@ function toHtml(text) {
 function buildPrintableHtml(records, dateLabel) {
   const dateText = dateLabel || new Date().toISOString().slice(0, 10);
   const parts = [`<h1>学习记录 (${dateText})</h1>`];
+  
+  // 去重：按 query 去重，保留第一条记录
+  const uniqueRecords = [];
+  const seenQueries = new Set();
   for (const rec of records || []) {
+    const q = (rec.query || '').trim().toLowerCase();
+    // 如果有 query 则去重，否则直接保留
+    if (q) {
+      if (!seenQueries.has(q)) {
+        seenQueries.add(q);
+        uniqueRecords.push(rec);
+      }
+    } else {
+      // query 为空但有 explanation 的也保留
+      if (rec.explanation || rec.text) {
+        uniqueRecords.push(rec);
+      }
+    }
+  }
+  
+  console.log('【buildPrintableHtml】去重后记录数:', uniqueRecords.length);
+  
+  for (const rec of uniqueRecords) {
     const q = (rec.query || '').trim();
-    let body = toHtml(clean(rec.explanation || rec.text || ''));
+    const rawExplanation = rec.explanation || rec.text || '';
+    console.log('【buildPrintableHtml】处理记录:', q, '解释长度:', rawExplanation.length);
+    
+    const cleaned = clean(rawExplanation);
+    let body = toHtml(cleaned);
+    
     // 高亮音标：将 /.../ 包裹并着色
     try {
-      body = body.replace(/(?<!<)\/([^/<>\n:]{1,40})\/(?!>)/g, '<span class="phonetic">/$1/</span>');
+      body = body.replace(/\/([^/<>\n:]{1,40})\//g, '<span class="phonetic">/$1/</span>');
     } catch (_) {
-      // 若运行环境不支持负向回溯，则退化为更保守的匹配（不处理）
+      // 忽略正则错误
     }
-    if (!q && !body) continue;
+    
+    if (!q && !body) {
+      console.log('【buildPrintableHtml】跳过空记录');
+      continue;
+    }
+    
     parts.push(`<div class="record">`);
     if (q) parts.push(`<h2>${q}</h2>`);
-    if (body) parts.push(`<div>${body}</div>`);
+    if (body) parts.push(`<div class="content">${body}</div>`);
     parts.push(`</div>`);
   }
+  
+  console.log('【buildPrintableHtml】最终生成的HTML长度:', parts.join('').length);
   return parts.join('\n');
 }
 
@@ -57,19 +91,18 @@ const ExportPdfView = React.memo(() => {
     setExporting(true);
     
     try {
-      const dbStatus = await ipcClient.checkDatabaseStatus();
-      if (!dbStatus || !dbStatus.isConnected) {
-        showError('数据库未连接，无法导出');
-        return;
-      }
-      
       const records = await ipcClient.getAiQueriesByDate(selectedDate);
+      console.log('【PDF导出】获取到记录数:', records?.length);
+      console.log('【PDF导出】记录样例:', records?.[0]);
+      
       if (!records || records.length === 0) {
         showWarning('当天没有学习记录可导出');
         return;
       }
       
       const html = buildPrintableHtml(records, selectedDate);
+      console.log('【PDF导出】生成的HTML长度:', html?.length);
+      console.log('【PDF导出】HTML预览:', html?.slice(0, 300));
       const result = await ipcClient.exportLearningTodayPdf({
         html,
         title: `学习记录 ${selectedDate}`,
