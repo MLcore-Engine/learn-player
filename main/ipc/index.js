@@ -1273,8 +1273,36 @@ function registerIpcHandlers({ app, ipcMain, dialog, BrowserWindow, store, state
       padding: 0;
       box-sizing: border-box;
     }
+    html, body {
+      /* 让 Chromium 打印时更接近屏幕渲染，并保留颜色 */
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+      text-rendering: geometricPrecision;
+    }
+    /*
+      关键：你最新截图里“英文能显示，但中文/括号里的中文翻译变空白”。
+      这通常是 printToPDF 没有正确渲染/嵌入 CJK 字体导致的缺字。
+      用 local() 明确指定中文字体，能显著提高 PDF 输出的稳定性。
+    */
+    @font-face {
+      font-family: "LEPBody";
+      src:
+        local("PingFang SC"),
+        local("Hiragino Sans GB"),
+        local("Microsoft YaHei"),
+        local("Noto Sans CJK SC"),
+        local("Arial Unicode MS");
+      font-style: normal;
+      font-weight: 400;
+    }
     body {
-      font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "WenQuanYi Micro Hei", sans-serif;
+      /*
+        关键现象：PDF 里边框/背景能出，但大部分普通文本不出，只有 code/phonetic 能出。
+        这很像“某些字体在 printToPDF 里渲染失败”，而 code 使用 monospace 字体所以幸存。
+        因此这里强制使用更稳定的系统 UI/Helvetica/Arial 字体栈。
+      */
+      /* 优先中文字体（避免中文缺字/空白），再回退到系统/英文字体 */
+      font-family: "LEPBody", "PingFang SC", "Hiragino Sans GB", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Helvetica, Arial, sans-serif;
       font-size: 12pt;
       line-height: 1.8;
       color: #333333;
@@ -1309,6 +1337,10 @@ function registerIpcHandlers({ app, ipcMain, dialog, BrowserWindow, store, state
       font-size: 11pt;
       line-height: 2;
       text-align: justify;
+    }
+    /* 某些环境下 printToPDF 可能出现文字“有样式但不显示”，强制文本填充颜色 */
+    body, h1, h2, .content, strong, code, .phonetic {
+      -webkit-text-fill-color: currentColor;
     }
     strong {
       color: #1a5fb4;
@@ -1349,11 +1381,46 @@ ${html}
         width: 794,
         height: 1123,
         webPreferences: {
-          sandbox: true
+          // 仅加载我们生成的本地临时 HTML（无外部资源），关闭 sandbox 可避免某些环境下的字体/渲染异常
+          sandbox: false
         }
       });
 
       await tempWin.loadFile(tempHtmlPath);
+
+      // 等待渲染/字体就绪：避免 printToPDF 抓到“只有部分文本渲染出来”的页面
+      try {
+        const fontReady = await tempWin.webContents.executeJavaScript(`
+          (async () => {
+            try {
+              if (document.fonts && document.fonts.ready) {
+                await document.fonts.ready;
+              }
+            } catch (_) {}
+            // 双 RAF 确保至少经历一次布局/绘制帧
+            await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+            return true;
+          })();
+        `);
+        console.log('【PDF导出】document.fonts.ready/RAF 完成:', fontReady);
+      } catch (_) {
+        // 忽略等待失败，继续尝试导出
+      }
+      // 再给一点点缓冲时间，避免某些机器/字体仍未绘制完成
+      await new Promise((r) => setTimeout(r, 120));
+
+      // Debug: 先抓一张渲染截图，判断“渲染阶段是否已经缺字”
+      // - 如果截图里文字正常但 PDF 里缺字 => printToPDF 阶段问题
+      // - 如果截图里文字也缺 => 临时窗口渲染/字体问题（更可能）
+      try {
+        const img = await tempWin.webContents.capturePage();
+        const png = img.toPNG();
+        const pngPath = tempHtmlPath.replace(/\.html$/i, '.png');
+        await fs.promises.writeFile(pngPath, png);
+        console.log('【PDF导出】调试截图已保存:', pngPath, 'size:', png?.length);
+      } catch (e) {
+        console.warn('【PDF导出】capturePage 失败(可忽略):', e?.message || e);
+      }
 
       const pdfBuffer = await tempWin.webContents.printToPDF({
         marginsType: 1, // 默认边距
@@ -1386,7 +1453,14 @@ ${html}
       // 清理临时窗口
       try { if (tempWin && !tempWin.isDestroyed()) tempWin.destroy(); } catch (_) {}
       // 清理临时HTML文件
-      try { if (tempHtmlPath) fs.promises.unlink(tempHtmlPath).catch(() => {}); } catch (_) {}
+      // 方便排查：保留临时 HTML/PNG（只在开发环境）
+      try {
+        if (process.env.NODE_ENV === 'production') {
+          if (tempHtmlPath) fs.promises.unlink(tempHtmlPath).catch(() => {});
+        } else {
+          console.log('【PDF导出】开发环境保留临时文件用于排查:', tempHtmlPath);
+        }
+      } catch (_) {}
     }
   });
 

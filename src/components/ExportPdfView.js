@@ -13,9 +13,21 @@ import { ipcClient } from '../services/ipcClient';
 // 清理文本中的特殊标记
 const clean = (raw) => raw.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
 
+// HTML 转义：避免 AI 文本里的 < > 等被当成标签导致内容“消失”
+function escapeHtml(raw) {
+  return String(raw ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 // 将富文本(**, `code`)转为简单HTML
 function toHtml(text) {
-  return (text || '')
+  // 先转义，防止内容注入/解析成 HTML 标签
+  const safe = escapeHtml(text || '');
+  return safe
     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
     .replace(/`(.+?)`/g, '<code>$1</code>')
     .replace(/\n/g, '<br/>');
@@ -24,7 +36,7 @@ function toHtml(text) {
 // 构建可打印HTML
 function buildPrintableHtml(records, dateLabel) {
   const dateText = dateLabel || new Date().toISOString().slice(0, 10);
-  const parts = [`<h1>学习记录 (${dateText})</h1>`];
+  const parts = [`<h1>学习记录 (${escapeHtml(dateText)})</h1>`];
   
   // 去重：按 query 去重，保留第一条记录
   const uniqueRecords = [];
@@ -68,7 +80,7 @@ function buildPrintableHtml(records, dateLabel) {
     }
     
     parts.push(`<div class="record">`);
-    if (q) parts.push(`<h2>${q}</h2>`);
+    if (q) parts.push(`<h2>${escapeHtml(q)}</h2>`);
     if (body) parts.push(`<div class="content">${body}</div>`);
     parts.push(`</div>`);
   }
