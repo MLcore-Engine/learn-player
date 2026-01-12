@@ -122,7 +122,7 @@ export const useApiKey = () => {
   // 在组件挂载时获取API Key状态
   useEffect(() => {
     fetchApiKey();
-  }, []);
+  }, [fetchApiKey]);
 
   // 监听主进程发送的打开API Key设置事件
   useEffect(() => {

@@ -14,12 +14,12 @@ function cleanHtml(html) {
 
 function extractKKPhonetic(html) {
   // 允许 K.K. 和 [ 之间有任意内容（如 &nbsp;）
-  const kkMatch = html.match(/K\.K\.[^\[]*\[<FONT[^>]*>([^<]+)<\/FONT>\]/);
+  const kkMatch = html.match(/K\.K\.[^[]*\[<FONT[^>]*>([^<]+)<\/FONT>\]/);
   if (kkMatch) {
     return cleanHtml(kkMatch[1]);
   }
   // 退而求其次，直接匹配中括号内容
-  const kkMatch2 = html.match(/K\.K\.[^\[]*\[([^\]]+)\]/);
+  const kkMatch2 = html.match(/K\.K\.[^[]*\[([^\]]+)\]/);
   return kkMatch2 ? cleanHtml(kkMatch2[1]) : null;
 }
 
@@ -53,7 +53,7 @@ function extractDefinitions(html) {
           if (engMatch && chnMatch) {
             let english = cleanHtml(engMatch[1]);
             // 只保留第一个序号及其后的内容
-            const numbered = english.match(/([1-9][\.|\)]\s*[\s\S]*)/);
+            const numbered = english.match(/([1-9][.)]\s*[\s\S]*)/);
             if (numbered) {
               english = numbered[1];
             }
@@ -78,7 +78,7 @@ function extractDefinitions(html) {
         if (engMatch && chnMatch) {
           let english = cleanHtml(engMatch[1]);
           // 只保留第一个序号及其后的内容
-          const numbered = english.match(/([1-9][\.|\)]\s*[\s\S]*)/);
+          const numbered = english.match(/([1-9][.)]\s*[\s\S]*)/);
           if (numbered) {
             english = numbered[1];
           }
@@ -245,4 +245,5 @@ class DictionaryService {
   }
 }
 
-export default new DictionaryService(); 
+const dictionaryService = new DictionaryService();
+export default dictionaryService;

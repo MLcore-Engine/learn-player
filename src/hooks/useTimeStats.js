@@ -13,9 +13,6 @@ export const useTimeStats = () => {
     totalTime,
     sessionTime,
     updateStats,
-    startWatchTimer,
-    stopWatchTimer,
-    timeStatsRef,
     watchTimerRef
   } = useTimeStatsContext();
   
@@ -41,7 +38,7 @@ export const useTimeStats = () => {
       errorCountRef.current++;
       return { totalTime: 0, sessionTime: 0, lastPosition: 0 };
     }
-  }, [videoPath]);
+  }, [videoPath, updateStats]);
 
   // 更新观看时长到主进程（仅用于暂停/结束/卸载时刷新进度，不再做周期性累计）
   const updateWatchTime = useCallback(async () => {
@@ -73,13 +70,13 @@ export const useTimeStats = () => {
         await fetchTimeStats();
       }
     }
-  }, [videoPath, videoRef, timeStatsRef, fetchTimeStats]);
+  }, [videoPath, videoRef, fetchTimeStats]);
 
   // 启动定时更新（禁用周期累计，仅做一次刷新）
   const startPeriodicUpdate = useCallback(() => {
     if (updateIntervalRef.current) return;
     updateWatchTime();
-  }, [isPlaying, updateWatchTime]);
+  }, [updateWatchTime]);
 
   // 停止定时更新
   const stopPeriodicUpdate = useCallback(() => {
