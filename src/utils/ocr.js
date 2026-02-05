@@ -23,7 +23,7 @@ async function recognizeViaServer(imageDataUrl) {
   const apiKey = cfg.apiKey || '';
   const baseUrl = cfg.apiUrl || '';
 
-  // 如果是智谱官方地址，直接调用 GLM-4V-Flash（chat completions）
+  // 如果是智谱官方地址，直接调用 GLM-4.6V-Flash（chat completions）
   let isZhipu = false;
   try {
     const u = new URL(baseUrl);
@@ -37,7 +37,7 @@ async function recognizeViaServer(imageDataUrl) {
   if (isZhipu) {
     performUrl = baseUrl; // 直接使用智谱 chat completions 地址
     requestData = {
-      model: 'GLM-4V-Flash',
+      model: 'GLM-4.6V-Flash',
       messages: [
         {
           role: 'user',
