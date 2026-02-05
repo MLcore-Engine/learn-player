@@ -15,7 +15,7 @@ const defaultOcrConfig = {
   apiKey: '',
   apiUrl: 'https://open.bigmodel.cn/api/paas/v4/chat/completions',
   ocrEndpoint: '/api/vision-ocr', // OCR专用端点（保留兼容性）
-  model: 'GLM-4V-Flash'
+  model: 'GLM-4.6V-Flash'
 };
 
 // OCR识别接口配置
@@ -35,7 +35,7 @@ Important guidelines:
 - Only return the recognized English text, nothing else`;
 
 /**
- * OCR API服务类 - 使用智谱AI GLM-4V-Flash进行OCR识别和文本解释
+ * OCR API服务类 - 使用智谱AI GLM-4.6V-Flash进行OCR识别和文本解释
  */
 class OcrApiService {
   constructor(config = {}) {
@@ -97,7 +97,7 @@ class OcrApiService {
 
       // 构造智谱AI视觉模型请求体
       const requestData = {
-        model: options.model || model, // 使用智谱AI的GLM-4V-Flash视觉模型
+        model: options.model || model, // 使用智谱AI的GLM-4.6V-Flash视觉模型
         messages: [
           {
             role: "user",
@@ -145,10 +145,10 @@ class OcrApiService {
         throw new Error('服务器返回空响应');
       }
 
-      // 提取识别结果，兼容智谱AI GLM-4V-Flash的返回格式
+      // 提取识别结果，兼容智谱AI GLM-4.6V-Flash的返回格式
       let recognizedText = '';
       const candidates = [
-        data?.choices?.[0]?.message?.content, // GLM-4V-Flash标准格式
+        data?.choices?.[0]?.message?.content, // GLM-4.6V-Flash标准格式
         data?.text,
         data?.data?.text,
         data?.result?.text
@@ -294,6 +294,6 @@ console.log('解释内容:', result.explanation);
 const customOcrService = new OcrApiService({
   apiUrl: 'https://open.bigmodel.cn/api/paas/v4/chat/completions',
   apiKey: 'your-api-key',
-  model: 'GLM-4V-Flash'
+  model: 'GLM-4.6V-Flash'
 });
 */
