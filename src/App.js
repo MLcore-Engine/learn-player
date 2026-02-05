@@ -1,6 +1,7 @@
 import React, { useEffect, useCallback, useState } from 'react';
 import 'video.js/dist/video-js.css';
 import { AppProviders, VideoProviders, AIProviders } from './providers';
+import { MessageProvider } from './contexts/MessageContext';
 import VideoContainer from './containers/VideoContainer';
 import SidePanel from './components/SidePanel';
 import ApiKeySettings from './components/ApiKeySettings';
@@ -62,8 +63,11 @@ const AppContent = () => {
         width: '100vw', 
         height: '100vh', 
         margin: 0, 
-        padding: 0,
-        overflow: 'hidden'
+        padding: 12,
+        gap: 12,
+        overflow: 'hidden',
+        backgroundColor: '#1a1a1a',
+        boxSizing: 'border-box'
       }}>
         {/* 视频区域 */}
         <VideoContainer onPlayerReady={handlePlayerReady} />
@@ -90,9 +94,11 @@ function App() {
   return (
     <ErrorBoundary>
       <AppProviders>
-        <VideoProviders>
-          <AppContent />
-        </VideoProviders>
+        <MessageProvider>
+          <VideoProviders>
+            <AppContent />
+          </VideoProviders>
+        </MessageProvider>
       </AppProviders>
     </ErrorBoundary>
   );

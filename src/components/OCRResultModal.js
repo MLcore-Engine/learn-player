@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import dictionaryService from '../utils/dictionaryService';
 import { ipcClient } from '../services/ipcClient';
+import { useMessage } from '../contexts/MessageContext';
 
 const OCRResultModal = React.memo(({ isOpen, result, onExplain, onClose, style, isLoading }) => {
   const [dictResult, setDictResult] = useState(null);
   const [dictLoading, setDictLoading] = useState(false);
+  const { showWarning, showError } = useMessage();
 
   // 当模态框关闭或结果更新时，重置字典查询结果
   useEffect(() => {
@@ -22,7 +24,7 @@ const OCRResultModal = React.memo(({ isOpen, result, onExplain, onClose, style, 
   const handleDictionaryLookup = async () => {
     const txt = getSelectedText();
     if (!txt) {
-      alert('请先在上方结果里选中要查询的单词');
+      showWarning('请先在上方结果里选中要查询的单词');
       return;
     }
 
@@ -43,7 +45,7 @@ const OCRResultModal = React.memo(({ isOpen, result, onExplain, onClose, style, 
       }
     } catch (error) {
       console.error('字典查询失败:', error);
-      alert('字典查询失败: ' + error.message);
+      showError('字典查询失败: ' + error.message);
     } finally {
       setDictLoading(false);
     }
@@ -87,16 +89,17 @@ const OCRResultModal = React.memo(({ isOpen, result, onExplain, onClose, style, 
   return (
     <div
       className="ocr-result-modal"
+      onClick={(e) => e.stopPropagation()}
       style={{
         ...style,
         width: '100%',
         boxSizing: 'border-box',
-        background: '#fff',
-        border: '1px solid #eee',
-        borderRadius: 8,
+        background: '#FDF8E8',
+        border: '1px solid #E8E0C8',
+        borderRadius: 12,
         padding: 16,
         marginTop: 12,
-        boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+        boxShadow: '0 4px 16px rgba(0,0,0,0.08)',
         overflow: 'hidden',
         display: 'flex',
         flexDirection: 'column',
@@ -108,14 +111,15 @@ const OCRResultModal = React.memo(({ isOpen, result, onExplain, onClose, style, 
       <div
         style={{
           marginBottom: 12,
-          color: '#222',
+          color: '#3D3528',
           fontSize: 22,
           wordBreak: 'break-all',
           whiteSpace: 'pre-wrap',
           overflowWrap: 'break-word',
           overflow: 'auto',
           maxHeight: '40vh',
-          paddingRight: 8
+          paddingRight: 8,
+          fontWeight: 500
         }}
       >
         {result}
@@ -127,14 +131,15 @@ const OCRResultModal = React.memo(({ isOpen, result, onExplain, onClose, style, 
           style={{
             marginBottom: 12,
             padding: 12,
-            background: '#f5f5f5',
-            borderRadius: 8,
+            background: '#F5EFD7',
+            borderRadius: 10,
             fontSize: 14,
             lineHeight: 1.6,
             whiteSpace: 'pre-wrap',
             overflow: 'auto',
             maxHeight: '30vh',
-            paddingRight: 8
+            paddingRight: 8,
+            border: '1px solid #E8E0C8'
           }}
           dangerouslySetInnerHTML={{
             __html: dictResult
@@ -151,34 +156,35 @@ const OCRResultModal = React.memo(({ isOpen, result, onExplain, onClose, style, 
           justifyContent: 'space-between',
           position: 'sticky',
           bottom: 0,
-          background: '#fff',
+          background: '#FDF8E8',
           paddingTop: 8,
-          borderTop: '1px solid #eee'
+          borderTop: '1px solid #E8E0C8'
         }}
       >
         <button 
           style={{ 
             flex: 1,
             padding: '4px 0',
-            borderRadius: 8,
+            borderRadius: 10,
             border: '1px solid #1976d2',
-            background: '#fff',
+            background: '#FAF5E4',
             color: '#1976d2',
             fontWeight: 600,
             fontSize: 11,
             letterSpacing: 1,
-            boxShadow: '0 1px 4px rgba(25, 118, 210, 0.06)',
+            boxShadow: '0 2px 6px rgba(25, 118, 210, 0.1)',
             transition: 'all 0.2s ease',
             cursor: isLoading ? 'not-allowed' : 'pointer',
             opacity: isLoading ? 0.7 : 1,
-            height: '28px',
-            lineHeight: '20px'
+            height: '32px',
+            lineHeight: '22px'
           }} 
           disabled={isLoading}
-          onClick={() => {
+          onClick={(e) => {
+            e.stopPropagation();
             const txt = getSelectedText();
             if (!txt) {
-              alert('请先在上方结果里选中要解释的文字');
+              showWarning('请先在上方结果里选中要解释的文字');
               return;
             }
             onExplain('zh', txt);
@@ -190,25 +196,26 @@ const OCRResultModal = React.memo(({ isOpen, result, onExplain, onClose, style, 
           style={{ 
             flex: 1,
             padding: '4px 0',
-            borderRadius: 8,
+            borderRadius: 10,
             border: '1px solid #1976d2',
-            background: '#fff',
+            background: '#FAF5E4',
             color: '#1976d2',
             fontWeight: 600,
             fontSize: 11,
             letterSpacing: 1,
-            boxShadow: '0 1px 4px rgba(25, 118, 210, 0.06)',
+            boxShadow: '0 2px 6px rgba(25, 118, 210, 0.1)',
             transition: 'all 0.2s ease',
             cursor: isLoading ? 'not-allowed' : 'pointer',
             opacity: isLoading ? 0.7 : 1,
-            height: '28px',
-            lineHeight: '20px'
+            height: '32px',
+            lineHeight: '22px'
           }} 
           disabled={isLoading}
-          onClick={() => {
+          onClick={(e) => {
+            e.stopPropagation();
             const txt = getSelectedText();
             if (!txt) {
-              alert('请先在上方结果里选中要解释的文字');
+              showWarning('请先在上方结果里选中要解释的文字');
               return;
             }
             onExplain('en', txt);
@@ -220,22 +227,25 @@ const OCRResultModal = React.memo(({ isOpen, result, onExplain, onClose, style, 
           style={{ 
             flex: 1,
             padding: '4px 0',
-            borderRadius: 8,
+            borderRadius: 10,
             border: '1px solid #1976d2',
-            background: '#fff',
+            background: '#FAF5E4',
             color: '#1976d2',
             fontWeight: 600,
             fontSize: 11,
             letterSpacing: 1,
-            boxShadow: '0 1px 4px rgba(25, 118, 210, 0.06)',
+            boxShadow: '0 2px 6px rgba(25, 118, 210, 0.1)',
             transition: 'all 0.2s ease',
             cursor: dictLoading ? 'not-allowed' : 'pointer',
             opacity: dictLoading ? 0.7 : 1,
-            height: '28px',
-            lineHeight: '20px'
+            height: '32px',
+            lineHeight: '22px'
           }} 
           disabled={dictLoading}
-          onClick={handleDictionaryLookup}
+          onClick={(e) => {
+            e.stopPropagation();
+            handleDictionaryLookup();
+          }}
         >
           {dictLoading ? '查询中...' : '字典查询'}
         </button>
@@ -243,21 +253,24 @@ const OCRResultModal = React.memo(({ isOpen, result, onExplain, onClose, style, 
           style={{ 
             flex: 1,
             padding: '4px 0',
-            borderRadius: 8,
-            border: '1px solid #666',
-            background: '#fff',
-            color: '#666',
+            borderRadius: 10,
+            border: '1px solid #A09078',
+            background: '#F5EFD7',
+            color: '#6B5D45',
             fontWeight: 600,
             fontSize: 11,
             letterSpacing: 1,
-            boxShadow: '0 1px 4px rgba(0, 0, 0, 0.06)',
+            boxShadow: '0 2px 6px rgba(0, 0, 0, 0.06)',
             transition: 'all 0.2s ease',
             cursor: isLoading ? 'not-allowed' : 'pointer',
             opacity: isLoading ? 0.7 : 1,
-            height: '28px',
-            lineHeight: '20px'
+            height: '32px',
+            lineHeight: '22px'
           }} 
-          onClick={handleClose}
+          onClick={(e) => {
+            e.stopPropagation();
+            handleClose();
+          }}
           disabled={isLoading}
         >
           关闭

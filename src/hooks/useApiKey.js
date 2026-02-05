@@ -1,5 +1,6 @@
 import { useEffect, useCallback, useRef } from 'react';
 import { useApiKey as useApiKeyContext } from '../contexts/AppContext';
+import { useMessage } from '../contexts/MessageContext';
 import { ipcClient } from '../services/ipcClient';
 
 // 缓存持续时间（毫秒）
@@ -23,6 +24,9 @@ export const useApiKey = () => {
     setStatus,
     setConfigSource
   } = useApiKeyContext();
+  
+  // 使用全局消息
+  const { showSuccess, showError } = useMessage();
 
   // 使用 ref 存储缓存和防抖状态
   const cacheRef = useRef({
@@ -98,27 +102,27 @@ export const useApiKey = () => {
     try {
       const result = await ipcClient.saveApiKey({ apiKey, modelUrl });
       if (result.success) {
-        alert('设置保存成功！');
+        showSuccess('设置保存成功！');
         setApiKey('');
         setShowInput(false);
         // 强制刷新API Key状态
         await fetchApiKey(true);
         return true;
       } else {
-        alert(`保存失败: ${result.error}`);
+        showError(`保存失败: ${result.error}`);
         return false;
       }
     } catch (error) {
       console.error('保存设置失败:', error);
-      alert(`保存错误: ${error.message}`);
+      showError(`保存错误: ${error.message}`);
       return false;
     }
-  }, [apiKey, modelUrl, setApiKey, setShowInput, fetchApiKey]);
+  }, [apiKey, modelUrl, setApiKey, setShowInput, fetchApiKey, showSuccess, showError]);
 
   // 在组件挂载时获取API Key状态
   useEffect(() => {
     fetchApiKey();
-  }, []);
+  }, [fetchApiKey]);
 
   // 监听主进程发送的打开API Key设置事件
   useEffect(() => {

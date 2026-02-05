@@ -20,9 +20,10 @@
     "clean": "rm -rf build dist",
     "prebuild": "npm run clean",
     "build:mac": "npm run package -- --mac",
-    "build:win": "npm run package -- --win",
+    "build:mac-universal": "npm run package -- --mac --universal",
+    "build:win": "npm run package -- --win --x64",
     "build:linux": "npm run package -- --linux",
-    "build:all": "npm run package -- --mac --win --linux",
+    "install:ffmpeg-all": "npm install @ffmpeg-installer/darwin-arm64 @ffmpeg-installer/darwin-x64 @ffmpeg-installer/win32-x64 @ffmpeg-installer/linux-x64 --save-optional",
     "analyze": "source-map-explorer 'build/static/js/*.js'",
     "build:analyze": "GENERATE_SOURCEMAP=true npm run build && npm run analyze",
     "prune-deps": "npm prune --production"
@@ -55,7 +56,7 @@
     "cross-env": "^7.0.3",
     "customize-cra": "^1.0.0",
     "depcheck": "^1.4.7",
-    "electron": "^36.2.1",
+    "electron": "^36.9.5",
     "electron-builder": "^26.0.12",
     "react-app-rewired": "^2.2.1",
     "react-scripts": "5.0.1",
@@ -72,7 +73,7 @@
     },
     "asarUnpack": [
       "node_modules/better-sqlite3/**",
-      "node_modules/@ffmpeg-installer/ffmpeg/**"
+      "node_modules/@ffmpeg-installer/**"
     ],
     "compression": "maximum",
     "files": [
@@ -97,22 +98,17 @@
         ]
       }
     ],
-    "extraFiles": [
-      {
-        "from": "node_modules/@ffmpeg-installer/ffmpeg/bin",
-        "to": "bin",
-        "filter": [
-          "ffmpeg",
-          "ffprobe"
-        ]
-      }
-    ],
     "mac": {
       "category": "public.app-category.education",
       "icon": "assets/icon.icns",
       "target": [
-        "dmg",
-        "zip"
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        }
       ],
       "hardenedRuntime": true,
       "gatekeeperAssess": false
@@ -120,15 +116,24 @@
     "win": {
       "icon": "assets/icon.ico",
       "target": [
-        "nsis",
-        "portable"
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
       ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
     },
     "linux": {
       "icon": "assets/icon-512.png",
       "target": [
-        "AppImage",
-        "deb"
+        "AppImage"
       ]
     }
   },

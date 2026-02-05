@@ -1,15 +1,24 @@
+// 首先导入 electron 核心模块
 const { app, BrowserWindow, ipcMain, dialog, Menu, protocol } = require('electron');
+
+// 注册为安全协议（必须在 app ready 之前、任何其他导入之前调用）
+if (protocol) {
+  protocol.registerSchemesAsPrivileged([{ scheme: 'lep', privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true, bypassCSP: true } }]);
+}
+
 const path = require('path');
 const fs = require('fs');
 const Database = require('better-sqlite3');
-const Store = require('electron-store'); // 引入electron-store用于保存配置
-const { autoUpdater } = require('electron-updater');
+const Store = require('electron-store');
 const log = require('electron-log');
-const { registerIpcHandlers } = require('./main/ipc');
-const { startVideoServer } = require('./main/services/videoServer');
 
-// 注册为安全协议，支持流媒体加载
-protocol.registerSchemesAsPrivileged([{ scheme: 'lep', privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true, bypassCSP: true } }]);
+// 延迟加载 autoUpdater，避免在开发模式下报错
+let autoUpdater = null;
+try {
+  autoUpdater = require('electron-updater').autoUpdater;
+} catch (e) {
+  console.log('autoUpdater 加载失败（开发模式正常）:', e.message);
+}
 
 // 创建配置存储实例
 const store = new Store();
@@ -19,64 +28,58 @@ const state = {
   db: null
 };
 
-registerIpcHandlers({
-  app,
-  ipcMain,
-  dialog,
-  BrowserWindow,
-  store,
-  state,
-  autoUpdater
+// 延迟导入 IPC 和视频服务（因为它们可能访问需要 app ready 的 API）
+let registerIpcHandlers, startVideoServer;
+app.whenReady().then(() => {
+  // 动态导入以避免在 app ready 之前访问某些 API
+  registerIpcHandlers = require('./main/ipc').registerIpcHandlers;
+  startVideoServer = require('./main/services/videoServer').startVideoServer;
+  
+  registerIpcHandlers({
+    app,
+    ipcMain,
+    dialog,
+    BrowserWindow,
+    store,
+    state,
+    autoUpdater
+  });
+  
+  startVideoServer();
 });
 
-// 数据存储目录（放在用户目录，避免在 asar 内创建）
-const appDataPath = app.getPath('userData');
-const DATA_PATH = path.join(appDataPath, 'data');
-const DB_PATH = path.join(DATA_PATH, 'userdata.db');
-
-// 设置应用名称，用于 macOS 菜单
-app.setName('LEP');
-
+// 延迟初始化的变量
+let appDataPath, DATA_PATH, DB_PATH;
 let mainWindow;
 let db;
 
-console.log('应用路径信息:', {
-  __dirname,
-  appDataPath,
-  DATA_PATH,
-  DB_PATH,
-  lastVideoDir: store.get('lastVideoDir') || app.getPath('videos')
-});
-
-// 确保数据目录存在
-try {
-  if (!fs.existsSync(DATA_PATH)) {
-    fs.mkdirSync(DATA_PATH, { recursive: true });
-    console.log('创建数据目录:', DATA_PATH);
-  }
-} catch (error) {
-  console.error('创建数据目录失败:', error);
-}
-
 // 配置日志
 log.transports.file.level = 'info';
-autoUpdater.logger = log;
-
-// 配置自动更新
-autoUpdater.autoDownload = false;
-autoUpdater.autoInstallOnAppQuit = true;
-
-// ===== 新增：本地HTTP服务器用于视频范围请求 =====
-startVideoServer();
-
-// 注册自定义协议 app:// 用于文件直接访问（可选）
-protocol.registerSchemesAsPrivileged([{ scheme: 'lep', privileges: { standard: true, secure: true } }]);
-// 添加新的 app 协议
-protocol.registerSchemesAsPrivileged([{ scheme: 'app', privileges: { standard: true, secure: true } }]);
+if (autoUpdater) {
+  autoUpdater.logger = log;
+  autoUpdater.autoDownload = false;
+  autoUpdater.autoInstallOnAppQuit = true;
+}
 
 
 // 应用启动时创建窗口
 app.whenReady().then(async () => {
+  // 初始化路径（现在 app 已就绪，可以安全调用 getPath）
+  appDataPath = app.getPath('userData');
+  DATA_PATH = path.join(appDataPath, 'data');
+  DB_PATH = path.join(DATA_PATH, 'userdata.db');
+  
+  // 设置应用名称
+  app.setName('LEP');
+  
+  console.log('应用路径信息:', {
+    __dirname,
+    appDataPath,
+    DATA_PATH,
+    DB_PATH,
+    lastVideoDir: store.get('lastVideoDir') || app.getPath('videos')
+  });
+  
   // 确保数据目录存在
   if (!fs.existsSync(DATA_PATH)) {
     fs.mkdirSync(DATA_PATH, { recursive: true });

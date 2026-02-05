@@ -4,8 +4,8 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { parseSync } = require('subtitle');
-const { extractFrame, cleanupTempFile } = require('../videoFrameExtractor');
-const { ffmpeg } = require('../media/ffmpeg');
+const { extractFrame, cleanupTempFile, isFFmpegAvailable } = require('../videoFrameExtractor');
+const { ffmpeg, isAvailable: ffmpegAvailable } = require('../media/ffmpeg');
 const { getVideoServerPort, getVideoServerError } = require('../services/videoServer');
 
 const algorithm = 'aes-256-cbc';
@@ -496,13 +496,32 @@ function registerIpcHandlers({ app, ipcMain, dialog, BrowserWindow, store, state
         return { isConnected: false, error: '数据库未初始化' };
       }
 
-      // 尝试执行简单查询以确认数据库状态正常
-      const result = db.prepare('SELECT COUNT(*) as count FROM ai_queries').get();
-      console.log('【主进程】数据库状态检查结果:', result);
+      // 尝试执行简单查询以确认数据库状态正常（不依赖特定表）
+      const result = db.prepare('SELECT 1 as ok').get();
+      console.log('【主进程】数据库连接正常');
+      
+      // 尝试获取 ai_queries 表的记录数（可选）
+      let recordCount = 0;
+      try {
+        const countResult = db.prepare('SELECT COUNT(*) as count FROM ai_queries').get();
+        recordCount = countResult?.count || 0;
+      } catch (e) {
+        console.log('【主进程】ai_queries 表可能不存在，将创建');
+        // 确保表存在
+        db.exec(`
+          CREATE TABLE IF NOT EXISTS ai_queries (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            query TEXT NOT NULL,
+            explanation TEXT NOT NULL,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+          );
+        `);
+      }
 
       return {
         isConnected: true,
-        recordCount: result.count
+        recordCount
       };
     } catch (error) {
       console.error('【主进程】检查数据库状态失败:', error);
@@ -750,6 +769,29 @@ function registerIpcHandlers({ app, ipcMain, dialog, BrowserWindow, store, state
     }
   });
 
+  ipcMain.handle('getAiQueriesByDate', (event, { date }) => {
+    console.log('【主进程】getAiQueriesByDate 请求, 日期:', date);
+    const db = getDb();
+    if (!db) {
+      console.error('【主进程】数据库未初始化');
+      return [];
+    }
+    if (!date) {
+      console.error('【主进程】日期参数为空');
+      return [];
+    }
+    try {
+      // 使用 LIKE 匹配日期前缀，避免时区问题
+      const stmt = db.prepare("SELECT * FROM ai_queries WHERE created_at LIKE ? ORDER BY created_at DESC");
+      const result = stmt.all(date + '%');
+      console.log('【主进程】查询结果数量:', result.length);
+      return result;
+    } catch (error) {
+      console.error('【主进程】获取指定日期 AI 查询记录失败:', error);
+      return [];
+    }
+  });
+
   // 添加IPC处理器让渲染进程可以触发安装更新
   ipcMain.handle('install-update', () => {
     autoUpdater.quitAndInstall();
@@ -928,6 +970,11 @@ function registerIpcHandlers({ app, ipcMain, dialog, BrowserWindow, store, state
     console.log('开始转换视频:', { inputPath, outputPath, videoCodec, audioCodec, quality, preset });
 
     try {
+      // 检查 FFmpeg 是否可用
+      if (!ffmpegAvailable) {
+        throw new Error('FFmpeg 不可用，无法转换视频格式');
+      }
+      
       // 检查输入文件
       if (!fs.existsSync(inputPath)) {
         throw new Error('输入文件不存在');
@@ -1039,6 +1086,13 @@ function registerIpcHandlers({ app, ipcMain, dialog, BrowserWindow, store, state
     console.log('检查视频格式:', filePath);
 
     try {
+      // 检查 FFmpeg 是否可用
+      if (!ffmpegAvailable) {
+        // 没有 ffmpeg 则跳过格式检查，假设格式兼容
+        console.log('FFmpeg 不可用，跳过格式检查');
+        return { needsConversion: false, format: 'unknown' };
+      }
+      
       // 首先检查文件是否存在
       if (!fs.existsSync(filePath)) {
         throw new Error('文件不存在');
@@ -1092,6 +1146,13 @@ function registerIpcHandlers({ app, ipcMain, dialog, BrowserWindow, store, state
   // prepareVideo: 转换 mkv/avi 到 mp4
   ipcMain.handle('prepareVideo', async (event, inputPath) => {
     const ext = path.extname(inputPath).toLowerCase();
+    
+    // 如果 FFmpeg 不可用，直接返回原路径
+    if (!ffmpegAvailable) {
+      console.log('FFmpeg 不可用，返回原视频路径');
+      return inputPath;
+    }
+    
     if (ext !== '.mp4') {
       // 确保缓存目录存在
       if (!fs.existsSync(CACHE_CONFIG.tmpDir)) {
@@ -1190,60 +1251,176 @@ function registerIpcHandlers({ app, ipcMain, dialog, BrowserWindow, store, state
   // 导出今日学习记录为 PDF
   ipcMain.handle('export-learning-today-pdf', async (event, { html, title, suggestedName }) => {
     let tempWin = null;
+    let tempHtmlPath = null;
     try {
+      console.log('【PDF导出】收到HTML内容长度:', html?.length);
+      console.log('【PDF导出】HTML预览(前500字符):', html?.slice(0, 500));
+      
       if (!html || typeof html !== 'string' || html.trim().length === 0) {
         return { success: false, error: '空的HTML内容' };
       }
 
-      // 包装完整HTML文档，附带基础样式
-      const fullHtml = `<!DOCTYPE html><html><head><meta charset="utf-8"/>`
-        + `<title>${title || '学习记录'}</title>`
-        + `<style>
-        /* 更紧凑的打印版式：小字号、窄边距、允许分割记录 */
-        :root { --base-font: 9pt; --h1: 11pt; --h2: 10pt; --code: 8pt; }
-        html, body { height: 100%; }
-        body {
-          font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
-          color: #111;
-          font-size: var(--base-font);
-          line-height: 1.3;
-          padding: 0;
-          margin: 0;
-          -webkit-print-color-adjust: exact;
-          print-color-adjust: exact;
-          word-wrap: break-word;
-          overflow-wrap: anywhere;
-          hyphens: auto;
-          letter-spacing: 0.1px;
-        }
-        .container { padding: 4mm 4mm; }
-        h1 { font-size: var(--h1); margin: 0 0 4pt; color: #0b5fff; }
-        h2 { font-size: var(--h2); margin: 6pt 0 3pt; color: #0b5fff; }
-        strong { color: #0b5fff; font-weight: 600; }
-        code { background: #fff6e6; color: #b85c00; padding: 1px 2px; border-radius: 2px; font-size: var(--code); }
-        .phonetic { color: #0a7b83; font-weight: 600; }
-        .record {
-          break-inside: auto; /* 允许在记录内部分页以提升紧凑度 */
-          page-break-inside: auto;
-          margin: 0 0 4pt;
-          padding-bottom: 3pt;
-          border-bottom: 0.25pt solid #eee;
-        }
-        .record:last-child { border-bottom: none; }
-        @page { size: A4; margin: 8mm 8mm; }
-      </style>`
-        + `</head><body><div class="container">${html}</div></body></html>`;
+      // 包装完整HTML文档
+      const fullHtml = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+  <title>${title || '学习记录'}</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    html, body {
+      /* 让 Chromium 打印时更接近屏幕渲染，并保留颜色 */
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+      text-rendering: geometricPrecision;
+    }
+    /*
+      关键：你最新截图里“英文能显示，但中文/括号里的中文翻译变空白”。
+      这通常是 printToPDF 没有正确渲染/嵌入 CJK 字体导致的缺字。
+      用 local() 明确指定中文字体，能显著提高 PDF 输出的稳定性。
+    */
+    @font-face {
+      font-family: "LEPBody";
+      src:
+        local("PingFang SC"),
+        local("Hiragino Sans GB"),
+        local("Microsoft YaHei"),
+        local("Noto Sans CJK SC"),
+        local("Arial Unicode MS");
+      font-style: normal;
+      font-weight: 400;
+    }
+    body {
+      /*
+        关键现象：PDF 里边框/背景能出，但大部分普通文本不出，只有 code/phonetic 能出。
+        这很像“某些字体在 printToPDF 里渲染失败”，而 code 使用 monospace 字体所以幸存。
+        因此这里强制使用更稳定的系统 UI/Helvetica/Arial 字体栈。
+      */
+      /* 优先中文字体（避免中文缺字/空白），再回退到系统/英文字体 */
+      font-family: "LEPBody", "PingFang SC", "Hiragino Sans GB", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Helvetica, Arial, sans-serif;
+      font-size: 12pt;
+      line-height: 1.8;
+      color: #333333;
+      padding: 30px;
+      background: #ffffff;
+    }
+    h1 {
+      font-size: 20pt;
+      color: #1a5fb4;
+      border-bottom: 3px solid #1a5fb4;
+      padding-bottom: 12px;
+      margin-bottom: 24px;
+      font-weight: 600;
+    }
+    h2 {
+      font-size: 14pt;
+      color: #1a5fb4;
+      margin: 24px 0 12px 0;
+      font-weight: 600;
+    }
+    .record {
+      margin-bottom: 28px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid #e0e0e0;
+      page-break-inside: avoid;
+    }
+    .record:last-child {
+      border-bottom: none;
+    }
+    .content {
+      color: #333333;
+      font-size: 11pt;
+      line-height: 2;
+      text-align: justify;
+    }
+    /* 某些环境下 printToPDF 可能出现文字“有样式但不显示”，强制文本填充颜色 */
+    body, h1, h2, .content, strong, code, .phonetic {
+      -webkit-text-fill-color: currentColor;
+    }
+    strong {
+      color: #1a5fb4;
+      font-weight: 600;
+    }
+    code {
+      background: #f5f5f5;
+      color: #d63384;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: "SF Mono", Monaco, Consolas, monospace;
+      font-size: 10pt;
+    }
+    .phonetic {
+      color: #0d6efd;
+      font-weight: 600;
+    }
+    br {
+      content: "";
+      display: block;
+      margin: 6px 0;
+    }
+  </style>
+</head>
+<body>
+${html}
+</body>
+</html>`;
+
+      // 将 HTML 写入临时文件（避免 data URL 编码问题）
+      const tempDir = app.getPath('temp');
+      tempHtmlPath = path.join(tempDir, `pdf-export-${Date.now()}.html`);
+      await fs.promises.writeFile(tempHtmlPath, fullHtml, 'utf8');
+      console.log('【PDF导出】临时HTML文件:', tempHtmlPath);
 
       tempWin = new BrowserWindow({
         show: false,
-        width: 794, // 约A4宽（96DPI参考）
+        width: 794,
         height: 1123,
         webPreferences: {
-          sandbox: true
+          // 仅加载我们生成的本地临时 HTML（无外部资源），关闭 sandbox 可避免某些环境下的字体/渲染异常
+          sandbox: false
         }
       });
 
-      await tempWin.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(fullHtml));
+      await tempWin.loadFile(tempHtmlPath);
+
+      // 等待渲染/字体就绪：避免 printToPDF 抓到“只有部分文本渲染出来”的页面
+      try {
+        const fontReady = await tempWin.webContents.executeJavaScript(`
+          (async () => {
+            try {
+              if (document.fonts && document.fonts.ready) {
+                await document.fonts.ready;
+              }
+            } catch (_) {}
+            // 双 RAF 确保至少经历一次布局/绘制帧
+            await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+            return true;
+          })();
+        `);
+        console.log('【PDF导出】document.fonts.ready/RAF 完成:', fontReady);
+      } catch (_) {
+        // 忽略等待失败，继续尝试导出
+      }
+      // 再给一点点缓冲时间，避免某些机器/字体仍未绘制完成
+      await new Promise((r) => setTimeout(r, 120));
+
+      // Debug: 先抓一张渲染截图，判断“渲染阶段是否已经缺字”
+      // - 如果截图里文字正常但 PDF 里缺字 => printToPDF 阶段问题
+      // - 如果截图里文字也缺 => 临时窗口渲染/字体问题（更可能）
+      try {
+        const img = await tempWin.webContents.capturePage();
+        const png = img.toPNG();
+        const pngPath = tempHtmlPath.replace(/\.html$/i, '.png');
+        await fs.promises.writeFile(pngPath, png);
+        console.log('【PDF导出】调试截图已保存:', pngPath, 'size:', png?.length);
+      } catch (e) {
+        console.warn('【PDF导出】capturePage 失败(可忽略):', e?.message || e);
+      }
 
       const pdfBuffer = await tempWin.webContents.printToPDF({
         marginsType: 1, // 默认边距
@@ -1273,7 +1450,17 @@ function registerIpcHandlers({ app, ipcMain, dialog, BrowserWindow, store, state
       console.error('【主进程】导出PDF失败:', error);
       return { success: false, error: error.message || '导出PDF失败' };
     } finally {
+      // 清理临时窗口
       try { if (tempWin && !tempWin.isDestroyed()) tempWin.destroy(); } catch (_) {}
+      // 清理临时HTML文件
+      // 方便排查：保留临时 HTML/PNG（只在开发环境）
+      try {
+        if (process.env.NODE_ENV === 'production') {
+          if (tempHtmlPath) fs.promises.unlink(tempHtmlPath).catch(() => {});
+        } else {
+          console.log('【PDF导出】开发环境保留临时文件用于排查:', tempHtmlPath);
+        }
+      } catch (_) {}
     }
   });
 

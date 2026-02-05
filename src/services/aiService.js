@@ -14,7 +14,7 @@ const axiosInstance = axios.create({
 const defaultConfig = {
   apiKey: '',
   apiUrl: 'https://open.bigmodel.cn/api/paas/v4/chat/completions',
-  model: 'GLM-4.5-Flash'
+  model: 'GLM-4.7-Flash'
 };
 
 // 主 prompt 内容

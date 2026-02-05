@@ -13,7 +13,7 @@ import useResizablePanel from '../hooks/useResizablePanel';
  */
 const SidePanel = React.memo(({ hasExternalSubtitles }) => {
   const { totalTime, sessionTime, remainingSeconds, formatTime } = useTimeStats();
-  const [panelTab, setPanelTab] = useState(0); // 0=AI助手, 1=学习Agent
+  const [panelTab, setPanelTab] = useState(0); // 0=AI助手, 1=查看记录, 2=导出PDF
   const { width, isDragging, handleDragStart } = useResizablePanel();
   const {
     explainLoading,
@@ -33,30 +33,43 @@ const SidePanel = React.memo(({ hasExternalSubtitles }) => {
     formatTime
   };
   
+  // 护眼色主题
+  const eyeCareColors = {
+    background: '#FDF8E8',      // 主背景 - 淡米黄
+    headerBg: '#F8F3E3',        // 头部背景 - 略深
+    border: '#E8E0C8',          // 边框色
+    dragBar: '#D4C9A8'          // 拖动条色
+  };
+  
   return (
     <Box sx={{ 
       width: width, 
-      borderLeft: '1px solid #444', 
-      backgroundColor: '#111', 
+      backgroundColor: eyeCareColors.background, 
       display: 'flex', 
       flexDirection: 'column',
       overflow: 'hidden',
       position: 'relative',
-      height: '100%'
+      height: '100%',
+      borderRadius: 4,
+      boxShadow: '0 4px 20px rgba(0,0,0,0.08)'
     }}>
       {/* 拖动条 */}
       <Box
         sx={{
           position: 'absolute',
-          left: 0,
-          top: 0,
-          bottom: 0,
-          width: '4px',
+          left: -6,
+          top: '50%',
+          transform: 'translateY(-50%)',
+          width: '6px',
+          height: '60px',
           cursor: 'col-resize',
-          backgroundColor: isDragging ? '#666' : 'transparent',
-          transition: 'background-color 0.2s',
+          backgroundColor: isDragging ? '#888' : '#ccc',
+          borderRadius: 3,
+          transition: 'all 0.2s',
+          opacity: isDragging ? 1 : 0.5,
           '&:hover': {
-            backgroundColor: '#666'
+            backgroundColor: '#888',
+            opacity: 1
           }
         }}
         onMouseDown={handleDragStart}

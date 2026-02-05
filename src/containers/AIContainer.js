@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef } from 'react';
 import LearningAssistant from '../components/LearningAssistant';
+import { Box } from '@mui/material';
 import { useAI, useVideo } from '../contexts/AppContext';
 import { useElectronIPC } from '../hooks/useElectronIPC';
 import aiService from '../services/aiService';
@@ -137,13 +138,16 @@ const AIContainer = React.memo(() => {
   const assistantProps = {
     selectedText,
     explanation,
-    // learningRecords: records,
     isLoading: loading,
     onQueryExplanation: handleQueryExplanation
   };
 
   return (
-    <LearningAssistant {...assistantProps} />
+    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      <Box sx={{ flexGrow: 1, overflow: 'hidden' }}>
+        <LearningAssistant {...assistantProps} />
+      </Box>
+    </Box>
   );
 });
 

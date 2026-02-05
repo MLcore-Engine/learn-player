@@ -19,11 +19,13 @@ const SidePanelHeader = ({
   <Box sx={{
     width: '100%',
     position: 'relative',
-    pt: 1.5,
-    pb: 0.5,
+    pt: 2,
+    pb: 1,
     px: 2,
-    backgroundColor: 'background.paper',
-    borderBottom: '1px solid rgba(255,255,255,0.08)'
+    backgroundColor: '#F8F3E3',
+    borderBottom: '1px solid #E8E0C8',
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16
   }}>
     <Box sx={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between', gap: 2 }}>
       <Box sx={{ flex: 1, width: '48%' }}>
