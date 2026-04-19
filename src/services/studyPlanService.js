@@ -78,4 +78,5 @@ class StudyPlanService {
   }
 }
 
-export default new StudyPlanService();
+const studyPlanService = new StudyPlanService();
+export default studyPlanService;

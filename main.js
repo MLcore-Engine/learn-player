@@ -69,8 +69,6 @@ autoUpdater.autoInstallOnAppQuit = true;
 // ===== 新增：本地HTTP服务器用于视频范围请求 =====
 startVideoServer();
 
-// 注册自定义协议 app:// 用于文件直接访问（可选）
-protocol.registerSchemesAsPrivileged([{ scheme: 'lep', privileges: { standard: true, secure: true } }]);
 // 添加新的 app 协议
 protocol.registerSchemesAsPrivileged([{ scheme: 'app', privileges: { standard: true, secure: true } }]);
 

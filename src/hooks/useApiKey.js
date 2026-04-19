@@ -115,10 +115,11 @@ export const useApiKey = () => {
     }
   }, [apiKey, modelUrl, setApiKey, setShowInput, fetchApiKey]);
 
-  // 在组件挂载时获取API Key状态
+  // 在组件挂载时获取API Key状态（仅挂载时执行，fetchApiKey 通过 useCallback 内部保证稳定性）
   useEffect(() => {
     fetchApiKey();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Intentionally run once on mount; fetchApiKey is stable via useCallback deps
 
   // 监听主进程发送的打开API Key设置事件
   useEffect(() => {

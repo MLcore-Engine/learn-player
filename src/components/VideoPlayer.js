@@ -187,7 +187,8 @@ const VideoPlayer = React.memo(({
     } catch (e) {
       console.error('字幕处理过程中出错:', e);
     }
-  }, [subtitles]); // 只依赖subtitles
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [subtitles]); // Intentionally runs only on subtitles change; refs are stable
 
   return (
     <div 

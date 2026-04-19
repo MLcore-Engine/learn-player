@@ -655,18 +655,18 @@ function registerIpcHandlers({ app, ipcMain, dialog, BrowserWindow, store, state
 
     try {
       // 获取总观看时长（秒）
-      const totalTimeStmt = db.prepare('SELECT SUM(total_time) as total FROM watch_time');
+      const totalTimeStmt = db.prepare('SELECT SUM(total_time) as total FROM video_progress');
       const totalResult = totalTimeStmt.get();
       const totalWatchTime = totalResult.total || 0;
 
       // 获取已观看视频数量
-      const countStmt = db.prepare('SELECT COUNT(*) as count FROM watch_time');
+      const countStmt = db.prepare('SELECT COUNT(*) as count FROM video_progress');
       const countResult = countStmt.get();
       const videoCount = countResult.count || 0;
 
       // 获取最近观看的5个视频
       const recentStmt = db.prepare(
-        'SELECT * FROM watch_time ORDER BY last_watched DESC LIMIT 5'
+        'SELECT * FROM video_progress ORDER BY last_watched DESC LIMIT 5'
       );
       const recentWatched = recentStmt.all();
 
