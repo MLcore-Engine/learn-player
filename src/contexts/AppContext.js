@@ -260,7 +260,7 @@ export const AIProvider = ({ children }) => {
 export const ApiKeyProvider = ({ children }) => {
   const [state, dispatch] = useReducer(apiKeyReducer, {
     apiKey: '',
-    modelUrl: 'http://58.211.207.202:20000/api/chat', // 默认值
+    modelUrl: 'https://api.stepfun.com/v1/chat/completions', // 默认值
     showInput: false,
     status: '正在加载...',
     configSource: { apiKey: 'default', modelUrl: 'default' }

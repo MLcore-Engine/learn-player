@@ -12,7 +12,7 @@ const algorithm = 'aes-256-cbc';
 const encryptionSecret = crypto.createHash('sha256').update('lep-very-secret-key-replace-me').digest('base64').substring(0, 32);
 // IV 必须是 16 字节
 const iv = Buffer.from('lepinitialvector', 'utf8'); // 固定 IV 也是不推荐的，但简化了演示
-const DEFAULT_AI_MODEL_URL = 'https://open.bigmodel.cn/api/paas/v4/chat/completions';
+const DEFAULT_AI_MODEL_URL = 'https://api.stepfun.com/v1/chat/completions';
 
 // 加密函数
 function encrypt(text) {
@@ -64,8 +64,8 @@ function resolveAiConfig(store) {
   }
 
   const storedModelUrl = store.get('modelUrl');
-  const envApiKey = getEnvValue(['AI_API_KEY', 'REACT_APP_OPENAI_API_KEY']);
-  const envModelUrl = getEnvValue(['AI_MODEL_URL', 'REACT_APP_OPENAI_API_URL']);
+  const envApiKey = getEnvValue(['AI_API_KEY', 'STEP_API_KEY', 'REACT_APP_STEP_API_KEY']);
+  const envModelUrl = getEnvValue(['AI_MODEL_URL', 'STEP_API_URL', 'REACT_APP_STEP_API_URL']);
 
   const apiKeySource = storedApiKey ? 'store' : envApiKey ? 'env' : 'default';
   const modelUrlSource = storedModelUrl ? 'store' : envModelUrl ? 'env' : 'default';
