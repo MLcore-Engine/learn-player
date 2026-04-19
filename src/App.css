@@ -2,6 +2,7 @@
 
 .App{
   text-align: center;
+  font-size: 16px;
 }
 
 
@@ -133,8 +134,22 @@
 }
 
 .message-card:hover {
-  transform: translateY(-px);
+  transform: translateY(-2px);
   box-shadow: 0 5px 10px rgba(0, 0, 0, 0.2);
+}
+
+/* 侧边栏信息密度优化：提升可读性和触控体验 */
+.MuiTypography-body2 {
+  font-size: 0.95rem;
+  line-height: 1.65;
+}
+
+.MuiButton-root {
+  font-size: 0.95rem;
+}
+
+.MuiInputBase-input {
+  font-size: 0.95rem;
 }
 
 /* Animation styles (Kept) */
@@ -254,4 +269,3 @@ mark {
   left: 50%;
   transform: translate(-50%, -50%);
 }
-

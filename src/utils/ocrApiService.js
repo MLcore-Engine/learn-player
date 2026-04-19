@@ -13,9 +13,9 @@ const axiosInstance = axios.create({
 // 默认OCR服务配置
 const defaultOcrConfig = {
   apiKey: '',
-  apiUrl: 'https://open.bigmodel.cn/api/paas/v4/chat/completions',
+  apiUrl: 'https://api.stepfun.com/v1/chat/completions',
   ocrEndpoint: '/api/vision-ocr', // OCR专用端点（保留兼容性）
-  model: 'GLM-4V-Flash'
+  model: 'step-1v-8k'
 };
 
 // OCR识别接口配置
@@ -35,7 +35,7 @@ Important guidelines:
 - Only return the recognized English text, nothing else`;
 
 /**
- * OCR API服务类 - 使用智谱AI GLM-4V-Flash进行OCR识别和文本解释
+ * OCR API服务类 - 使用 StepFun 多模态模型进行OCR识别和文本解释
  */
 class OcrApiService {
   constructor(config = {}) {
@@ -95,9 +95,9 @@ class OcrApiService {
 
       const { apiKey, apiUrl, model } = await this.getApiConfig();
 
-      // 构造智谱AI视觉模型请求体
+      // 构造多模态视觉模型请求体
       const requestData = {
-        model: options.model || model, // 使用智谱AI的GLM-4V-Flash视觉模型
+        model: options.model || model,
         messages: [
           {
             role: "user",
@@ -115,9 +115,6 @@ class OcrApiService {
             ]
           }
         ],
-        thinking: {
-          type: "enabled" // 启用思考过程
-        },
         temperature: 0.1, // 降低随机性，提高准确性
         max_tokens: 500 // 限制输出长度
       };
@@ -145,10 +142,10 @@ class OcrApiService {
         throw new Error('服务器返回空响应');
       }
 
-      // 提取识别结果，兼容智谱AI GLM-4V-Flash的返回格式
+      // 提取识别结果，兼容 Chat Completions 常见返回格式
       let recognizedText = '';
       const candidates = [
-        data?.choices?.[0]?.message?.content, // GLM-4V-Flash标准格式
+        data?.choices?.[0]?.message?.content,
         data?.text,
         data?.data?.text,
         data?.result?.text
@@ -292,8 +289,8 @@ console.log('解释内容:', result.explanation);
 
 // 自定义配置
 const customOcrService = new OcrApiService({
-  apiUrl: 'https://open.bigmodel.cn/api/paas/v4/chat/completions',
+  apiUrl: 'https://api.stepfun.com/v1/chat/completions',
   apiKey: 'your-api-key',
-  model: 'GLM-4V-Flash'
+  model: 'step-1v-8k'
 });
 */
