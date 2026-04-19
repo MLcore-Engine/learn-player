@@ -13,6 +13,12 @@ const encryptionSecret = crypto.createHash('sha256').update('lep-very-secret-key
 // IV 必须是 16 字节
 const iv = Buffer.from('lepinitialvector', 'utf8'); // 固定 IV 也是不推荐的，但简化了演示
 const DEFAULT_AI_MODEL_URL = 'https://api.stepfun.com/v1/chat/completions';
+<<<<<<< HEAD
+const LEGACY_AI_MODEL_URLS = new Set([
+  'https://open.bigmodel.cn/api/paas/v4/chat/completions'
+]);
+=======
+>>>>>>> origin/main
 
 // 加密函数
 function encrypt(text) {
@@ -50,6 +56,24 @@ function getEnvValue(keys) {
   return '';
 }
 
+function normalizeModelUrl(rawUrl) {
+  const url = typeof rawUrl === 'string' ? rawUrl.trim() : '';
+  if (!url) return '';
+
+  if (LEGACY_AI_MODEL_URLS.has(url)) {
+    return DEFAULT_AI_MODEL_URL;
+  }
+
+  try {
+    const parsed = new URL(url);
+    if (/(^|\.)bigmodel\.cn$/.test(parsed.hostname)) {
+      return DEFAULT_AI_MODEL_URL;
+    }
+  } catch (_) {}
+
+  return url;
+}
+
 function resolveAiConfig(store) {
   const encryptedApiKey = store.get('encryptedApiKey');
   let storedApiKey = null;
@@ -63,9 +87,20 @@ function resolveAiConfig(store) {
     }
   }
 
+<<<<<<< HEAD
+  const storedModelUrlRaw = store.get('modelUrl');
+  const storedModelUrl = normalizeModelUrl(storedModelUrlRaw);
+  if (typeof storedModelUrlRaw === 'string' && storedModelUrlRaw.trim() && storedModelUrl !== storedModelUrlRaw.trim()) {
+    store.set('modelUrl', storedModelUrl);
+    console.warn('【主进程】检测到旧模型 URL，已自动迁移到 StepFun 默认地址');
+  }
+  const envApiKey = getEnvValue(['AI_API_KEY', 'STEP_API_KEY', 'REACT_APP_STEP_API_KEY']);
+  const envModelUrl = normalizeModelUrl(getEnvValue(['AI_MODEL_URL', 'STEP_API_URL', 'REACT_APP_STEP_API_URL']));
+=======
   const storedModelUrl = store.get('modelUrl');
   const envApiKey = getEnvValue(['AI_API_KEY', 'STEP_API_KEY', 'REACT_APP_STEP_API_KEY']);
   const envModelUrl = getEnvValue(['AI_MODEL_URL', 'STEP_API_URL', 'REACT_APP_STEP_API_URL']);
+>>>>>>> origin/main
 
   const apiKeySource = storedApiKey ? 'store' : envApiKey ? 'env' : 'default';
   const modelUrlSource = storedModelUrl ? 'store' : envModelUrl ? 'env' : 'default';
@@ -170,10 +205,16 @@ function registerIpcHandlers({ app, ipcMain, dialog, BrowserWindow, store, state
     console.log('【主进程】收到 saveApiKey 请求');
     try {
       const { apiKey, modelUrl } = typeof payload === 'string' ? { apiKey: payload } : (payload || {});
-      // 保存 Model URL
-      if (modelUrl) {
-        store.set('modelUrl', modelUrl);
-        console.log('【主进程】Model URL 已保存');
+      // 保存 Model URL（支持清空重置）
+      if (typeof modelUrl === 'string') {
+        const normalizedModelUrl = normalizeModelUrl(modelUrl);
+        if (normalizedModelUrl) {
+          store.set('modelUrl', normalizedModelUrl);
+          console.log('【主进程】Model URL 已保存');
+        } else {
+          store.delete('modelUrl');
+          console.log('【主进程】Model URL 已清除，将回退到默认值');
+        }
       }
 
       // 处理 API Key
