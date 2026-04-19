@@ -35,7 +35,7 @@ const ApiKeySettings = ({
       zIndex: 2000, 
       boxShadow: '0 5px 15px rgba(0,0,0,0.3)'
     }}>
-      <h5>设置API Key</h5>
+      <h5 style={{ marginTop: 0, marginBottom: '10px', fontSize: '1.05rem' }}>设置 StepFun API</h5>
       <p>当前状态: {storedApiKeyStatus}</p>
       <p style={{ fontSize: '0.9em', color: '#bbb' }}>
         当前来源: API Key 为 {apiKeySourceLabel}，模型 URL 为 {modelUrlSourceLabel}
@@ -45,8 +45,8 @@ const ApiKeySettings = ({
           type="password"
           value={apiKey}
           onChange={(e) => onApiKeyChange(e.target.value)}
-          placeholder="输入新的 API Key (留空则清除)"
-          style={{ width: '300px', marginRight: '10px', padding: '5px' }}
+          placeholder="输入新的 STEP_API_KEY (留空则清除)"
+          style={{ width: '320px', marginRight: '10px', padding: '8px', fontSize: '14px' }}
         />
       </div>
       <div style={{ marginBottom: '15px' }}>
@@ -54,8 +54,8 @@ const ApiKeySettings = ({
           type="text"
           value={modelUrl}
           onChange={(e) => onModelUrlChange(e.target.value)}
-          placeholder="输入大模型 API URL"
-          style={{ width: '300px', marginRight: '10px', padding: '5px' }}
+          placeholder="输入模型 API URL（默认 https://api.stepfun.com/v1/chat/completions）"
+          style={{ width: '320px', marginRight: '10px', padding: '8px', fontSize: '14px' }}
         />
       </div>
       <button onClick={onSave}>保存</button>

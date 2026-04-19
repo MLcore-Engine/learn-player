@@ -20,7 +20,7 @@
 - **SQLite**: 本地数据存储
 - **React-Player**: 视频播放组件
 - **subtitle**: 字幕解析库
-- **OpenAI API**: 大语言模型集成
+- **StepFun API**: 大语言模型集成
 
 ## 安装与运行
 
@@ -52,10 +52,11 @@
    # Electron开发URL
    ELECTRON_START_URL=http://localhost:3000
    
-   # OpenAI配置
-   REACT_APP_OPENAI_API_KEY=your_api_key_here
-   REACT_APP_OPENAI_API_URL=https://api.openai.com/v1/chat/completions
-   REACT_APP_OPENAI_MODEL=gpt-3.5-turbo
+   # StepFun 配置
+   STEP_API_KEY=your_step_api_key_here
+   STEP_API_URL=https://api.stepfun.com/v1/chat/completions
+   REACT_APP_STEP_API_KEY=your_step_api_key_here
+   REACT_APP_STEP_API_URL=https://api.stepfun.com/v1/chat/completions
    
    # 视频和数据存储路径 (可选)
    # VIDEOS_PATH=/custom/path/to/videos

@@ -23,21 +23,21 @@ async function recognizeViaServer(imageDataUrl) {
   const apiKey = cfg.apiKey || '';
   const baseUrl = cfg.apiUrl || '';
 
-  // 如果是智谱官方地址，直接调用 GLM-4V-Flash（chat completions）
-  let isZhipu = false;
+  // 如果是 StepFun 官方地址，直接调用多模态模型（chat completions）
+  let isStepFun = false;
   try {
     const u = new URL(baseUrl);
-    isZhipu = /(^|\.)bigmodel\.cn$/.test(u.hostname);
+    isStepFun = /(^|\.)stepfun\.com$/.test(u.hostname);
   } catch (_) {
-    isZhipu = baseUrl.includes('bigmodel.cn');
+    isStepFun = baseUrl.includes('stepfun.com');
   }
 
   let performUrl = '';
   let requestData;
-  if (isZhipu) {
-    performUrl = baseUrl; // 直接使用智谱 chat completions 地址
+  if (isStepFun) {
+    performUrl = baseUrl; // 直接使用 StepFun chat completions 地址
     requestData = {
-      model: 'GLM-4V-Flash',
+      model: 'step-1v-8k',
       messages: [
         {
           role: 'user',
