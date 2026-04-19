@@ -81,4 +81,5 @@ class LearningAnalyticsService {
   }
 }
 
-export default new LearningAnalyticsService();
+const learningAnalyticsService = new LearningAnalyticsService();
+export default learningAnalyticsService;
