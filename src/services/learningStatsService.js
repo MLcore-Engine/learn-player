@@ -3,7 +3,7 @@
  * 从 highlights 表聚合所有统计数据
  */
 
-import { getHighlights } from './highlightService';
+import { ipcClient } from './ipcClient';
 
 /**
  * 获取学习概况
@@ -20,111 +20,29 @@ import { getHighlights } from './highlightService';
  */
 export async function getLearningOverview() {
   try {
-    const result = await getHighlights({ limit: 10000 });
-    if (result.error) {
-      return { error: result.error };
+    const stats = await ipcClient.getHighlightsStats();
+    if (stats.error) {
+      return { error: stats.error };
     }
 
-    const highlights = Array.isArray(result) ? result : [];
-    const now = new Date();
-    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString().split('T')[0];
-
-    // 统计各状态数量
-    const reviewedHighlights = highlights.filter(h => h.status !== 'pending');
-    const pendingHighlights = highlights.filter(h => h.status === 'pending');
-    const masteredHighlights = highlights.filter(h => h.status === 'mastered');
-
-    // 计算复习率
-    const reviewRate = highlights.length > 0
-      ? Math.round((reviewedHighlights.length / highlights.length) * 100)
+    const { totalHighlights, pendingHighlights, reviewedHighlights, masteredHighlights, totalVideos, todayReviewed, streakDays } = stats;
+    const reviewRate = totalHighlights > 0
+      ? Math.round((reviewedHighlights / totalHighlights) * 100)
       : 0;
 
-    // 统计总视频数（unique video_path）
-    const uniqueVideos = new Set();
-    highlights.forEach(h => {
-      if (h.video_path) {
-        uniqueVideos.add(h.video_path);
-      }
-    });
-
-    // todayReviewed：统计 created_at 是今天的数量（只看 reviewed 状态的）
-    const todayReviewed = highlights.filter(h => {
-      if (h.status === 'pending') return false;
-      const createdDate = h.created_at ? h.created_at.split('T')[0] : null;
-      return createdDate === todayStart;
-    }).length;
-
-    // streakDays：计算连续复习天数（基于 highlights 的 last_review 日期）
-    const streakDays = calculateStreakDays(highlights);
-
     return {
-      totalHighlights: highlights.length,
-      reviewedHighlights: reviewedHighlights.length,
-      pendingHighlights: pendingHighlights.length,
-      masteredHighlights: masteredHighlights.length,
+      totalHighlights,
+      reviewedHighlights,
+      pendingHighlights,
+      masteredHighlights,
       reviewRate,
-      totalVideos: uniqueVideos.size,
+      totalVideos,
       todayReviewed,
       streakDays
     };
   } catch (error) {
     console.error('getLearningOverview error:', error);
     return { error: error.message };
-  }
-}
-
-/**
- * 计算连续复习天数
- * @param {Array} highlights - 高亮列表
- * @returns {number} 连续天数
- */
-function calculateStreakDays(highlights) {
-  try {
-    // 收集所有有 last_review 日期的高亮
-    const reviewDates = new Set();
-    highlights.forEach(h => {
-      if (h.last_review) {
-        const date = h.last_review.split('T')[0];
-        reviewDates.add(date);
-      }
-    });
-
-    if (reviewDates.size === 0) return 0;
-
-    // 排序日期
-    const sortedDates = Array.from(reviewDates).sort();
-
-    // 从最新日期往前数连续天数
-    let streak = 0;
-    const today = new Date();
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-
-    const todayStr = today.toISOString().split('T')[0];
-    const yesterdayStr = yesterday.toISOString().split('T')[0];
-
-    // 检查最新日期是否是今天或昨天（保证连续性）
-    const latestDate = sortedDates[sortedDates.length - 1];
-    if (latestDate !== todayStr && latestDate !== yesterdayStr) {
-      return 0;
-    }
-
-    // 从最新日期往前数
-    let currentDate = new Date(latestDate);
-    for (const date of sortedDates.reverse()) {
-      const checkDateStr = currentDate.toISOString().split('T')[0];
-      if (reviewDates.has(checkDateStr)) {
-        streak++;
-        currentDate.setDate(currentDate.getDate() - 1);
-      } else {
-        break;
-      }
-    }
-
-    return streak;
-  } catch (error) {
-    console.error('calculateStreakDays error:', error);
-    return 0;
   }
 }
 

@@ -53,7 +53,7 @@ const allowedInvokeChannels = [
   'deleteHighlight',
   'getDueHighlights',
   'submitReview',
-  'getLearningStats'
+  'getHighlightsStats',
 ];
 
 const allowedSendChannels = [
@@ -308,7 +308,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getDueHighlights: (params) => ipcRenderer.invoke('getDueHighlights', params),
   submitReview: (params) => ipcRenderer.invoke('submitReview', params),
   // Stats
-  getLearningStats: (params) => ipcRenderer.invoke('getLearningStats', params)
+  getHighlightsStats: () => ipcRenderer.invoke('getHighlightsStats')
 });
 
 console.log('--- Preload script: END ---'); 

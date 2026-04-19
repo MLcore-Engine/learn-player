@@ -54,7 +54,8 @@ export const IPC_CHANNELS = {
     updateHighlight: 'updateHighlight',
     deleteHighlight: 'deleteHighlight',
     getDueHighlights: 'getDueHighlights',
-    submitReview: 'submitReview'
+    submitReview: 'submitReview',
+    getHighlightsStats: 'getHighlightsStats'
   },
   send: {
     getCategories: 'getCategories',
@@ -250,7 +251,8 @@ export const ipcClient = {
   updateHighlight: (options) => invoke(IPC_CHANNELS.invoke.updateHighlight, options),
   deleteHighlight: (options) => invoke(IPC_CHANNELS.invoke.deleteHighlight, options),
   getDueHighlights: (options) => invoke(IPC_CHANNELS.invoke.getDueHighlights, options),
-  submitReview: (options) => invoke(IPC_CHANNELS.invoke.submitReview, options)
+  submitReview: (options) => invoke(IPC_CHANNELS.invoke.submitReview, options),
+  getHighlightsStats: () => invoke(IPC_CHANNELS.invoke.getHighlightsStats)
 };
 
 export default ipcClient;

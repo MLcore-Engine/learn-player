@@ -1958,8 +1958,9 @@ function registerIpcHandlers({ app, ipcMain, dialog, BrowserWindow, store, state
     const db = getDb();
     if (!db) return { error: '数据库未初始化' };
     try {
-      let sql = 'SELECT * FROM highlights WHERE (next_review IS NULL OR next_review <= datetime(\'now\'))';
-      const params = [];
+      const now = new Date().toISOString();
+      let sql = 'SELECT * FROM highlights WHERE (next_review IS NULL OR next_review <= ?)';
+      const params = [now];
 
       if (status) {
         sql += ' AND status = ?';
@@ -2021,6 +2022,53 @@ function registerIpcHandlers({ app, ipcMain, dialog, BrowserWindow, store, state
       return { success: true, srs_data: { ease, interval, repetitions, next_review } };
     } catch (error) {
       console.error('submitReview error:', error);
+      return { error: error.message };
+    }
+  });
+
+  // ===== T1-3 bonus: highlights stats aggregation =====
+  ipcMain.handle('getHighlightsStats', () => {
+    const db = getDb();
+    if (!db) return { error: '数据库未初始化' };
+    try {
+      const total = db.prepare('SELECT COUNT(*) as count FROM highlights').get().count;
+      const byStatus = db.prepare(`
+        SELECT status, COUNT(*) as count FROM highlights GROUP BY status
+      `).all();
+      const totalVideos = db.prepare(
+        'SELECT COUNT(DISTINCT video_path) as count FROM highlights'
+      ).get().count;
+      const todayReviewed = db.prepare(`
+        SELECT COUNT(*) as count FROM highlights
+        WHERE date(last_review) = date('now', 'localtime')
+      `).get().count;
+      // streakDays: count consecutive days ending today with at least 1 review
+      const reviewDays = db.prepare(`
+        SELECT DISTINCT date(last_review) as day FROM highlights
+        WHERE last_review IS NOT NULL ORDER BY day DESC
+      `).all().map(r => r.day);
+      let streak = 0;
+      const today = new Date().toISOString().slice(0, 10);
+      for (let i = 0; i < reviewDays.length; i++) {
+        const expected = new Date();
+        expected.setDate(expected.getDate() - i);
+        if (reviewDays[i] === expected.toISOString().slice(0, 10)) streak++;
+        else break;
+      }
+      const statusMap = {};
+      byStatus.forEach(r => { statusMap[r.status] = r.count; });
+      return {
+        totalHighlights: total,
+        pendingHighlights: statusMap.pending || 0,
+        reviewedHighlights: statusMap.reviewed || 0,
+        archivedHighlights: statusMap.archived || 0,
+        masteredHighlights: statusMap.mastered || 0,
+        totalVideos,
+        todayReviewed,
+        streakDays: streak
+      };
+    } catch (error) {
+      console.error('getHighlightsStats error:', error);
       return { error: error.message };
     }
   });
