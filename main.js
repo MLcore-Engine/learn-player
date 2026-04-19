@@ -66,7 +66,9 @@ autoUpdater.logger = log;
 autoUpdater.autoDownload = false;
 autoUpdater.autoInstallOnAppQuit = true;
 
-// ===== 新增：本地HTTP服务器用于视频范围请求 =====
+// ===== 本地HTTP服务器用于视频范围请求 =====
+// 同步初始化：立即创建 server 对象，避免 getVideoServerPort 在 server 未创建时就返回 null
+// 实际端口绑定在后台完成；如优先端口被占，会自动回退到随机端口
 startVideoServer();
 
 // 添加新的 app 协议

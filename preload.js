@@ -246,7 +246,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getVideoServerPort: () => ipcRenderer.invoke('getVideoServerPort'),
   // 生成本地视频 HTTP URL
   getVideoHttpUrl: async (videoPath) => {
-    const port = await ipcRenderer.invoke('getVideoServerPort');
+    let port = await ipcRenderer.invoke('getVideoServerPort');
+    // 端口未就绪（服务刚启动），等待一下再重试
+    if (!port) {
+      await new Promise((r) => setTimeout(r, 800));
+      port = await ipcRenderer.invoke('getVideoServerPort');
+    }
     if (!port) {
       throw new Error('视频服务端口不可用，无法生成播放地址');
     }

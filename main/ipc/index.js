@@ -248,14 +248,13 @@ function registerIpcHandlers({ app, ipcMain, dialog, BrowserWindow, store, state
   });
 
   // IPC: 获取视频服务器端口
+  // getVideoServerPort() 不再抛异常；返回 null 表示服务正在启动或失败
   ipcMain.handle('getVideoServerPort', () => {
     const port = getVideoServerPort();
-    const error = getVideoServerError();
-    if (error || !port) {
-      const message = error
-        ? `视频服务端口不可用: ${error.message}`
-        : '视频服务端口尚未就绪';
-      throw new Error(message);
+    if (!port) {
+      // 服务未就绪时触发一次启动尝试（懒启动），返回 null 让渲染进程重试
+      startVideoServer();
+      return null;
     }
     return port;
   });
