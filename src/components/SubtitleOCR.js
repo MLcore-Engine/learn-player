@@ -66,7 +66,12 @@ const SubtitleOCR = React.memo(({ videoRef, onRecognize, isLoading: externalLoad
       }
     } catch (err) {
       console.error('OCR 识别失败', err);
-      onRecognize && onRecognize({ status: 'error', error: `识别失败: ${err.message || '未知错误'}` });
+      const rawMsg = err?.message || '未知错误';
+      const displayMsg =
+        rawMsg.includes('429') || rawMsg.includes('限流')
+          ? '请求过于频繁，请稍后再试（接口限流）'
+          : rawMsg;
+      onRecognize && onRecognize({ status: 'error', error: `识别失败: ${displayMsg}` });
     } finally {
       if (externalLoading === undefined) {
         setInternalLoading(false);

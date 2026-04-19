@@ -15,7 +15,7 @@ const defaultOcrConfig = {
   apiKey: '',
   apiUrl: 'https://open.bigmodel.cn/api/paas/v4/chat/completions',
   ocrEndpoint: '/api/vision-ocr', // OCR专用端点（保留兼容性）
-  model: 'GLM-4.6V-Flash'
+  model: 'glm-4.6v-flash' // 智谱视觉模型，与官方文档一致 https://docs.bigmodel.cn/cn/guide/models/free/glm-4.6v-flash
 };
 
 // OCR识别接口配置
@@ -162,14 +162,21 @@ class OcrApiService {
     } catch (error) {
       console.error('OCR识别请求失败:', error);
       if (error.response) {
-        // 服务器返回错误状态码
-        throw new Error(`服务器错误: ${error.response.status} - ${error.response.data?.message || '未知错误'}`);
+        const status = error.response.status;
+        const detail = error.response.data?.error?.message || error.response.data?.message || '未知错误';
+        // 429 为接口限流
+        if (status === 429) {
+          throw new Error('请求过于频繁，请稍后再试（接口限流）');
+        }
+        throw new Error(`服务器错误: ${status} - ${detail}`);
       } else if (error.request) {
-        // 请求发送失败
         throw new Error('无法连接到服务器，请检查网络连接');
       } else {
-        // 其他错误
-        throw new Error(`OCR识别失败: ${error.message}`);
+        const msg = error.message || '';
+        if (msg.includes('429')) {
+          throw new Error('请求过于频繁，请稍后再试（接口限流）');
+        }
+        throw new Error(`OCR识别失败: ${msg}`);
       }
     }
   }

@@ -813,7 +813,12 @@ function registerIpcHandlers({ app, ipcMain, dialog, BrowserWindow, store, state
       return { success: true, data: response.data };
     } catch (error) {
       console.error('【主进程】AI 请求失败:', error);
-      return { success: false, error: error.message };
+      const status = error.response?.status;
+      const msg =
+        status === 429
+          ? '请求过于频繁，请稍后再试（接口限流）'
+          : (error.response?.data?.error?.message || error.response?.data?.message || error.message);
+      return { success: false, error: msg };
     }
   });
 

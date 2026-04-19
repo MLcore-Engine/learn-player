@@ -37,7 +37,7 @@ async function recognizeViaServer(imageDataUrl) {
   if (isZhipu) {
     performUrl = baseUrl; // 直接使用智谱 chat completions 地址
     requestData = {
-      model: 'GLM-4.6V-Flash',
+      model: 'glm-4.6v-flash', // 官方文档小写 https://docs.bigmodel.cn/cn/guide/models/free/glm-4.6v-flash
       messages: [
         {
           role: 'user',
@@ -73,7 +73,12 @@ async function recognizeViaServer(imageDataUrl) {
 
   const result = await ipcClient.performAIRequest(requestData, performUrl, apiKey);
   if (!result || result.success !== true) {
-    throw new Error(result?.error || '服务端 OCR 请求失败');
+    const raw = result?.error || '服务端 OCR 请求失败';
+    const msg =
+      typeof raw === 'string' && (raw.includes('429') || raw.includes('限流'))
+        ? '请求过于频繁，请稍后再试（接口限流）'
+        : raw;
+    throw new Error(msg);
   }
 
   const payload = result.data;

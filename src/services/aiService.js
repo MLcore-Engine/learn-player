@@ -14,7 +14,7 @@ const axiosInstance = axios.create({
 const defaultConfig = {
   apiKey: '',
   apiUrl: 'https://open.bigmodel.cn/api/paas/v4/chat/completions',
-  model: 'GLM-4.7-Flash'
+  model: 'glm-4.7-flash' // 智谱文本模型，与官方文档一致 https://docs.bigmodel.cn/cn/guide/models/free/glm-4.7-flash
 };
 
 // 主 prompt 内容
