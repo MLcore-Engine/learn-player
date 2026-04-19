@@ -192,6 +192,74 @@ function registerIpcHandlers({ app, ipcMain, dialog, BrowserWindow, store, state
   // 定期清理缓存
   setInterval(cleanupCache, CACHE_CONFIG.cleanupInterval);
 
+  // ===== T1-1: highlights table migration =====
+  (function() {
+    const db = getDb();
+    if (!db) {
+      console.error('【主进程】数据库未初始化，跳过 highlights 表迁移');
+      return;
+    }
+    try {
+      // 创建 highlights 表
+      db.prepare(`
+        CREATE TABLE IF NOT EXISTS highlights (
+          id TEXT PRIMARY KEY,
+          video_path TEXT NOT NULL,
+          video_title TEXT,
+          start_time REAL,
+          end_time REAL,
+          original_text TEXT NOT NULL,
+          context_before TEXT,
+          context_after TEXT,
+          explanation TEXT,
+          user_note TEXT,
+          status TEXT DEFAULT 'pending',
+          ease REAL DEFAULT 2.5,
+          interval INTEGER DEFAULT 0,
+          repetitions INTEGER DEFAULT 0,
+          next_review TEXT,
+          last_review TEXT,
+          created_at TEXT DEFAULT (datetime('now')),
+          updated_at TEXT DEFAULT (datetime('now'))
+        )
+      `).run();
+
+      // 检查 highlights 表是否已有数据（避免重复迁移）
+      const existingCount = db.prepare('SELECT COUNT(*) as count FROM highlights').get();
+      if (existingCount.count > 0) {
+        console.log('【主进程】highlights 表已有数据，跳过迁移');
+        return;
+      }
+
+      // 从 learning_records 迁移数据
+      const learningRecords = db.prepare('SELECT * FROM learning_records').all();
+      for (const record of learningRecords) {
+        const id = require('crypto').randomUUID();
+        const status = record.explanation ? 'reviewed' : 'pending';
+        db.prepare(`
+          INSERT INTO highlights (id, video_path, original_text, explanation, status, ease, interval, repetitions, next_review, created_at, updated_at)
+          VALUES (?, ?, ?, ?, ?, 2.5, 0, 0, NULL, datetime('now'), datetime('now'))
+        `).run(id, record.video_id, record.word, record.explanation, status);
+      }
+      console.log(`【主进程】从 learning_records 迁移了 ${learningRecords.length} 条记录到 highlights`);
+
+      // 从 vocabulary 迁移数据
+      const vocabRecords = db.prepare('SELECT * FROM vocabulary').all();
+      for (const record of vocabRecords) {
+        const id = require('crypto').randomUUID();
+        const meaning = record.meaning || record.explanation;
+        const status = record.next_review ? 'reviewed' : 'pending';
+        db.prepare(`
+          INSERT INTO highlights (id, video_path, original_text, explanation, status, ease, interval, repetitions, next_review, created_at, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+        `).run(id, record.video_id, record.word, meaning, status, record.ease || 2.5, record.interval || 0, record.repetitions || 0, record.next_review);
+      }
+      console.log(`【主进程】从 vocabulary 迁移了 ${vocabRecords.length} 条记录到 highlights`);
+    } catch (error) {
+      console.error('【主进程】highlights 表迁移失败:', error);
+    }
+  })();
+
   ipcMain.handle('saveApiKey', (event, payload) => {
     console.log('【主进程】收到 saveApiKey 请求');
     try {
@@ -1730,6 +1798,229 @@ function registerIpcHandlers({ app, ipcMain, dialog, BrowserWindow, store, state
       };
     } catch (error) {
       console.error('获取词汇统计失败:', error);
+      return { error: error.message };
+    }
+  });
+
+  // ===== T1-2: highlights CRUD handlers =====
+
+  // createHighlight
+  ipcMain.handle('createHighlight', (event, highlightData) => {
+    const db = getDb();
+    if (!db) return { error: '数据库未初始化' };
+    try {
+      const id = require('crypto').randomUUID();
+      const now = new Date().toISOString();
+      const {
+        video_path, video_title, start_time, end_time, original_text,
+        context_before, context_after, explanation, user_note,
+        status, ease, interval, repetitions, next_review, last_review
+      } = highlightData || {};
+
+      db.prepare(`
+        INSERT INTO highlights (id, video_path, video_title, start_time, end_time, original_text,
+          context_before, context_after, explanation, user_note, status, ease, interval,
+          repetitions, next_review, last_review, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(
+        id, video_path || null, video_title || null, start_time || null, end_time || null,
+        original_text || null, context_before || null, context_after || null,
+        explanation || null, user_note || null, status || 'pending',
+        ease ?? 2.5, interval ?? 0, repetitions ?? 0,
+        next_review || null, last_review || null, now, now
+      );
+
+      const highlight = db.prepare('SELECT * FROM highlights WHERE id = ?').get(id);
+      return { success: true, id, highlight };
+    } catch (error) {
+      console.error('createHighlight error:', error);
+      return { error: error.message };
+    }
+  });
+
+  // getHighlights
+  ipcMain.handle('getHighlights', (event, { videoPath, status, limit = 100, offset = 0 } = {}) => {
+    const db = getDb();
+    if (!db) return { error: '数据库未初始化' };
+    try {
+      let sql = 'SELECT * FROM highlights WHERE 1=1';
+      const params = [];
+
+      if (videoPath) {
+        sql += ' AND video_path = ?';
+        params.push(videoPath);
+      }
+      if (status) {
+        sql += ' AND status = ?';
+        params.push(status);
+      }
+
+      sql += ' ORDER BY created_at DESC LIMIT ? OFFSET ?';
+      params.push(limit, offset);
+
+      const highlights = db.prepare(sql).all(...params);
+      return highlights;
+    } catch (error) {
+      console.error('getHighlights error:', error);
+      return { error: error.message };
+    }
+  });
+
+  // getHighlight
+  ipcMain.handle('getHighlight', (event, { id }) => {
+    const db = getDb();
+    if (!db) return { error: '数据库未初始化' };
+    try {
+      if (!id) return { error: 'id is required' };
+      const highlight = db.prepare('SELECT * FROM highlights WHERE id = ?').get(id);
+      if (!highlight) return { error: 'Not found' };
+      return highlight;
+    } catch (error) {
+      console.error('getHighlight error:', error);
+      return { error: error.message };
+    }
+  });
+
+  // updateHighlight
+  ipcMain.handle('updateHighlight', (event, { id, ...fields }) => {
+    const db = getDb();
+    if (!db) return { error: '数据库未初始化' };
+    try {
+      if (!id) return { error: 'id is required' };
+
+      const allowedFields = ['explanation', 'user_note', 'status', 'ease', 'interval', 'repetitions', 'next_review', 'last_review'];
+      const updates = [];
+      const params = [];
+
+      for (const field of allowedFields) {
+        if (fields[field] !== undefined) {
+          updates.push(`${field} = ?`);
+          params.push(fields[field]);
+        }
+      }
+
+      if (updates.length === 0) return { error: 'No fields to update' };
+
+      updates.push('updated_at = ?');
+      params.push(new Date().toISOString());
+      params.push(id);
+
+      db.prepare(`UPDATE highlights SET ${updates.join(', ')} WHERE id = ?`).run(...params);
+      return { success: true };
+    } catch (error) {
+      console.error('updateHighlight error:', error);
+      return { error: error.message };
+    }
+  });
+
+  // deleteHighlight
+  ipcMain.handle('deleteHighlight', (event, { id }) => {
+    const db = getDb();
+    if (!db) return { error: '数据库未初始化' };
+    try {
+      if (!id) return { error: 'id is required' };
+      db.prepare('DELETE FROM highlights WHERE id = ?').run(id);
+      return { success: true };
+    } catch (error) {
+      console.error('deleteHighlight error:', error);
+      return { error: error.message };
+    }
+  });
+
+  // ===== T1-3: SRS handlers =====
+
+  // SM-2 algorithm simplified implementation
+  function calculateSM2(highlight, quality) {
+    let { ease, interval, repetitions } = highlight;
+    // quality: 0=blackout, 1=hard, 2=good, 3=easy
+    if (quality < 2) {
+      // 重来或困难：重新开始
+      repetitions = 0;
+      interval = 1;
+    } else {
+      // 良好或简单
+      if (repetitions === 0) interval = 1;
+      else if (repetitions === 1) interval = 6;
+      else interval = Math.round(interval * ease);
+      repetitions += 1;
+    }
+    // 更新 ease
+    ease = ease + (0.1 - (3 - quality) * (0.08 + (3 - quality) * 0.02));
+    if (ease < 1.3) ease = 1.3;
+    // 下次复习时间
+    const next_review = new Date();
+    next_review.setDate(next_review.getDate() + interval);
+    return { ease, interval, repetitions, next_review: next_review.toISOString() };
+  }
+
+  // getDueHighlights
+  ipcMain.handle('getDueHighlights', (event, { limit = 20, status } = {}) => {
+    const db = getDb();
+    if (!db) return { error: '数据库未初始化' };
+    try {
+      let sql = 'SELECT * FROM highlights WHERE (next_review IS NULL OR next_review <= datetime(\'now\'))';
+      const params = [];
+
+      if (status) {
+        sql += ' AND status = ?';
+        params.push(status);
+      }
+
+      sql += ' ORDER BY next_review ASC NULLS FIRST, created_at ASC LIMIT ?';
+      params.push(limit);
+
+      const highlights = db.prepare(sql).all(...params);
+      return highlights;
+    } catch (error) {
+      console.error('getDueHighlights error:', error);
+      return { error: error.message };
+    }
+  });
+
+  // submitReview
+  ipcMain.handle('submitReview', (event, { id, quality }) => {
+    const db = getDb();
+    if (!db) return { error: '数据库未初始化' };
+    try {
+      if (!id) return { error: 'id is required' };
+      if (quality === undefined || quality === null) return { error: 'quality is required' };
+
+      // Get current highlight
+      const highlight = db.prepare('SELECT * FROM highlights WHERE id = ?').get(id);
+      if (!highlight) return { error: 'Highlight not found' };
+
+      // Calculate new SRS values using SM-2
+      const { ease, interval, repetitions, next_review } = calculateSM2(highlight, quality);
+
+      // Update highlight
+      db.prepare(`
+        UPDATE highlights
+        SET ease = ?, interval = ?, repetitions = ?, next_review = ?,
+            last_review = datetime('now'), updated_at = datetime('now')
+        WHERE id = ?
+      `).run(ease, interval, repetitions, next_review, id);
+
+      // Try to insert into vocabulary_reviews table (if exists)
+      try {
+        db.prepare(`
+          INSERT INTO vocabulary_reviews (vocabulary_id, quality, ease_before, ease_after, interval_before, interval_after)
+          VALUES (?, ?, ?, ?, ?, ?)
+        `).run(
+          id,
+          quality,
+          highlight.ease,
+          ease,
+          highlight.interval,
+          interval
+        );
+      } catch (err) {
+        // Silently ignore if table doesn't exist or schema mismatch
+        console.log('vocabulary_reviews insert skipped (table may not exist):', err.message);
+      }
+
+      return { success: true, srs_data: { ease, interval, repetitions, next_review } };
+    } catch (error) {
+      console.error('submitReview error:', error);
       return { error: error.message };
     }
   });

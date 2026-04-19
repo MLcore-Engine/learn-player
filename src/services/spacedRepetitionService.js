@@ -1,4 +1,5 @@
 import { ipcClient } from './ipcClient';
+import { getDueHighlights, submitReview as submitHighlightReview } from './highlightService';
 
 /**
  * 间隔重复服务
@@ -39,6 +40,24 @@ class SpacedRepetitionService {
   }
 
   /**
+   * 获取今日待复习高亮
+   * @param {number} limit - 复习数量限制
+   * @returns {Promise<Array>} 待复习高亮列表
+   */
+  async getTodayReview(limit = 20) {
+    try {
+      const highlights = await getDueHighlights({ limit });
+      if (highlights.error) {
+        throw new Error(highlights.error);
+      }
+      return highlights;
+    } catch (error) {
+      console.error('获取今日复习失败:', error);
+      return { error: error.message };
+    }
+  }
+
+  /**
    * 提交单词复习结果
    * @param {string} wordId - 单词ID
    * @param {number} quality - 记忆质量评级
@@ -65,6 +84,25 @@ class SpacedRepetitionService {
     } catch (error) {
       console.error('提交复习结果失败:', error);
       throw error;
+    }
+  }
+
+  /**
+   * 更新复习结果（使用 highlightService）
+   * @param {string} id - 高亮ID
+   * @param {number} quality - 记忆质量评级
+   * @returns {Promise<Object>} 更新结果
+   */
+  async updateReview(id, quality) {
+    try {
+      const result = await submitHighlightReview(id, quality);
+      if (result.error) {
+        throw new Error(result.error);
+      }
+      return result;
+    } catch (error) {
+      console.error('更新复习结果失败:', error);
+      return { error: error.message };
     }
   }
 
@@ -180,4 +218,5 @@ class SpacedRepetitionService {
   }
 }
 
-export default new SpacedRepetitionService();
+const spacedRepetitionService = new SpacedRepetitionService();
+export default SpacedRepetitionService;

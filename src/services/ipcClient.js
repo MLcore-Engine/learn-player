@@ -47,7 +47,14 @@ export const IPC_CHANNELS = {
     updateVocabularyCard: 'updateVocabularyCard',
     addVocabularyWord: 'addVocabularyWord',
     extractWordsFromQueries: 'extractWordsFromQueries',
-    getVocabularyStats: 'getVocabularyStats'
+    getVocabularyStats: 'getVocabularyStats',
+    createHighlight: 'createHighlight',
+    getHighlights: 'getHighlights',
+    getHighlight: 'getHighlight',
+    updateHighlight: 'updateHighlight',
+    deleteHighlight: 'deleteHighlight',
+    getDueHighlights: 'getDueHighlights',
+    submitReview: 'submitReview'
   },
   send: {
     getCategories: 'getCategories',
@@ -235,7 +242,15 @@ export const ipcClient = {
   updateVocabularyCard: (data) => invoke(IPC_CHANNELS.invoke.updateVocabularyCard, data),
   addVocabularyWord: (data) => invoke(IPC_CHANNELS.invoke.addVocabularyWord, data),
   extractWordsFromQueries: (options) => invoke(IPC_CHANNELS.invoke.extractWordsFromQueries, options),
-  getVocabularyStats: () => invoke(IPC_CHANNELS.invoke.getVocabularyStats)
+  getVocabularyStats: () => invoke(IPC_CHANNELS.invoke.getVocabularyStats),
+
+  createHighlight: (data) => invoke(IPC_CHANNELS.invoke.createHighlight, data),
+  getHighlights: (options) => invoke(IPC_CHANNELS.invoke.getHighlights, options),
+  getHighlight: (options) => invoke(IPC_CHANNELS.invoke.getHighlight, options),
+  updateHighlight: (options) => invoke(IPC_CHANNELS.invoke.updateHighlight, options),
+  deleteHighlight: (options) => invoke(IPC_CHANNELS.invoke.deleteHighlight, options),
+  getDueHighlights: (options) => invoke(IPC_CHANNELS.invoke.getDueHighlights, options),
+  submitReview: (options) => invoke(IPC_CHANNELS.invoke.submitReview, options)
 };
 
 export default ipcClient;
