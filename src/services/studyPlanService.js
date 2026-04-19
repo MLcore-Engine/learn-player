@@ -1,4 +1,5 @@
 import { ipcClient } from './ipcClient';
+import learningAnalyticsService from './learningAnalyticsService';
 
 /**
  * 学习计划服务
@@ -17,7 +18,8 @@ class StudyPlanService {
     }
 
     try {
-      const analytics = await ipcClient.getLearningOverview();
+      // 使用 learningStatsService.getOverview 替代原来的 ipcClient.getLearningOverview
+      const analytics = await learningAnalyticsService.getLearningOverview();
       const pattern = await ipcClient.analyzeLearningPattern();
       const wordStats = await ipcClient.getWordFrequencyStats({ limit: 20 });
 
@@ -78,4 +80,5 @@ class StudyPlanService {
   }
 }
 
-export default new StudyPlanService();
+const studyPlanService = new StudyPlanService();
+export default StudyPlanService;

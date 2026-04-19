@@ -44,7 +44,16 @@ const allowedInvokeChannels = [
   'updateVocabularyCard',
   'addVocabularyWord',
   'extractWordsFromQueries',
-  'getVocabularyStats'
+  'getVocabularyStats',
+  // T1-6: highlights IPC channels
+  'createHighlight',
+  'getHighlights',
+  'getHighlight',
+  'updateHighlight',
+  'deleteHighlight',
+  'getDueHighlights',
+  'submitReview',
+  'getLearningStats'
 ];
 
 const allowedSendChannels = [
@@ -286,7 +295,20 @@ contextBridge.exposeInMainWorld('electronAPI', {
   updateVocabularyCard: (data) => ipcRenderer.invoke('updateVocabularyCard', data),
   addVocabularyWord: (data) => ipcRenderer.invoke('addVocabularyWord', data),
   extractWordsFromQueries: (options) => ipcRenderer.invoke('extractWordsFromQueries', options),
-  getVocabularyStats: () => ipcRenderer.invoke('getVocabularyStats')
+  getVocabularyStats: () => ipcRenderer.invoke('getVocabularyStats'),
+
+  // ===== T1-6: highlights IPC channels =====
+  // CRUD
+  createHighlight: (highlightData) => ipcRenderer.invoke('createHighlight', highlightData),
+  getHighlights: (params) => ipcRenderer.invoke('getHighlights', params),
+  getHighlight: (params) => ipcRenderer.invoke('getHighlight', params),
+  updateHighlight: (params) => ipcRenderer.invoke('updateHighlight', params),
+  deleteHighlight: (params) => ipcRenderer.invoke('deleteHighlight', params),
+  // SRS
+  getDueHighlights: (params) => ipcRenderer.invoke('getDueHighlights', params),
+  submitReview: (params) => ipcRenderer.invoke('submitReview', params),
+  // Stats
+  getLearningStats: (params) => ipcRenderer.invoke('getLearningStats', params)
 });
 
 console.log('--- Preload script: END ---'); 
