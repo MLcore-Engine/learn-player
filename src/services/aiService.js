@@ -10,11 +10,11 @@ const axiosInstance = axios.create({
   }
 });
 
-// 默认AI服务配置 - 使用智谱AI同步接口
+// 默认AI服务配置 - 使用阶跃星辰 StepFun Chat Completions
 const defaultConfig = {
   apiKey: '',
-  apiUrl: 'https://open.bigmodel.cn/api/paas/v4/chat/completions',
-  model: 'GLM-4.5-Flash'
+  apiUrl: 'https://api.stepfun.com/v1/chat/completions',
+  model: 'step-3.5-flash'
 };
 
 // 主 prompt 内容
@@ -281,7 +281,7 @@ class AIService {
       this.addContextMessage('system', systemPrompt);
       this.addContextMessage('user', text);
 
-      // 构造智谱AI同步接口请求体
+      // 构造 Chat Completions 请求体
       const requestData = {
         model: options.model || model,
         messages: this.context,
