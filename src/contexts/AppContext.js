@@ -125,7 +125,15 @@ export const VideoProvider = ({ children }) => {
     setIsPlaying: (isPlaying) => dispatch({ type: 'SET_IS_PLAYING', payload: isPlaying }),
     setSubtitleText: (text) => dispatch({ type: 'SET_SUBTITLE_TEXT', payload: text }),
     setVideoLoaded: (loaded) => dispatch({ type: 'SET_VIDEO_LOADED', payload: loaded }),
-    setPlayer: (player) => { playerRef.current = player; } // 新增：设置 player 实例
+    setPlayer: (player) => { playerRef.current = player; }, // 新增：设置 player 实例
+    jumpToTime: (seconds) => {
+      // 支持 video.js player 或原生 video element
+      if (playerRef.current && typeof playerRef.current.currentTime === 'function') {
+        playerRef.current.currentTime(seconds);
+      } else if (videoRef.current && typeof videoRef.current.currentTime === 'number') {
+        videoRef.current.currentTime = seconds;
+      }
+    }
   }), []); // 空依赖数组，确保actions只创建一次
 
   return (

@@ -170,7 +170,8 @@ const VideoPlayer = React.memo(({
                 const active = extTrack.activeCues; 
                 console.log('Cuechange active:', active?.length); 
                 if (active?.length) {
-                  onSubtitleSelectRef.current(active[0].text); 
+                  // VTTCue has startTime and endTime properties
+                  onSubtitleSelectRef.current(active[0].text, active[0].startTime); 
                 }
               } catch (e) {
                 console.warn('处理cuechange事件时出错:', e);

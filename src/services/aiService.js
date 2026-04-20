@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { ipcClient } from './ipcClient';
 import resolveAiConfig from './aiConfigService';
+import { createHighlight } from './highlightService';
 
 // 创建 axios 实例
 const axiosInstance = axios.create({
@@ -432,6 +433,16 @@ class AIService {
               // 写入上下文并结束
               this.addContextMessage('assistant', fullText);
               if (typeof handlers.onDone === 'function') handlers.onDone(fullText, payload);
+              // T2-1: 自动写入 highlights 表
+              if (options?.videoPath && fullText) {
+                createHighlight({
+                  video_path: options.videoPath,
+                  original_text: text,
+                  explanation: fullText,
+                  start_time: options.currentTime || null,
+                  status: 'pending'
+                }).catch(e => console.warn('自动写入 highlight 失败:', e));
+              }
               if (unsubscribe) unsubscribe();
               resolve(fullText);
             } else if (payload.type === 'error') {
