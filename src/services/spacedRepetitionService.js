@@ -219,4 +219,4 @@ class SpacedRepetitionService {
 }
 
 const spacedRepetitionService = new SpacedRepetitionService();
-export default SpacedRepetitionService;
+export default spacedRepetitionService;

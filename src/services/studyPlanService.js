@@ -81,4 +81,4 @@ class StudyPlanService {
 }
 
 const studyPlanService = new StudyPlanService();
-export default StudyPlanService;
+export default studyPlanService;

@@ -144,4 +144,4 @@ class LearningAnalyticsService {
 }
 
 const learningAnalyticsService = new LearningAnalyticsService();
-export default LearningAnalyticsService;
+export default learningAnalyticsService;
