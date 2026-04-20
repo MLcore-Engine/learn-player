@@ -194,8 +194,66 @@ app.whenReady().then(async () => {
           updated_at TEXT DEFAULT CURRENT_TIMESTAMP
         );
       `);
-      
-      // 创建词汇复习记录表
+
+      // ===== T1-1: highlights 表（无论 db 是否新创建都要确保存在）=====
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS highlights (
+          id TEXT PRIMARY KEY,
+          video_path TEXT NOT NULL,
+          video_title TEXT,
+          start_time REAL,
+          end_time REAL,
+          original_text TEXT NOT NULL,
+          context_before TEXT,
+          context_after TEXT,
+          explanation TEXT,
+          user_note TEXT,
+          status TEXT DEFAULT 'pending',
+          ease REAL DEFAULT 2.5,
+          interval INTEGER DEFAULT 0,
+          repetitions INTEGER DEFAULT 0,
+          next_review TEXT,
+          last_review TEXT,
+          created_at TEXT DEFAULT (datetime('now')),
+          updated_at TEXT DEFAULT (datetime('now'))
+        );
+      `);
+
+      // ===== T1-1: highlights 数据迁移（无论新/老 db 都要跑，有 existing 检查防重）=====
+      (function() {
+        try {
+          const existing = db.prepare('SELECT COUNT(*) as count FROM highlights').get();
+          if (existing.count > 0) {
+            console.log('【主进程】highlights 表已有数据，跳过迁移');
+            return;
+          }
+          const learningRecords = db.prepare('SELECT * FROM learning_records').all();
+          for (const record of learningRecords) {
+            const id = require('crypto').randomUUID();
+            const status = record.explanation ? 'reviewed' : 'pending';
+            db.prepare(`
+              INSERT INTO highlights (id, video_path, original_text, explanation, status, ease, interval, repetitions, next_review, created_at, updated_at)
+              VALUES (?, ?, ?, ?, ?, 2.5, 0, 0, NULL, datetime('now'), datetime('now'))
+            `).run(id, record.video_id, record.word, record.explanation, status);
+          }
+          console.log(`【主进程】从 learning_records 迁移了 ${learningRecords.length} 条记录到 highlights`);
+          const vocabRecords = db.prepare('SELECT * FROM vocabulary').all();
+          for (const record of vocabRecords) {
+            const id = require('crypto').randomUUID();
+            const meaning = record.meaning || record.explanation;
+            const status = record.next_review ? 'reviewed' : 'pending';
+            db.prepare(`
+              INSERT INTO highlights (id, video_path, original_text, explanation, status, ease, interval, repetitions, next_review, created_at, updated_at)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+            `).run(id, record.video_id, record.word, meaning, status, record.ease || 2.5, record.interval || 0, record.repetitions || 0, record.next_review);
+          }
+          console.log(`【主进程】从 vocabulary 迁移了 ${vocabRecords.length} 条记录到 highlights`);
+        } catch (err) {
+          console.error('【主进程】highlights 数据迁移失败:', err);
+        }
+      })();
+
+      // 创建索引
       db.exec(`
         CREATE TABLE IF NOT EXISTS vocabulary_reviews (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -223,7 +281,7 @@ app.whenReady().then(async () => {
           updated_at TEXT DEFAULT CURRENT_TIMESTAMP
         );
       `);
-      
+
       // 创建索引
       db.exec(`
         CREATE INDEX IF NOT EXISTS idx_vocabulary_word ON vocabulary(word);
