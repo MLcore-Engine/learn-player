@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import TimeStats from './TimeStats';
 import OCRContainer from '../containers/OCRContainer';
 import OCRResultModal from './OCRResultModal';
 import ContextualBubble from './ContextualBubble';
 import { Box } from '@mui/material';
 import { useVideo } from '../contexts/AppContext';
+import { createHighlight } from '../services/highlightService';
 
 const SidePanelHeader = ({
   explainLoading,
@@ -17,15 +18,43 @@ const SidePanelHeader = ({
   onExplain,
   onRecognize,
   timeStatsProps,
-  onSubtitleSelected,
+  onSubtitleSelected,  // 字幕选中回调（来自 App.js 链路）
   onSaveToHighlight
 }) => {
-  const { jumpToTime } = useVideo();
-  
+  const { jumpToTime, videoPath } = useVideo();
+
   // Contextual bubble 状态
   const [bubbleText, setBubbleText] = useState('');
   const [bubblePosition, setBubblePosition] = useState({ x: 0, y: 0 });
   const [bubbleStartTime, setBubbleStartTime] = useState(null);
+
+  // T2-3: 响应字幕选中事件，弹出 contextual bubble
+  useEffect(() => {
+    if (typeof onSubtitleSelected === 'function') {
+      const handler = (text, startTime) => {
+        if (!text) return;
+        // 获取鼠标位置（字幕点击发生在 video 区域，鼠标即在附近）
+        setBubbleText(text);
+        setBubblePosition({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
+        setBubbleStartTime(startTime || null);
+      };
+      onSubtitleSelected(handler);
+    }
+  }, [onSubtitleSelected]);
+
+  // T2-2: 一键加入生词本
+  const handleSaveToReview = useCallback(async (text) => {
+    try {
+      await createHighlight({
+        video_path: videoPath || '',
+        original_text: text,
+        status: 'pending'
+      });
+    } catch (e) {
+      console.error('添加生词本失败:', e);
+    }
+    setBubbleText('');
+  }, [videoPath]);
 
   return (
     <>
@@ -79,13 +108,7 @@ const SidePanelHeader = ({
           onExplain(text);
           setBubbleText('');
         }}
-        onSaveToReview={async (text) => {
-          if (onSaveToHighlight) {
-            // 调用保存生词的回调
-            await onSaveToHighlight(text, bubbleStartTime);
-          }
-          setBubbleText('');
-        }}
+        onSaveToReview={handleSaveToReview}
         onPlaySegment={(startTime) => {
           if (typeof jumpToTime === 'function') {
             jumpToTime(startTime);
