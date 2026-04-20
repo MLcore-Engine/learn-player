@@ -1469,11 +1469,20 @@ function registerIpcHandlers({ app, ipcMain, dialog, BrowserWindow, store, state
   });
 
   // 保存学习计划
-  ipcMain.handle('saveStudyPlan', (event, { planData, structuredPlan, days, createdAt }) => {
+  ipcMain.handle('saveStudyPlan', (event, payload) => {
     const db = getDb();
     if (!db) return { error: '数据库未初始化' };
 
     try {
+      const planData = payload?.planData || payload?.planText || JSON.stringify(payload?.plan || payload?.structuredPlan || {}, null, 2);
+      const structuredPlan = payload?.structuredPlan || payload?.plan || {};
+      const days = payload?.days || structuredPlan?.days || 7;
+      const createdAt = payload?.createdAt || new Date().toISOString();
+
+      if (!planData) {
+        return { error: '学习计划内容不能为空' };
+      }
+
       // 将旧计划标记为completed
       db.prepare('UPDATE study_plans SET status = ? WHERE status = ?').run('completed', 'active');
 
@@ -1484,9 +1493,9 @@ function registerIpcHandlers({ app, ipcMain, dialog, BrowserWindow, store, state
 
       stmt.run(
         planData,
-        JSON.stringify(structuredPlan || {}),
-        days || 7,
-        createdAt || new Date().toISOString(),
+        JSON.stringify(structuredPlan),
+        days,
+        createdAt,
         new Date().toISOString()
       );
 
