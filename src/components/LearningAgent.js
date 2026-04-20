@@ -41,6 +41,7 @@ import learningAnalyticsService from '../services/learningAnalyticsService';
 import studyPlanService from '../services/studyPlanService';
 import spacedRepetitionService from '../services/spacedRepetitionService';
 import { ipcClient } from '../services/ipcClient';
+import ReviewSession from '../containers/ReviewSession';
 
 // 清理文本中的特殊标记
 const clean = (raw) => raw.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
@@ -68,6 +69,7 @@ const LearningAgent = () => {
   const [showAnswer, setShowAnswer] = useState(false);
   const [vocabStats, setVocabStats] = useState(null);
   const [extractingWords, setExtractingWords] = useState(false);
+  const [reviewMode, setReviewMode] = useState(false);
 
   // 初始化：加载数据
   useEffect(() => {
@@ -404,8 +406,15 @@ const LearningAgent = () => {
 
   // 渲染背单词标签页
   const renderVocabularyTab = () => {
-    const currentWord = reviewWords[currentWordIndex];
-    
+    if (reviewMode) {
+      return (
+        <Box sx={{ p: 2 }}>
+          <ReviewSession onClose={() => setReviewMode(false)} />
+        </Box>
+      );
+    }
+
+    // 非复习模式：显示统计 + 开始按钮
     return (
       <Box>
         <Box mb={3} display="flex" justifyContent="space-between" alignItems="center">
@@ -413,24 +422,13 @@ const LearningAgent = () => {
             <School sx={{ mr: 1, verticalAlign: 'middle' }} />
             背单词（间隔重复）
           </Typography>
-          <Box>
-            <Button
-              variant="outlined"
-              startIcon={extractingWords ? <CircularProgress size={16} /> : <Refresh />}
-              onClick={handleExtractWords}
-              disabled={extractingWords}
-              sx={{ mr: 1 }}
-            >
-              {extractingWords ? '提取中...' : '从查询记录提取单词'}
-            </Button>
-            <Button
-              variant="outlined"
-              startIcon={<Refresh />}
-              onClick={loadReviewWords}
-            >
-              刷新
-            </Button>
-          </Box>
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={() => setReviewMode(true)}
+          >
+            开始复习
+          </Button>
         </Box>
 
         {vocabStats && (
@@ -469,106 +467,6 @@ const LearningAgent = () => {
             </Grid>
           </Grid>
         )}
-
-        {reviewWords.length === 0 ? (
-          <Alert severity="info">
-            当前没有需要复习的单词。可以从查询记录中提取单词，或者手动添加单词到学习列表。
-          </Alert>
-        ) : currentWord ? (
-          <Card>
-            <CardContent>
-              <Box sx={{ mb: 2 }}>
-                <Typography variant="caption" color="textSecondary">
-                  {currentWordIndex + 1} / {reviewWords.length}
-                </Typography>
-              </Box>
-              
-              <Box sx={{ textAlign: 'center', mb: 3 }}>
-                <Typography variant="h3" gutterBottom>
-                  {currentWord.word}
-                </Typography>
-                {currentWord.phonetic && (
-                  <Typography variant="h6" color="textSecondary" gutterBottom>
-                    {currentWord.phonetic}
-                  </Typography>
-                )}
-              </Box>
-
-              {showAnswer ? (
-                <Box>
-                  {currentWord.meaning && (
-                    <Typography variant="h6" gutterBottom>
-                      含义: {currentWord.meaning}
-                    </Typography>
-                  )}
-                  {currentWord.example && (
-                    <Typography variant="body1" gutterBottom>
-                      例句: {currentWord.example}
-                    </Typography>
-                  )}
-                  {currentWord.explanation && (
-                    <Paper sx={{ p: 2, mt: 2, bgcolor: 'grey.50' }}>
-                      <Typography 
-                        variant="body2" 
-                        component="div"
-                        dangerouslySetInnerHTML={{
-                          __html: clean(currentWord.explanation)
-                            .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-                            .replace(/`(.+?)`/g, '<code>$1</code>')
-                            .replace(/\n/g, '<br/>')
-                        }}
-                      />
-                    </Paper>
-                  )}
-                  
-                  <Box sx={{ mt: 3, display: 'flex', justifyContent: 'center', gap: 2 }}>
-                    <Button
-                      variant="outlined"
-                      color="error"
-                      startIcon={<Cancel />}
-                      onClick={() => handleSubmitReview(0)}
-                    >
-                      重来
-                    </Button>
-                    <Button
-                      variant="outlined"
-                      color="warning"
-                      onClick={() => handleSubmitReview(1)}
-                    >
-                      困难
-                    </Button>
-                    <Button
-                      variant="outlined"
-                      color="primary"
-                      onClick={() => handleSubmitReview(2)}
-                    >
-                      良好
-                    </Button>
-                    <Button
-                      variant="outlined"
-                      color="success"
-                      startIcon={<CheckCircle />}
-                      onClick={() => handleSubmitReview(3)}
-                    >
-                      简单
-                    </Button>
-                  </Box>
-                </Box>
-              ) : (
-                <Box sx={{ textAlign: 'center' }}>
-                  <Button
-                    variant="contained"
-                    size="large"
-                    startIcon={<PlayArrow />}
-                    onClick={() => setShowAnswer(true)}
-                  >
-                    显示答案
-                  </Button>
-                </Box>
-              )}
-            </CardContent>
-          </Card>
-        ) : null}
       </Box>
     );
   };
