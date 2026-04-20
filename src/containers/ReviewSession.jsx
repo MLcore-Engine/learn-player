@@ -107,16 +107,31 @@ const ReviewSession = ({ onClose }) => {
   }
 
   return (
-    <Box sx={{ p: 2 }}>
+    <Box
+      sx={{
+        p: 0,
+        width: '100%',
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+    >
       {/* 进度条 */}
-      <Box sx={{ mb: 3 }}>
-        <Typography variant="caption" color="text.secondary">
-          {currentIndex + 1} / {cards.length}
-        </Typography>
-        <Box sx={{ height: 4, bgcolor: '#333', borderRadius: 2, mt: 0.5 }}>
+      <Box sx={{ mb: 2, width: '100%', maxWidth: 600 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
+          <Typography variant="caption" color="text.secondary">
+            {currentIndex + 1} / {cards.length}
+          </Typography>
+          <Typography variant="caption" color="text.secondary">
+            今日已复习 {reviewedToday}
+          </Typography>
+        </Box>
+        <Box sx={{ height: 4, bgcolor: '#333', borderRadius: 2 }}>
           <Box sx={{
             height: '100%',
-            width: `${((currentIndex) / cards.length) * 100}%`,
+            width: `${(currentIndex / Math.max(cards.length, 1)) * 100}%`,
             bgcolor: '#1976d2',
             borderRadius: 2,
             transition: 'width 0.3s'
@@ -133,7 +148,7 @@ const ReviewSession = ({ onClose }) => {
       />
 
       {/* 跳过按钮 */}
-      <Box sx={{ textAlign: 'center', mt: 2 }}>
+      <Box sx={{ mt: 2 }}>
         <Button
           variant="text"
           size="small"
