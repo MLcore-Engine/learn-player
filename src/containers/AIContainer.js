@@ -10,7 +10,7 @@ import { ipcClient } from '../services/ipcClient';
  * 管理AI学习助手相关的状态和逻辑，渲染LearningAssistant组件
  */
 const AIContainer = React.memo(() => {
-  const { videoPath } = useVideo();
+  const { videoPath, playerRef } = useVideo();
   const { 
     selectedText, 
     explanation, 
@@ -52,11 +52,15 @@ const AIContainer = React.memo(() => {
     
     try {
       let buffer = '';
+      const currentTime = playerRef.current?.currentTime?.() || null;
       const result = await aiService.streamExplanation(text, {
         onDelta: (piece, full) => {
           buffer = full; // full 已累加好
           setExplanation(buffer);
         }
+      }, {
+        videoPath,
+        currentTime
       });
 
       // 保存查询记录到数据库
@@ -75,7 +79,7 @@ const AIContainer = React.memo(() => {
     } finally {
       setLoading(false);
     }
-  }, [setSelectedText, setExplanation, setLoading]);
+  }, [setSelectedText, setExplanation, setLoading, videoPath, playerRef]);
 
   // 标记是否已加载记录，避免重复请求
   const loadedPathRef = useRef(null);

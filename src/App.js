@@ -37,6 +37,12 @@ const AppContent = () => {
       setHasExternalSubtitles(info.hasExternalSubtitles);
     }
   }, []);
+
+  // 处理字幕选择回调 - 显示 contextual bubble
+  const handleSubtitleSelect = useCallback((text, startTime) => {
+    // 这个回调会被传给 SidePanel 来显示 bubble
+    // 通过 SidePanel 的 onSubtitleSelect prop 实现
+  }, []);
   
   // API密钥设置属性
   const apiKeyProps = {
@@ -66,11 +72,11 @@ const AppContent = () => {
         overflow: 'hidden'
       }}>
         {/* 视频区域 */}
-        <VideoContainer onPlayerReady={handlePlayerReady} />
+        <VideoContainer onPlayerReady={handlePlayerReady} onSubtitleSelect={handleSubtitleSelect} />
         
         {/* 侧边面板 */}
         <AIProviders>
-          <SidePanel hasExternalSubtitles={hasExternalSubtitles} />
+          <SidePanel hasExternalSubtitles={hasExternalSubtitles} onSubtitleSelect={handleSubtitleSelect} />
         </AIProviders>
       </div>
     </>

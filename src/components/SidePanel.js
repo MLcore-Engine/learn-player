@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import { useTimeStats } from '../contexts/AppContext';
 import { Box } from '@mui/material';
 import SidePanelHeader from './SidePanelHeader';
@@ -6,12 +6,13 @@ import SidePanelTabs from './SidePanelTabs';
 import SidePanelContent from './SidePanelContent';
 import useExplainFlow from '../hooks/useExplainFlow';
 import useResizablePanel from '../hooks/useResizablePanel';
+import { createHighlight } from '../services/highlightService';
 
 /**
  * 侧边面板组件
  * 集成各个子容器组件
  */
-const SidePanel = React.memo(({ hasExternalSubtitles }) => {
+const SidePanel = React.memo(({ hasExternalSubtitles, onSubtitleSelect }) => {
   const { totalTime, sessionTime, remainingSeconds, formatTime } = useTimeStats();
   const [panelTab, setPanelTab] = useState(0); // 0=AI助手, 1=学习Agent
   const { width, isDragging, handleDragStart } = useResizablePanel();
@@ -25,7 +26,33 @@ const SidePanel = React.memo(({ hasExternalSubtitles }) => {
     ocrModalOpen,
     ocrResult
   } = useExplainFlow({ hasExternalSubtitles });
-  
+
+  // 保存生词到 highlight
+  const handleSaveToHighlight = useCallback(async (text, startTime) => {
+    try {
+      // 获取当前视频路径 - 从 localStorage 或 context
+      const videoPath = localStorage.getItem('lastVideoPath') || '';
+      
+      const highlightData = {
+        videoPath,
+        startTime: startTime || 0,
+        original_text: text,
+        context_before: '',
+        context_after: '',
+        created_at: new Date().toISOString()
+      };
+      
+      const result = await createHighlight(highlightData);
+      if (result && !result.error) {
+        console.log('生词保存成功:', text);
+      } else {
+        console.error('生词保存失败:', result?.error);
+      }
+    } catch (error) {
+      console.error('保存生词失败:', error);
+    }
+  }, []);
+
   const timeStatsProps = {
     totalTime,
     sessionTime,
@@ -72,6 +99,8 @@ const SidePanel = React.memo(({ hasExternalSubtitles }) => {
         onExplain={handleExplain}
         onRecognize={handleOCRRecognize}
         timeStatsProps={timeStatsProps}
+        onSubtitleSelected={onSubtitleSelect}
+        onSaveToHighlight={handleSaveToHighlight}
       />
       
       {/* 标签页切换 */}
@@ -83,4 +112,4 @@ const SidePanel = React.memo(({ hasExternalSubtitles }) => {
   );
 });
 
-export default SidePanel; 
+export default SidePanel;

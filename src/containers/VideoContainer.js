@@ -10,7 +10,7 @@ import { useTimeStats as useTimeStatsHook } from '../hooks/useTimeStats';
  * 视频容器组件
  * 管理视频播放相关的状态和逻辑，渲染VideoPlayer组件
  */
-const VideoContainer = React.memo(({ onPlayerReady }) => {
+const VideoContainer = React.memo(({ onPlayerReady, onSubtitleSelect }) => {
   const {
     videoPath,
     videoRef,
@@ -54,10 +54,14 @@ const VideoContainer = React.memo(({ onPlayerReady }) => {
   }, [subtitles, setCurrentTime, setSubtitleText]);
 
   // 处理字幕选择 - 稳定化
-  const handleSubtitleSelect = useCallback((text) => {
-    console.log('字幕选择:', text);
-    // 用户点击字幕时的处理逻辑
-  }, []);
+  // callback: (text, startTime) => void
+  const handleSubtitleSelect = useCallback((text, startTime) => {
+    console.log('字幕选择:', text, 'at', startTime);
+    // 调用外部传入的回调，让 SidePanel 显示 bubble
+    if (onSubtitleSelect) {
+      onSubtitleSelect(text, startTime);
+    }
+  }, [onSubtitleSelect]);
 
   // 从VideoPlayer获取播放器实例的回调 - 稳定化
   const handlePlayerReady = useCallback((player, info) => {

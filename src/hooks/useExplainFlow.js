@@ -10,7 +10,7 @@ const useExplainFlow = ({ hasExternalSubtitles }) => {
   const [ocrError, setOcrError] = useState('');
   const [explainLoading, setExplainLoading] = useState(false);
   const { setSelectedText, setExplanation, setLoading: setAiLoading, addRecord } = useAI();
-  const { isLoaded: isVideoLoaded, playerRef } = useVideo();
+  const { isLoaded: isVideoLoaded, playerRef, videoPath } = useVideo();
 
   const handleOCRRecognize = useCallback((payload) => {
     if (typeof payload === 'string') {
@@ -82,12 +82,17 @@ const useExplainFlow = ({ hasExternalSubtitles }) => {
     try {
       setExplanation('');
       let buffer = '';
+      const currentTime = playerRef.current?.currentTime?.() || null;
       const explanation = await aiService.streamExplanation(text, {
         onDelta: (piece, full) => {
           buffer = full;
           setExplanation(buffer);
         }
-      }, { language: lang });
+      }, { 
+        language: lang,
+        videoPath,
+        currentTime
+      });
       addRecord({ subtitle_text: text, explanation, timestamp: Date.now() });
       if (ipcClient.isAvailable()) {
         ipcClient.saveAiQuery({
