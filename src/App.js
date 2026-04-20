@@ -40,8 +40,9 @@ const AppContent = () => {
 
   // 处理字幕选择回调 - 显示 contextual bubble
   const handleSubtitleSelect = useCallback((text, startTime) => {
-    // 这个回调会被传给 SidePanel 来显示 bubble
-    // 通过 SidePanel 的 onSubtitleSelect prop 实现
+    // 字幕被选中时不需要在这里做任何事
+    // SidePanel 内部通过自己的 useExplainFlow + SidePanelHeader 管理 bubble
+    // 此处留空，text/startTime 已在 VideoPlayer → SidePanelHeader 的链路中传递
   }, []);
   
   // API密钥设置属性
