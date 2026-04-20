@@ -18,24 +18,44 @@ class StudyPlanService {
     }
 
     try {
-      // 使用 learningStatsService.getOverview 替代原来的 ipcClient.getLearningOverview
       const analytics = await learningAnalyticsService.getLearningOverview();
       const pattern = await ipcClient.analyzeLearningPattern();
       const wordStats = await ipcClient.getWordFrequencyStats({ limit: 20 });
 
-      const plan = {
+      const structuredPlan = {
         analytics,
         pattern,
         wordStats,
         ...options
       };
 
+      const planText = [
+        `**学习周期**: ${options.days || 7} 天`,
+        `**学习重点**: ${options.focus || 'comprehensive'}`,
+        `**总高亮数**: ${analytics?.totalHighlights || 0}`,
+        `**已复习数**: ${analytics?.reviewedHighlights || 0}`,
+        `**待处理数**: ${analytics?.pendingHighlights || 0}`,
+        `**复习率**: ${analytics?.reviewRate || 0}%`,
+        '',
+        '**建议行动**',
+        '- 优先复习已到期或未复习的高亮',
+        '- 结合高频词结果安排每日复习任务',
+        '- 先完成当天复习，再继续新增高亮'
+      ].join('\n');
+
       await ipcClient.saveStudyPlan({
-        plan,
+        planData: planText,
+        structuredPlan,
+        days: options.days || 7,
         createdAt: new Date().toISOString()
       });
 
-      return plan;
+      return {
+        planText,
+        plan: structuredPlan,
+        days: options.days || 7,
+        createdAt: new Date().toISOString()
+      };
     } catch (error) {
       console.error('生成学习计划失败:', error);
       throw error;
