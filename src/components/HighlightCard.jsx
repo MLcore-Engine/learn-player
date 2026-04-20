@@ -28,13 +28,25 @@ const HighlightCard = ({ highlight, onPlaySegment, onReviewed }) => {
   };
 
   return (
-    <Box sx={{ perspective: '1000px', width: '100%', maxWidth: 600, mx: 'auto' }}>
+    <Box
+      sx={{
+        perspective: '1000px',
+        width: '100%',
+        maxWidth: 600,
+        mx: 'auto',
+        flex: '1 1 auto',
+        minHeight: { xs: 260, sm: 300 },
+        display: 'flex',
+        flexDirection: 'column',
+      }}
+    >
       <Box
         onClick={() => !flipped && setFlipped(true)}
         sx={{
           position: 'relative',
           width: '100%',
-          minHeight: 300,
+          flex: '1 1 auto',
+          minHeight: { xs: 260, sm: 300 },
           transformStyle: 'preserve-3d',
           transition: 'transform 0.5s',
           transform: flipped ? 'rotateY(180deg)' : 'rotateY(0deg)',
@@ -43,11 +55,19 @@ const HighlightCard = ({ highlight, onPlaySegment, onReviewed }) => {
       >
         {/* 正面 */}
         <Card sx={{
-          position: 'absolute', width: '100%', backfaceVisibility: 'hidden',
-          bgcolor: '#1a1a1a', color: '#fff'
+          position: 'absolute',
+          width: '100%',
+          height: '100%',
+          minHeight: { xs: 260, sm: 300 },
+          backfaceVisibility: 'hidden',
+          bgcolor: '#1a1a1a',
+          color: '#fff',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
         }}>
-          <CardContent sx={{ p: 4, textAlign: 'center' }}>
-            <Typography variant="h3" gutterBottom sx={{ fontWeight: 'bold' }}>
+          <CardContent sx={{ p: 3, textAlign: 'center', width: '100%' }}>
+            <Typography variant="h4" gutterBottom sx={{ fontWeight: 'bold', wordBreak: 'break-word' }}>
               {highlight.original_text}
             </Typography>
             {highlight.start_time != null && (
@@ -61,7 +81,7 @@ const HighlightCard = ({ highlight, onPlaySegment, onReviewed }) => {
               </Typography>
             )}
             {!flipped && (
-              <Typography variant="caption" color="text.secondary" sx={{ mt: 4, display: 'block' }}>
+              <Typography variant="caption" color="text.secondary" sx={{ mt: 3, display: 'block' }}>
                 点击卡片显示答案
               </Typography>
             )}
@@ -70,19 +90,28 @@ const HighlightCard = ({ highlight, onPlaySegment, onReviewed }) => {
 
         {/* 背面 */}
         <Card sx={{
-          position: 'absolute', width: '100%', backfaceVisibility: 'hidden',
-          transform: 'rotateY(180deg)', bgcolor: '#1a1a1a', color: '#fff'
+          position: 'absolute',
+          width: '100%',
+          height: '100%',
+          minHeight: { xs: 260, sm: 300 },
+          backfaceVisibility: 'hidden',
+          transform: 'rotateY(180deg)',
+          bgcolor: '#1a1a1a',
+          color: '#fff',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
         }}>
-          <CardContent sx={{ p: 4 }}>
-            <Typography variant="body1" sx={{ mb: 2, lineHeight: 1.8 }}>
+          <CardContent sx={{ p: 3, width: '100%' }}>
+            <Typography variant="body1" sx={{ mb: 2, lineHeight: 1.8, wordBreak: 'break-word' }}>
               {highlight.explanation || highlight.user_note || '（暂无解释）'}
             </Typography>
             {highlight.start_time != null && (
               <Button
                 variant="outlined"
                 size="small"
-                onClick={handlePlay}
-                sx={{ mt: 2, borderColor: '#f57c00', color: '#ffb74d' }}
+                onClick={(e) => { e.stopPropagation(); handlePlay(); }}
+                sx={{ borderColor: '#f57c00', color: '#ffb74d' }}
               >
                 ▶ 播放视频片段
               </Button>
@@ -93,7 +122,7 @@ const HighlightCard = ({ highlight, onPlaySegment, onReviewed }) => {
 
       {/* 评价按钮（仅背面显示） */}
       {flipped && (
-        <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center', mt: 3 }}>
+        <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center', mt: 2, flexWrap: 'wrap' }}>
           {[
             { label: '重来', quality: 0, color: '#d32f2f' },
             { label: '困难', quality: 1, color: '#f57c00' },

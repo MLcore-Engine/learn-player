@@ -407,11 +407,7 @@ const LearningAgent = () => {
   // 渲染背单词标签页
   const renderVocabularyTab = () => {
     if (reviewMode) {
-      return (
-        <Box sx={{ p: 2 }}>
-          <ReviewSession onClose={() => setReviewMode(false)} />
-        </Box>
-      );
+      return <ReviewSession onClose={() => setReviewMode(false)} />;
     }
 
     // 非复习模式：显示统计 + 开始按钮
