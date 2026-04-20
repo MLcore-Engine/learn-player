@@ -1,10 +1,24 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import dictionaryService from '../utils/dictionaryService';
 import { ipcClient } from '../services/ipcClient';
+import ContextualBubble from './ContextualBubble';
 
 const OCRResultModal = React.memo(({ isOpen, result, onExplain, onClose, style, isLoading }) => {
   const [dictResult, setDictResult] = useState(null);
   const [dictLoading, setDictLoading] = useState(false);
+
+  // ContextualBubble state
+  const [bubbleText, setBubbleText] = useState('');
+  const [bubblePosition, setBubblePosition] = useState({ x: 0, y: 0 });
+  const [bubbleStartTime, setBubbleStartTime] = useState(null);
+
+  // 单词点击处理 - 必须放在 hooks 规则位置（在条件返回之前）
+  const handleWordClick = useCallback((text, event) => {
+    if (!text || !text.trim()) return;
+    setBubbleText(text.trim());
+    setBubblePosition({ x: event.clientX, y: event.clientY });
+    setBubbleStartTime(null); // OCR 场景没有视频时间轴
+  }, []);
 
   // 当模态框关闭或结果更新时，重置字典查询结果
   useEffect(() => {
@@ -81,6 +95,7 @@ const OCRResultModal = React.memo(({ isOpen, result, onExplain, onClose, style, 
   // 处理关闭按钮点击
   const handleClose = () => {
     setDictResult(null);
+    setBubbleText('');
     onClose();
   };
 
@@ -105,6 +120,7 @@ const OCRResultModal = React.memo(({ isOpen, result, onExplain, onClose, style, 
         position: 'relative'
       }}
     >
+      {/* 可点击单词列表 */}
       <div
         style={{
           marginBottom: 12,
@@ -115,10 +131,37 @@ const OCRResultModal = React.memo(({ isOpen, result, onExplain, onClose, style, 
           overflowWrap: 'break-word',
           overflow: 'auto',
           maxHeight: '40vh',
-          paddingRight: 8
+          paddingRight: 8,
+          display: 'flex',
+          flexWrap: 'wrap',
+          gap: '6px',
+          alignItems: 'center',
+          position: 'relative'
         }}
       >
-        {result}
+        {result.split(/(\s+)/).map((token, i) => {
+          if (token.trim() === '') return <span key={i} style={{whiteSpace: 'pre'}}>{token}</span>;
+          return (
+            <span
+              key={i}
+              onClick={(e) => handleWordClick(token, e)}
+              style={{
+                cursor: 'pointer',
+                backgroundColor: '#e3f2fd',
+                borderRadius: '4px',
+                padding: '2px 6px',
+                fontSize: '16px',
+                color: '#1565c0',
+                display: 'inline-block',
+                transition: 'background 0.15s',
+              }}
+              onMouseEnter={(e) => e.target.style.backgroundColor = '#bbdefb'}
+              onMouseLeave={(e) => e.target.style.backgroundColor = '#e3f2fd'}
+            >
+              {token}
+            </span>
+          );
+        })}
       </div>
 
       {/* 显示字典查询结果 */}
@@ -263,8 +306,32 @@ const OCRResultModal = React.memo(({ isOpen, result, onExplain, onClose, style, 
           关闭
         </button>
       </div>
+
+      {/* ContextualBubble */}
+      <ContextualBubble
+        text={bubbleText}
+        position={bubblePosition}
+        startTime={bubbleStartTime}
+        loading={isLoading}
+        onExplain={(text) => {
+          onExplain('zh', text);
+          setBubbleText('');
+        }}
+        onSaveToReview={(text) => {
+          import('../services/highlightService').then(({ createHighlight }) => {
+            createHighlight({
+              video_path: '',
+              original_text: text,
+              status: 'pending'
+            }).catch(e => console.error('添加生词本失败:', e));
+          });
+          setBubbleText('');
+        }}
+        onPlaySegment={null}
+        onClose={() => setBubbleText('')}
+      />
     </div>
   );
 });
 
-export default OCRResultModal; 
+export default OCRResultModal;
