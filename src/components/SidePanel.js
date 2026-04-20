@@ -30,19 +30,14 @@ const SidePanel = React.memo(({ hasExternalSubtitles, onSubtitleSelect }) => {
   // 保存生词到 highlight
   const handleSaveToHighlight = useCallback(async (text, startTime) => {
     try {
-      // 获取当前视频路径 - 从 localStorage 或 context
+      // videoPath 从 localStorage 取；startTime 来自字幕时间戳
       const videoPath = localStorage.getItem('lastVideoPath') || '';
-      
-      const highlightData = {
-        videoPath,
-        startTime: startTime || 0,
+      const result = await createHighlight({
+        video_path: videoPath,
         original_text: text,
-        context_before: '',
-        context_after: '',
-        created_at: new Date().toISOString()
-      };
-      
-      const result = await createHighlight(highlightData);
+        start_time: startTime ?? 0,
+        status: 'pending'
+      });
       if (result && !result.error) {
         console.log('生词保存成功:', text);
       } else {

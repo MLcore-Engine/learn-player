@@ -70,7 +70,7 @@ const useExplainFlow = ({ hasExternalSubtitles }) => {
     setOcrModalOpen(true);
   }, [hasExternalSubtitles, playerRef]);
 
-  const handleExplain = useCallback(async (lang, selectedText) => {
+  const handleExplain = useCallback(async (lang, selectedText, startTimeFromSubtitle) => {
     const text = selectedText || ocrResult;
     if (!text) {
       alert('没有可解释的文字');
@@ -82,13 +82,14 @@ const useExplainFlow = ({ hasExternalSubtitles }) => {
     try {
       setExplanation('');
       let buffer = '';
-      const currentTime = playerRef.current?.currentTime?.() || null;
+      // 优先用字幕时间戳（最准确），其次用当前播放位置
+      const currentTime = startTimeFromSubtitle ?? playerRef.current?.currentTime?.() ?? null;
       const explanation = await aiService.streamExplanation(text, {
         onDelta: (piece, full) => {
           buffer = full;
           setExplanation(buffer);
         }
-      }, { 
+      }, {
         language: lang,
         videoPath,
         currentTime

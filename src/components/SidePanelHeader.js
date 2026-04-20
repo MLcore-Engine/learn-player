@@ -27,16 +27,13 @@ const SidePanelHeader = ({
   const [bubbleText, setBubbleText] = useState('');
   const [bubblePosition, setBubblePosition] = useState({ x: 0, y: 0 });
   const [bubbleStartTime, setBubbleStartTime] = useState(null);
-
-  // T2-3: 响应字幕选中事件，弹出 contextual bubble
   useEffect(() => {
     if (typeof onSubtitleSelected === 'function') {
       const handler = (text, startTime) => {
         if (!text) return;
-        // 获取鼠标位置（字幕点击发生在 video 区域，鼠标即在附近）
         setBubbleText(text);
         setBubblePosition({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
-        setBubbleStartTime(startTime || null);
+        setBubbleStartTime(startTime ?? null);
       };
       onSubtitleSelected(handler);
     }
@@ -48,13 +45,14 @@ const SidePanelHeader = ({
       await createHighlight({
         video_path: videoPath || '',
         original_text: text,
+        start_time: bubbleStartTime ?? null,
         status: 'pending'
       });
     } catch (e) {
       console.error('添加生词本失败:', e);
     }
     setBubbleText('');
-  }, [videoPath]);
+  }, [videoPath, bubbleStartTime]);
 
   return (
     <>
@@ -105,7 +103,8 @@ const SidePanelHeader = ({
         startTime={bubbleStartTime}
         loading={explainLoading}
         onExplain={(text) => {
-          onExplain(text);
+          // T2-1 fix: 传递字幕时间戳给 handleExplain（用于正确写入 highlight）
+          onExplain(text, bubbleStartTime);
           setBubbleText('');
         }}
         onSaveToReview={handleSaveToReview}
