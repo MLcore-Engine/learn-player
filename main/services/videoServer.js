@@ -7,72 +7,134 @@ const VIDEO_SERVER_PORT = 6459;
 let videoServer = null;
 let videoServerPort = null;
 let videoServerError = null;
+let isListening = false;
 
-function startVideoServer(preferredPort = VIDEO_SERVER_PORT) {
-  if (videoServer) {
-    return { server: videoServer, port: videoServerPort };
+/**
+ * 启动视频 HTTP 服务器。
+ * 优先绑定固定端口；被占用时自动回退到随机可用端口，避免永久卡死。
+ */
+function startVideoServer() {
+  if (videoServer && isListening) {
+    return;
   }
 
-  videoServer = http.createServer((req, res) => {
-    // 添加 CORS 支持
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Range');
-    // 处理预检请求
-    if (req.method === 'OPTIONS') {
-      res.writeHead(204);
-      return res.end();
-    }
-    const parsedUrl = urlModule.parse(req.url, true);
-    if (parsedUrl.pathname !== '/video') {
-      res.statusCode = 404;
-      return res.end();
-    }
-    const fileParam = parsedUrl.query.path;
-    const decodedPath = decodeURIComponent(fileParam || '');
-    const filePath = path.isAbsolute(decodedPath) ? decodedPath : path.resolve(decodedPath);
-    if (!fs.existsSync(filePath)) {
-      res.statusCode = 404;
-      return res.end();
-    }
-    const stat = fs.statSync(filePath);
-    const fileSize = stat.size;
-    const range = req.headers.range;
-    if (!range) {
-      res.writeHead(200, { 'Content-Length': fileSize, 'Content-Type': 'video/mp4', 'Accept-Ranges': 'bytes' });
-      return fs.createReadStream(filePath).pipe(res);
-    }
-    const parts = range.replace(/bytes=/, '').split('-');
-    const start = parseInt(parts[0], 10);
-    const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
-    const chunksize = end - start + 1;
-    res.writeHead(206, {
-      'Content-Range': `bytes ${start}-${end}/${fileSize}`,
-      'Accept-Ranges': 'bytes',
-      'Content-Length': chunksize,
-      'Content-Type': 'video/mp4'
-    });
-    return fs.createReadStream(filePath, { start, end }).pipe(res);
-  });
+  resetServer();
+  videoServer = http.createServer(handleRequest);
 
-  videoServer.once('error', (error) => {
+  let hasTriedFallback = false;
+  videoServer.on('error', (error) => {
     videoServerError = error;
-    console.error(`【主进程】视频 HTTP 服务启动失败，端口 ${preferredPort} 不可用:`, error);
+    isListening = false;
+
+    if (error.code === 'EADDRINUSE' && !hasTriedFallback) {
+      hasTriedFallback = true;
+      console.warn(
+        `【主进程】视频 HTTP 服务优先端口 ${VIDEO_SERVER_PORT} 被占用，切换到随机端口...`
+      );
+      videoServer.close();
+
+      const fallback = http.createServer(handleRequest);
+      fallback.on('error', (err) => {
+        videoServerError = err;
+        isListening = false;
+        console.error('【主进程】视频 HTTP 服务（随机端口）启动失败:', err.message);
+      });
+      fallback.listen(0, '127.0.0.1', () => {
+        videoServer = fallback;
+        videoServerPort = fallback.address().port;
+        isListening = true;
+        videoServerError = null;
+        console.log(`【主进程】视频 HTTP 服务已就绪，随机端口: ${videoServerPort}`);
+      });
+      return;
+    }
+
+    console.error('【主进程】视频 HTTP 服务启动失败:', error.message);
+    resetServer();
   });
 
-  videoServer.listen(preferredPort, '127.0.0.1', () => {
-    videoServerPort = videoServer.address().port;
-    console.log('【主进程】视频 HTTP 服务启动，端口:', videoServerPort);
+  videoServer.listen(VIDEO_SERVER_PORT, '127.0.0.1', () => {
+    videoServerPort = VIDEO_SERVER_PORT;
+    isListening = true;
+    videoServerError = null;
+    console.log(`【主进程】视频 HTTP 服务已就绪，端口: ${VIDEO_SERVER_PORT}`);
   });
+}
 
-  return { server: videoServer, port: videoServerPort };
+function handleRequest(req, res) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Range');
+
+  if (req.method === 'OPTIONS') {
+    res.writeHead(204);
+    return res.end();
+  }
+
+  const parsedUrl = urlModule.parse(req.url, true);
+  if (parsedUrl.pathname !== '/video') {
+    res.statusCode = 404;
+    return res.end();
+  }
+
+  const fileParam = parsedUrl.query.path;
+  const decodedPath = decodeURIComponent(fileParam || '');
+  const filePath = path.isAbsolute(decodedPath) ? decodedPath : path.resolve(decodedPath);
+  if (!fs.existsSync(filePath)) {
+    res.statusCode = 404;
+    return res.end();
+  }
+
+  const stat = fs.statSync(filePath);
+  const fileSize = stat.size;
+  const range = req.headers.range;
+  if (!range) {
+    res.writeHead(200, {
+      'Content-Length': fileSize,
+      'Content-Type': 'video/mp4',
+      'Accept-Ranges': 'bytes'
+    });
+    return fs.createReadStream(filePath).pipe(res);
+  }
+
+  const parts = range.replace(/bytes=/, '').split('-');
+  const start = parseInt(parts[0], 10);
+  const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+  const chunksize = end - start + 1;
+  res.writeHead(206, {
+    'Content-Range': `bytes ${start}-${end}/${fileSize}`,
+    'Accept-Ranges': 'bytes',
+    'Content-Length': chunksize,
+    'Content-Type': 'video/mp4'
+  });
+  return fs.createReadStream(filePath, { start, end }).pipe(res);
+}
+
+function resetServer() {
+  if (videoServer) {
+    try {
+      videoServer.removeAllListeners();
+      videoServer.close();
+    } catch (_) {
+      // ignore close errors
+    }
+  }
+  videoServer = null;
+  videoServerPort = null;
+  videoServerError = null;
+  isListening = false;
 }
 
 function getVideoServerPort() {
-  if (videoServer && videoServer.listening) {
-    return videoServer.address().port;
+  if (videoServer && isListening) {
+    return videoServer.address()?.port || videoServerPort;
   }
-  return videoServerPort;
+
+  if (!videoServer) {
+    startVideoServer();
+  }
+
+  return null;
 }
 
 function getVideoServerError() {
