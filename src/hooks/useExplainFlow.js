@@ -112,7 +112,7 @@ const useExplainFlow = ({ hasExternalSubtitles }) => {
       setOcrStatus('idle');
       setOcrError('');
     }
-  }, [addRecord, ocrResult, setAiLoading, setExplanation, setSelectedText]);
+  }, [addRecord, ocrResult, setAiLoading, setExplanation, setSelectedText, playerRef, videoPath]);
 
   const handleCloseModal = useCallback(() => {
     setOcrModalOpen(false);

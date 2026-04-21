@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import TimeStats from './TimeStats';
 import OCRContainer from '../containers/OCRContainer';
-import OCRResultModal from './OCRResultModal';
 import ContextualBubble from './ContextualBubble';
 import { Box } from '@mui/material';
 import { useVideo } from '../contexts/AppContext';
@@ -12,9 +11,6 @@ const SidePanelHeader = ({
   hasExternalSubtitles,
   isVideoLoaded,
   ocrLoading,
-  ocrModalOpen,
-  ocrResult,
-  onCloseModal,
   onExplain,
   onRecognize,
   timeStatsProps,
@@ -77,22 +73,6 @@ const SidePanelHeader = ({
           <Box sx={{ flex: 4, display: 'flex', justifyContent: 'flex-end' }}>
             <TimeStats {...timeStatsProps} smallFont horizontal />
           </Box>
-        </Box>
-        <Box sx={{ position: 'relative' }}>
-          <OCRResultModal
-            isOpen={ocrModalOpen}
-            result={ocrResult}
-            onExplain={onExplain}
-            onClose={onCloseModal}
-            isLoading={explainLoading}
-            style={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              width: '100%',
-              zIndex: 10
-            }}
-          />
         </Box>
       </Box>
 

@@ -1725,20 +1725,20 @@ function registerIpcHandlers({ app, ipcMain, dialog, BrowserWindow, store, state
       const masteredCount = db.prepare('SELECT COUNT(*) as count FROM vocabulary WHERE repetitions >= 5').get().count;
 
       const recentReviews = db.prepare(`
-      SELECT COUNT(*) as count FROM vocabulary_reviews
-      WHERE date(created_at) = date('now', 'localtime')
-    `).get().count;
-
-      return {
-        total,
-        dueCount,
-        masteredCount,
-        recentReviews
-      };
-    } catch (error) {
-      console.error('获取词汇统计失败:', error);
-      return { error: error.message };
+        SELECT COUNT(*) as count FROM vocabulary_reviews
+        WHERE date(created_at) = date('now', 'localtime')
+      `).get().count;
+    } catch (err) {
+      // 老用户数据库没有 vocabulary_reviews 表，忽略
+      console.warn('vocabulary_reviews 统计跳过:', err.message);
     }
+
+    return {
+      total,
+      dueCount,
+      masteredCount,
+      recentReviews
+    };
   });
 
   // ===== T1-2: highlights CRUD handlers =====
@@ -1777,7 +1777,7 @@ function registerIpcHandlers({ app, ipcMain, dialog, BrowserWindow, store, state
     }
   });
 
-  // getHighlights
+  // getHighlights (by video or status)
   ipcMain.handle('getHighlights', (event, { videoPath, status, limit = 100, offset = 0 } = {}) => {
     const db = getDb();
     if (!db) return { error: '数据库未初始化' };
@@ -1798,7 +1798,7 @@ function registerIpcHandlers({ app, ipcMain, dialog, BrowserWindow, store, state
       params.push(limit, offset);
 
       const highlights = db.prepare(sql).all(...params);
-      return highlights;
+      return { highlights, total: highlights.length };
     } catch (error) {
       console.error('getHighlights error:', error);
       return { error: error.message };

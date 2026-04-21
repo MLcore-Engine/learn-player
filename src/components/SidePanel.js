@@ -88,9 +88,6 @@ const SidePanel = React.memo(({ hasExternalSubtitles, onSubtitleSelect }) => {
         hasExternalSubtitles={hasExternalSubtitles}
         isVideoLoaded={isVideoLoaded}
         ocrLoading={ocrLoading}
-        ocrModalOpen={ocrModalOpen}
-        ocrResult={ocrResult}
-        onCloseModal={handleCloseModal}
         onExplain={handleExplain}
         onRecognize={handleOCRRecognize}
         timeStatsProps={timeStatsProps}
