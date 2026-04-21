@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import TimeStats from './TimeStats';
 import OCRContainer from '../containers/OCRContainer';
+import OCRResultModal from './OCRResultModal';
 import ContextualBubble from './ContextualBubble';
 import { Box } from '@mui/material';
 import { useVideo } from '../contexts/AppContext';
@@ -11,10 +12,13 @@ const SidePanelHeader = ({
   hasExternalSubtitles,
   isVideoLoaded,
   ocrLoading,
+  ocrModalOpen,
+  ocrResult,
+  onCloseModal,
   onExplain,
   onRecognize,
   timeStatsProps,
-  onSubtitleSelected,  // 字幕选中回调（来自 App.js 链路）
+  onSubtitleSelected,
   onSaveToHighlight
 }) => {
   const { jumpToTime, videoPath } = useVideo();
@@ -76,26 +80,41 @@ const SidePanelHeader = ({
         </Box>
       </Box>
 
-      {/* Contextual Bubble */}
-      <ContextualBubble
-        text={bubbleText}
-        position={bubblePosition}
-        startTime={bubbleStartTime}
-        loading={explainLoading}
-        onExplain={(text) => {
-          // T2-1 fix: 传递字幕时间戳给 handleExplain（用于正确写入 highlight）
-          onExplain(text, bubbleStartTime);
-          setBubbleText('');
-        }}
-        onSaveToReview={handleSaveToReview}
-        onPlaySegment={(startTime) => {
-          if (typeof jumpToTime === 'function') {
-            jumpToTime(startTime);
-          }
-          setBubbleText('');
-        }}
-        onClose={() => setBubbleText('')}
-      />
+      {/* OCR 识别结果弹窗（优先于 contextual bubble） */}
+      {ocrModalOpen && (
+        <OCRResultModal
+          isOpen={ocrModalOpen}
+          result={ocrResult}
+          onExplain={(lang, txt) => {
+            onExplain(lang, txt);
+            onCloseModal();
+          }}
+          onClose={onCloseModal}
+          isLoading={explainLoading}
+        />
+      )}
+
+      {/* Contextual Bubble（OCR 弹窗打开时不显示） */}
+      {!ocrModalOpen && bubbleText && (
+        <ContextualBubble
+          text={bubbleText}
+          position={bubblePosition}
+          startTime={bubbleStartTime}
+          loading={explainLoading}
+          onExplain={(text) => {
+            onExplain(text, bubbleStartTime);
+            setBubbleText('');
+          }}
+          onSaveToReview={handleSaveToReview}
+          onPlaySegment={(startTime) => {
+            if (typeof jumpToTime === 'function') {
+              jumpToTime(startTime);
+            }
+            setBubbleText('');
+          }}
+          onClose={() => setBubbleText('')}
+        />
+      )}
     </>
   );
 };
