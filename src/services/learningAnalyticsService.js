@@ -18,15 +18,11 @@ class LearningAnalyticsService {
 
     try {
       // 统计总高亮数
-      const allHighlights = await getHighlights({ limit: 10000 });
-      if (allHighlights.error) {
-        throw new Error(allHighlights.error);
-      }
-      // reviewed 数量
+      const result = await getHighlights({ limit: 10000 });
+      if (result.error) throw new Error(result.error);
+      const allHighlights = result.highlights || [];
       const reviewedHighlights = allHighlights.filter(h => h.status !== 'pending');
-      // pending 数量
       const pendingHighlights = allHighlights.filter(h => h.status === 'pending');
-      // 计算复习率
       const reviewRate = allHighlights.length > 0
         ? Math.round((reviewedHighlights.length / allHighlights.length) * 100)
         : 0;
@@ -72,10 +68,9 @@ class LearningAnalyticsService {
     }
 
     try {
-      const allHighlights = await getHighlights({ limit: 1000 });
-      if (allHighlights.error) {
-        throw new Error(allHighlights.error);
-      }
+      const result = await getHighlights({ limit: 1000 });
+      if (result.error) throw new Error(result.error);
+      const allHighlights = result.highlights || [];
 
       // 聚合学习报告数据
       const report = {
@@ -111,10 +106,9 @@ class LearningAnalyticsService {
     }
 
     try {
-      const allHighlights = await getHighlights({ limit: 500 });
-      if (allHighlights.error) {
-        throw new Error(allHighlights.error);
-      }
+      const result = await getHighlights({ limit: 500 });
+      if (result.error) throw new Error(result.error);
+      const allHighlights = result.highlights || [];
 
       // 在 JS 侧聚合词频
       const wordFreq = {};
