@@ -9,7 +9,7 @@ import { ipcClient } from '../services/ipcClient';
  * AI容器组件
  * 管理AI学习助手相关的状态和逻辑，渲染LearningAssistant组件
  */
-const AIContainer = React.memo(() => {
+const AIContainer = React.memo(({ onBackToSubtitles }) => {
   const { videoPath, playerRef } = useVideo();
   const { 
     selectedText, 
@@ -141,9 +141,9 @@ const AIContainer = React.memo(() => {
   const assistantProps = {
     selectedText,
     explanation,
-    // learningRecords: records,
     isLoading: loading,
-    onQueryExplanation: handleQueryExplanation
+    onQueryExplanation: handleQueryExplanation,
+    onBackToSubtitles
   };
 
   return (

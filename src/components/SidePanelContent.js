@@ -12,7 +12,7 @@ const SidePanelContent = ({ panelTab, onBackToSubtitle }) => (
     backgroundColor: 'background.default'
   }}>
     {panelTab === 0 ? (
-      <AIContainer />
+      <AIContainer onBackToSubtitles={onBackToSubtitle} />
     ) : (
       <LearningAgent onBackToSubtitle={onBackToSubtitle} />
     )}

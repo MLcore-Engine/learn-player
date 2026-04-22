@@ -16,7 +16,7 @@ import {
   DialogContentText,
   DialogActions
 } from '@mui/material';
-import { ContentCopy, History, Summarize } from '@mui/icons-material';
+import { ContentCopy, History, Summarize, ArrowBack } from '@mui/icons-material';
 import aiService from '../services/aiService';
 import { ipcClient } from '../services/ipcClient';
 
@@ -83,8 +83,8 @@ function buildPrintableHtml(records) {
  * 显示AI解释内容和学习记录
  */
 const LearningAssistant = React.memo(({ 
- 
-  explanation
+  explanation,
+  onBackToSubtitles,
 }) => {
   // 状态管理
   const [showHistory, setShowHistory] = useState(false);
@@ -437,6 +437,16 @@ const LearningAssistant = React.memo(({
       {/* 底部按钮区域 */}
       <Box sx={{ p: 2, borderTop: 1, borderColor: 'divider' }}>
         <Stack direction="row" spacing={2} justifyContent="center">
+          {onBackToSubtitles && (
+            <Button
+              variant="outlined"
+              startIcon={<ArrowBack />}
+              onClick={onBackToSubtitles}
+              size="small"
+            >
+              返回字幕
+            </Button>
+          )}
           <Button
             variant="outlined"
             startIcon={<History />}
