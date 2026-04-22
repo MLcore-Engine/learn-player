@@ -346,7 +346,17 @@ const LearningAgent = () => {
   const renderStudyPlanTab = () => {
     return (
       <Box>
-        <Box mb={3} display="flex" justifyContent="space-between" alignItems="center">
+        {/* 顶部导航栏：返回 + 标题 */}
+        <Box mb={2} display="flex" justifyContent="space-between" alignItems="center">
+          <Button
+            variant="text"
+            size="small"
+            startIcon={<TrendingUp />}
+            onClick={() => setTabValue(0)}
+            sx={{ color: 'text.secondary' }}
+          >
+            返回字幕
+          </Button>
           <Typography variant="h6">
             <Assignment sx={{ mr: 1, verticalAlign: 'middle' }} />
             学习计划
