@@ -3,7 +3,7 @@ import AIContainer from '../containers/AIContainer';
 import LearningAgent from './LearningAgent';
 import { Box } from '@mui/material';
 
-const SidePanelContent = ({ panelTab }) => (
+const SidePanelContent = ({ panelTab, onBackToSubtitle }) => (
   <Box sx={{
     flex: 1,
     overflow: 'hidden',
@@ -14,7 +14,7 @@ const SidePanelContent = ({ panelTab }) => (
     {panelTab === 0 ? (
       <AIContainer />
     ) : (
-      <LearningAgent />
+      <LearningAgent onBackToSubtitle={onBackToSubtitle} />
     )}
   </Box>
 );

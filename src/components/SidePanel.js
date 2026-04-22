@@ -102,7 +102,7 @@ const SidePanel = React.memo(({ hasExternalSubtitles, onSubtitleSelect }) => {
       <SidePanelTabs panelTab={panelTab} onChange={(event, value) => setPanelTab(value)} />
       
       {/* 根据标签页显示不同内容 */}
-      <SidePanelContent panelTab={panelTab} />
+      <SidePanelContent panelTab={panelTab} onBackToSubtitle={() => setPanelTab(0)} />
     </Box>
   );
 });

@@ -50,10 +50,10 @@ const clean = (raw) => raw.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
  * 学习Agent组件
  * 整合学习分析、学习计划和背单词功能
  */
-const LearningAgent = () => {
+const LearningAgent = ({ onBackToSubtitle }) => {
   const [tabValue, setTabValue] = useState(0);
   const [loading, setLoading] = useState(false);
-  
+
   // 学习分析状态
   const [overview, setOverview] = useState(null);
   const [pattern, setPattern] = useState(null);
@@ -219,12 +219,23 @@ const LearningAgent = () => {
 
     return (
       <Box>
-        <Box mb={3}>
-          <Typography variant="h6" gutterBottom>
+        {/* 顶部导航栏：返回字幕 + 标题 */}
+        <Box mb={2} display="flex" alignItems="center">
+          <Button
+            variant="text"
+            size="small"
+            startIcon={<TrendingUp />}
+            onClick={onBackToSubtitle}
+            sx={{ color: 'text.secondary', mr: 1 }}
+          >
+            返回字幕
+          </Button>
+          <Typography variant="h6">
             <Analytics sx={{ mr: 1, verticalAlign: 'middle' }} />
             学习概况
           </Typography>
-          {overview && (
+        </Box>
+        {overview && (
             <Grid container spacing={2} sx={{ mt: 1 }}>
               <Grid item xs={6} md={3}>
                 <Card>
@@ -260,8 +271,7 @@ const LearningAgent = () => {
               </Grid>
             </Grid>
           )}
-        </Box>
-
+        {/* 学习模式分析 */}
         <Box mb={3}>
           <Typography variant="h6" gutterBottom>
             <TrendingUp sx={{ mr: 1, verticalAlign: 'middle' }} />
