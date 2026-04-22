@@ -93,7 +93,6 @@ const SidePanelHeader = ({
           isLoading={explainLoading}
         />
       )}
-
       {/* Contextual Bubble（OCR 弹窗打开时不显示） */}
       {!ocrModalOpen && bubbleText && (
         <ContextualBubble
@@ -102,7 +101,8 @@ const SidePanelHeader = ({
           startTime={bubbleStartTime}
           loading={explainLoading}
           onExplain={(text) => {
-            onExplain(text, bubbleStartTime);
+            // handleExplain signature: (lang, selectedText, startTimeFromSubtitle)
+            onExplain('zh', text, bubbleStartTime);
             setBubbleText('');
           }}
           onSaveToReview={handleSaveToReview}
