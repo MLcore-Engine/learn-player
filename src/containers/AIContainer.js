@@ -23,6 +23,14 @@ const AIContainer = React.memo(({ onBackToSubtitles }) => {
   } = useAI();
   
   const { getLearningRecords } = useElectronIPC();
+
+  // 返回字幕时清空所有AI状态
+  const handleBackToSubtitles = useCallback(() => {
+    setSelectedText('');
+    setExplanation('');
+    setLoading(false);
+    onBackToSubtitles?.();
+  }, [onBackToSubtitles, setSelectedText, setExplanation, setLoading]);
   
   // 使用ref存储最新的属性和方法，避免useEffect依赖过多导致的循环
   const stableRef = useRef({
@@ -143,7 +151,7 @@ const AIContainer = React.memo(({ onBackToSubtitles }) => {
     explanation,
     isLoading: loading,
     onQueryExplanation: handleQueryExplanation,
-    onBackToSubtitles
+    onBackToSubtitles: handleBackToSubtitles
   };
 
   return (
