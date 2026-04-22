@@ -1714,31 +1714,41 @@ function registerIpcHandlers({ app, ipcMain, dialog, BrowserWindow, store, state
   });
 
   // 获取词汇学习统计
-  ipcMain.handle('getVocabularyStats', (event) => {
+  ipcMain.handle('getVocabularyStats', () => {
     const db = getDb();
     if (!db) return { error: '数据库未初始化' };
 
     try {
       const total = db.prepare('SELECT COUNT(*) as count FROM vocabulary').get().count;
       const now = new Date().toISOString();
-      const dueCount = db.prepare('SELECT COUNT(*) as count FROM vocabulary WHERE next_review <= ? OR next_review IS NULL').get(now).count;
-      const masteredCount = db.prepare('SELECT COUNT(*) as count FROM vocabulary WHERE repetitions >= 5').get().count;
+      const dueCount = db.prepare(
+        'SELECT COUNT(*) as count FROM vocabulary WHERE next_review <= ? OR next_review IS NULL'
+      ).get(now).count;
+      const masteredCount = db.prepare(
+        'SELECT COUNT(*) as count FROM vocabulary WHERE repetitions >= 5'
+      ).get().count;
 
-      const recentReviews = db.prepare(`
-        SELECT COUNT(*) as count FROM vocabulary_reviews
-        WHERE date(created_at) = date('now', 'localtime')
-      `).get().count;
-    } catch (err) {
-      // 老用户数据库没有 vocabulary_reviews 表，忽略
-      console.warn('vocabulary_reviews 统计跳过:', err.message);
+      let recentReviews = 0;
+      try {
+        recentReviews = db.prepare(`
+          SELECT COUNT(*) as count FROM vocabulary_reviews
+          WHERE date(created_at) = date('now', 'localtime')
+        `).get().count;
+      } catch (err) {
+        // 老用户数据库没有 vocabulary_reviews 表，忽略
+        console.warn('vocabulary_reviews 统计跳过:', err.message);
+      }
+
+      return {
+        total,
+        dueCount,
+        masteredCount,
+        recentReviews
+      };
+    } catch (error) {
+      console.error('getVocabularyStats error:', error);
+      return { error: error.message };
     }
-
-    return {
-      total,
-      dueCount,
-      masteredCount,
-      recentReviews
-    };
   });
 
   // ===== T1-2: highlights CRUD handlers =====
@@ -1940,22 +1950,28 @@ function registerIpcHandlers({ app, ipcMain, dialog, BrowserWindow, store, state
         WHERE id = ?
       `).run(ease, interval, repetitions, next_review, id);
 
-      // Try to insert into vocabulary_reviews table (if exists)
+      // Compatibility: only write vocabulary_reviews when a legacy vocabulary row exists.
       try {
-        db.prepare(`
-          INSERT INTO vocabulary_reviews (vocabulary_id, quality, ease_before, ease_after, interval_before, interval_after)
-          VALUES (?, ?, ?, ?, ?, ?)
-        `).run(
-          id,
-          quality,
-          highlight.ease,
-          ease,
-          highlight.interval,
-          interval
-        );
+        const legacyVocabulary = db.prepare(
+          'SELECT id FROM vocabulary WHERE id = ?'
+        ).get(id);
+
+        if (legacyVocabulary) {
+          db.prepare(`
+            INSERT INTO vocabulary_reviews (vocabulary_id, quality, ease_before, ease_after, interval_before, interval_after)
+            VALUES (?, ?, ?, ?, ?, ?)
+          `).run(
+            id,
+            quality,
+            highlight.ease,
+            ease,
+            highlight.interval,
+            interval
+          );
+        }
       } catch (err) {
-        // Silently ignore if table doesn't exist or schema mismatch
-        console.log('vocabulary_reviews insert skipped (table may not exist):', err.message);
+        // Legacy compatibility only; highlights review is already persisted above.
+        console.log('vocabulary_reviews insert skipped:', err.message);
       }
 
       return { success: true, srs_data: { ease, interval, repetitions, next_review } };
