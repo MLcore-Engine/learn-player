@@ -490,10 +490,10 @@ const LearningAssistant = React.memo(({
 
     </Card>
   );
-}, (prevProps, nextProps) => {
-  return prevProps.selectedText === nextProps.selectedText &&
-         prevProps.explanation === nextProps.explanation &&
-         prevProps.isLoading === nextProps.isLoading;
+  return (
+    prevProps.explanation === nextProps.explanation &&
+    prevProps.isLoading === nextProps.isLoading &&
+    prevProps.onBackToSubtitles === nextProps.onBackToSubtitles
+  );
 });
-
 export default LearningAssistant; 
