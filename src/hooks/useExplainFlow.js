@@ -104,14 +104,12 @@ const useExplainFlow = ({ hasExternalSubtitles }) => {
       }
     } catch (error) {
       console.error('AI解释失败:', error);
-    } finally {
-      setAiLoading(false);
-      setExplainLoading(false);
-      setOcrModalOpen(false);
-      setOcrResult('');
-      setOcrStatus('idle');
-      setOcrError('');
-    }
+  } finally {
+    setAiLoading(false);
+    setExplainLoading(false);
+    // 不在这里关闭 ocrModalOpen，让用户可以返回继续看字幕列表
+    // OCRResultModal 只在用户主动点关闭 或 跳转到其他面板时才关闭
+  }
   }, [addRecord, ocrResult, setAiLoading, setExplanation, setSelectedText, playerRef, videoPath]);
 
   const handleCloseModal = useCallback(() => {
