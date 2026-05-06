@@ -1,7 +1,6 @@
 import axios, { AxiosError } from 'axios';
 import { ipcClient } from './ipcClient';
 import resolveAiConfig from './aiConfigService';
-import { createHighlight } from './highlightService';
 import type { ExplanationOptions, StreamHandlers } from '../types/ai';
 import type { Highlight, Language } from '../types/highlight';
 
@@ -412,16 +411,8 @@ class AIService {
               } else if (payload.type === 'complete') {
                 this.addContextMessage('assistant', fullText);
                 if (typeof handlers.onDone === 'function') handlers.onDone(fullText, payload);
-                // T2-1: 自动写入 highlights 表
-                if (options?.videoPath && fullText) {
-                  createHighlight({
-                    video_path: options.videoPath,
-                    original_text: text,
-                    explanation: fullText,
-                    start_time: options.currentTime ?? null,
-                    status: 'pending'
-                  }).catch((e: unknown) => console.warn('自动写入 highlight 失败:', e));
-                }
+                // 持久化（createHighlight）由 useExplainFlow 在 await 后统一处理；
+                // 不在 service 层重复写库。
                 if (unsubscribe) unsubscribe();
                 resolve(fullText);
               } else if (payload.type === 'error') {

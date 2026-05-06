@@ -13,8 +13,6 @@ const allowedInvokeChannels = [
   'selectSubtitle',
   'selectVideo',
   'getWatchTime',
-  'saveLearningRecord',
-  'getLearningRecords',
   'saveApiKey',
   'getApiKey',
   'install-update',
@@ -210,8 +208,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
     return ipcRenderer.invoke('getWatchTime', { videoId });
   },
   updateWatchTime: (watchTimeData) => ipcRenderer.send('updateWatchTime', watchTimeData),
-  saveLearningRecord: (record) => ipcRenderer.invoke('saveLearningRecord', record),
-  getLearningRecords: (videoId) => ipcRenderer.invoke('getLearningRecords', { videoId }),
 
   // 系统信息
   platform: process.platform,

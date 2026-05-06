@@ -70,17 +70,6 @@ export interface WatchTimeUpdate {
   currentPosition: number;
 }
 
-export interface LearningRecord {
-  id: number;
-  video_id: string | null;
-  subtitle_id: number | null;
-  content: string | null;
-  translation: string | null;
-  note: string | null;
-  created_at: string;
-  updated_at: string;
-}
-
 export interface SaveApiKeyPayload {
   apiKey: string;
   modelUrl: string;
@@ -149,10 +138,6 @@ export interface ElectronAPI {
   // 观看时长
   getWatchTime: (videoId: string) => Promise<WatchTime>;
   updateWatchTime: (watchTimeData: WatchTimeUpdate) => void;
-
-  // 学习记录（legacy learning_records 表）
-  saveLearningRecord: (record: Partial<LearningRecord>) => Promise<{ success?: boolean; id?: number; error?: string }>;
-  getLearningRecords: (videoId: string) => Promise<LearningRecord[]>;
 
   // AI 请求（主进程代理）
   performAIRequest: (
