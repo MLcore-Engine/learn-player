@@ -1,5 +1,16 @@
-// 视频相关的reducer
-export const videoReducer = (state, action) => {
+import type {
+  VideoState,
+  VideoAction,
+  TimeStatsState,
+  TimeStatsAction,
+  AiState,
+  AiAction,
+  ApiKeyState,
+  ApiKeyAction
+} from '../types/state';
+
+// 视频相关的 reducer
+export const videoReducer = (state: VideoState, action: VideoAction): VideoState => {
   switch (action.type) {
     case 'SET_VIDEO_PATH':
       return { ...state, videoPath: action.payload };
@@ -18,13 +29,13 @@ export const videoReducer = (state, action) => {
   }
 };
 
-// 时间统计的reducer
-export const timeStatsReducer = (state, action) => {
+// 时间统计的 reducer
+export const timeStatsReducer = (state: TimeStatsState, action: TimeStatsAction): TimeStatsState => {
   switch (action.type) {
     case 'UPDATE_STATS':
-      return { 
-        ...state, 
-        ...(action.payload) // 支持部分更新
+      return {
+        ...state,
+        ...action.payload
       };
     case 'INCREMENT_SESSION_TIME':
       return {
@@ -46,8 +57,8 @@ export const timeStatsReducer = (state, action) => {
   }
 };
 
-// AI学习助手的reducer
-export const aiReducer = (state, action) => {
+// AI 学习助手的 reducer
+export const aiReducer = (state: AiState, action: AiAction): AiState => {
   switch (action.type) {
     case 'SET_SELECTED_TEXT':
       return { ...state, selectedText: action.payload };
@@ -56,9 +67,9 @@ export const aiReducer = (state, action) => {
     case 'SET_LOADING':
       return { ...state, loading: action.payload };
     case 'ADD_RECORD':
-      return { 
-        ...state, 
-        records: [action.payload, ...state.records].slice(0, 100) // 限制最多保存100条记录
+      return {
+        ...state,
+        records: [action.payload, ...state.records].slice(0, 100) // 限制最多保存 100 条记录
       };
     case 'CLEAR_RECORDS':
       return { ...state, records: [] };
@@ -72,8 +83,8 @@ export const aiReducer = (state, action) => {
   }
 };
 
-// API Key设置的reducer
-export const apiKeyReducer = (state, action) => {
+// API Key 设置的 reducer
+export const apiKeyReducer = (state: ApiKeyState, action: ApiKeyAction): ApiKeyState => {
   switch (action.type) {
     case 'SET_API_KEY':
       return { ...state, apiKey: action.payload };
