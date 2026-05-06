@@ -3,13 +3,13 @@ import videojs from 'video.js';
 import type Player from 'video.js/dist/types/player';
 import { ipcClient } from '../services/ipcClient';
 
-export interface UseVideoJsPlayerOptions {
+export interface UseVideoJsPlayerOptions<TInfo = unknown> {
   videoPath: string | null | undefined;
   containerRef: MutableRefObject<HTMLElement | null>;
   videoRef?: MutableRefObject<HTMLVideoElement | null>;
   onTimeUpdateRef: MutableRefObject<((seconds: number) => void) | null | undefined>;
-  onPlayerReadyRef: MutableRefObject<((player: Player, info?: unknown) => (() => void) | void) | null | undefined>;
-  getPlayerReadyInfo?: (player: Player) => unknown;
+  onPlayerReadyRef: MutableRefObject<((player: Player, info?: TInfo) => (() => void) | void) | null | undefined>;
+  getPlayerReadyInfo?: (player: Player) => TInfo;
   handleVideoConversion: (videoPath: string) => Promise<string>;
 }
 
@@ -19,7 +19,7 @@ export interface UseVideoJsPlayerResult {
   cleanupPlayer: () => void;
 }
 
-const useVideoJsPlayer = ({
+const useVideoJsPlayer = <TInfo = unknown>({
   videoPath,
   containerRef,
   videoRef,
@@ -27,7 +27,7 @@ const useVideoJsPlayer = ({
   onPlayerReadyRef,
   getPlayerReadyInfo,
   handleVideoConversion
-}: UseVideoJsPlayerOptions): UseVideoJsPlayerResult => {
+}: UseVideoJsPlayerOptions<TInfo>): UseVideoJsPlayerResult => {
   const playerRef = useRef<Player | null>(null);
   const videoElementRef = useRef<HTMLVideoElement | null>(null);
   const playerInitializedRef = useRef<boolean>(false);
