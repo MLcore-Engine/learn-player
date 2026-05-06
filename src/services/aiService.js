@@ -257,15 +257,7 @@ class AIService {
     try {
       const raw = typeof text === 'string' ? text : '';
       const normalized = raw.trim();
-      // 查询本地缓存
-      if (ipcClient.isAvailable() && normalized) {
-        try {
-          const cache = await ipcClient.getCachedAiQuery({ query: normalized });
-          if (cache && cache.hit && typeof cache.explanation === 'string') {
-            return cache.explanation;
-          }
-        } catch (_) {}
-      }
+      // 缓存表 ai_queries 已废弃；如需未来基于 highlights.explanation 做缓存，再加回
 
       const { apiKey, apiUrl, model } = await this.getApiConfig();
 
@@ -375,17 +367,7 @@ class AIService {
 
     const raw = typeof text === 'string' ? text : '';
     const normalized = raw.trim();
-    // 先查缓存，命中则模拟流式增量并返回
-    if (ipcClient.isAvailable() && normalized) {
-      try {
-        const cache = await ipcClient.getCachedAiQuery({ query: normalized });
-        if (cache && cache.hit && typeof cache.explanation === 'string') {
-          if (typeof handlers.onDelta === 'function') handlers.onDelta(cache.explanation, cache.explanation);
-          if (typeof handlers.onDone === 'function') handlers.onDone(cache.explanation, { cached: true });
-          return cache.explanation;
-        }
-      } catch (_) {}
-    }
+    // 缓存表 ai_queries 已废弃，跳过缓存查询
 
     const { apiKey, apiUrl, model } = await this.getApiConfig();
 
@@ -466,18 +448,23 @@ class AIService {
    * @returns {Promise<string>} 生成的内容，包含 <shengcheng> 标签
    */
   async generateVocabularyStory() {
-    // 获取今日查询的词汇记录
+    // S6: 数据源从 ai_queries 改为 highlights（today's new）
     let records = [];
     if (ipcClient.isAvailable()) {
-      records = await ipcClient.getAiQueriesToday();
+      const todayHighlights = await ipcClient.getTodayHighlights();
+      if (Array.isArray(todayHighlights)) {
+        records = todayHighlights.map(h => ({ query: h.original_text }));
+      }
+    }
+    if (records.length === 0) {
+      throw new Error('今天还没新增单词，无法生成故事');
     }
     const words = records.map(r => r.query).join('\n');
-    const prompt = 
+    const prompt =
 `这是我今天学到的所有词汇：
 ${words}
 
 请将这些词汇编写成一个简单而易懂、富有意义的英文段落，突出这些词汇的特点。每句话后面都给出中文翻译，并将生成的段落放入到 <shengcheng> 和 </shengcheng> 标签中。`;
-    // 调用通用解释接口生成内容
     return this.getExplanation(prompt, { language: 'zh' });
   }
 }

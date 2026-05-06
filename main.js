@@ -141,65 +141,29 @@ app.whenReady().then(async () => {
           updated_at TEXT DEFAULT CURRENT_TIMESTAMP
         );
       `);
-      
-      // 创建 ai_queries 表，用于存储用户的AI查询记录
-      db.exec(`
-        CREATE TABLE IF NOT EXISTS ai_queries (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          query TEXT NOT NULL,
-          explanation TEXT NOT NULL,
-          created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-          updated_at TEXT DEFAULT CURRENT_TIMESTAMP
-        );
-      `);
-      // 为查询加速增加索引
-      db.exec(`
-        CREATE INDEX IF NOT EXISTS idx_ai_queries_query ON ai_queries(query);
-      `);
-      
-      // 创建查询历史记录表
-      db.exec(`
-        CREATE TABLE IF NOT EXISTS query_history (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          query_text TEXT NOT NULL,
-          response_text TEXT,
-          query_type TEXT,
-          created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-          updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
-          video_id TEXT,
-          FOREIGN KEY (video_id) REFERENCES video_progress(video_id)
-        );
-      `);
-      
+
       console.log('数据库表创建完成');
     }
-    
+
     // 无论数据库是否已存在，都确保新表被创建（用于后续添加的表）
     try {
-      // 创建词汇表（用于背单词功能）
+      // ===== S1: 数据层重构 =====
+      // 废弃的旧表（学习数据统一到 highlights）
+      // ai_queries / vocabulary / vocabulary_reviews / query_history 不再使用
+      console.warn('[S1] 清理废弃表：ai_queries / vocabulary / vocabulary_reviews / query_history');
       db.exec(`
-        CREATE TABLE IF NOT EXISTS vocabulary (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          word TEXT NOT NULL UNIQUE,
-          phonetic TEXT,
-          meaning TEXT,
-          example TEXT,
-          explanation TEXT,
-          ease REAL DEFAULT 2.5,
-          interval INTEGER DEFAULT 0,
-          repetitions INTEGER DEFAULT 0,
-          next_review TEXT,
-          last_review TEXT,
-          created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-          updated_at TEXT DEFAULT CURRENT_TIMESTAMP
-        );
+        DROP TABLE IF EXISTS ai_queries;
+        DROP TABLE IF EXISTS vocabulary_reviews;
+        DROP TABLE IF EXISTS vocabulary;
+        DROP TABLE IF EXISTS query_history;
+        DROP TABLE IF EXISTS highlights;
       `);
 
-      // ===== T1-1: highlights 表（无论 db 是否新创建都要确保存在）=====
+      // highlights：所有学习对象的单一数据源
       db.exec(`
         CREATE TABLE IF NOT EXISTS highlights (
           id TEXT PRIMARY KEY,
-          video_path TEXT NOT NULL,
+          video_path TEXT NOT NULL DEFAULT '',
           video_title TEXT,
           start_time REAL,
           end_time REAL,
@@ -208,66 +172,21 @@ app.whenReady().then(async () => {
           context_after TEXT,
           explanation TEXT,
           user_note TEXT,
-          status TEXT DEFAULT 'pending',
+          language TEXT,
+          status TEXT DEFAULT 'learning',
           ease REAL DEFAULT 2.5,
           interval INTEGER DEFAULT 0,
           repetitions INTEGER DEFAULT 0,
           next_review TEXT,
           last_review TEXT,
+          query_count INTEGER DEFAULT 1,
+          last_queried_at TEXT,
           created_at TEXT DEFAULT (datetime('now')),
-          updated_at TEXT DEFAULT (datetime('now'))
+          updated_at TEXT DEFAULT (datetime('now')),
+          UNIQUE(video_path, original_text)
         );
       `);
 
-      // ===== T1-1: highlights 数据迁移（无论新/老 db 都要跑，有 existing 检查防重）=====
-      (function() {
-        try {
-          const existing = db.prepare('SELECT COUNT(*) as count FROM highlights').get();
-          if (existing.count > 0) {
-            console.log('【主进程】highlights 表已有数据，跳过迁移');
-            return;
-          }
-          const learningRecords = db.prepare('SELECT * FROM learning_records').all();
-          for (const record of learningRecords) {
-            const id = require('crypto').randomUUID();
-            const status = record.explanation ? 'reviewed' : 'pending';
-            db.prepare(`
-              INSERT INTO highlights (id, video_path, original_text, explanation, status, ease, interval, repetitions, next_review, created_at, updated_at)
-              VALUES (?, ?, ?, ?, ?, 2.5, 0, 0, NULL, datetime('now'), datetime('now'))
-            `).run(id, record.video_id, record.word, record.explanation, status);
-          }
-          console.log(`【主进程】从 learning_records 迁移了 ${learningRecords.length} 条记录到 highlights`);
-          const vocabRecords = db.prepare('SELECT * FROM vocabulary').all();
-          for (const record of vocabRecords) {
-            const id = require('crypto').randomUUID();
-            const meaning = record.meaning || record.explanation;
-            const status = record.next_review ? 'reviewed' : 'pending';
-            db.prepare(`
-              INSERT INTO highlights (id, video_path, original_text, explanation, status, ease, interval, repetitions, next_review, created_at, updated_at)
-              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
-            `).run(id, record.video_id, record.word, meaning, status, record.ease || 2.5, record.interval || 0, record.repetitions || 0, record.next_review);
-          }
-          console.log(`【主进程】从 vocabulary 迁移了 ${vocabRecords.length} 条记录到 highlights`);
-        } catch (err) {
-          console.error('【主进程】highlights 数据迁移失败:', err);
-        }
-      })();
-
-      // 创建索引
-      db.exec(`
-        CREATE TABLE IF NOT EXISTS vocabulary_reviews (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          vocabulary_id INTEGER NOT NULL,
-          quality INTEGER NOT NULL,
-          ease_before REAL,
-          ease_after REAL,
-          interval_before INTEGER,
-          interval_after INTEGER,
-          created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-          FOREIGN KEY (vocabulary_id) REFERENCES vocabulary(id) ON DELETE CASCADE
-        );
-      `);
-      
       // 创建学习计划表
       db.exec(`
         CREATE TABLE IF NOT EXISTS study_plans (
@@ -282,15 +201,15 @@ app.whenReady().then(async () => {
         );
       `);
 
-      // 创建索引
+      // 索引
       db.exec(`
-        CREATE INDEX IF NOT EXISTS idx_vocabulary_word ON vocabulary(word);
-        CREATE INDEX IF NOT EXISTS idx_vocabulary_next_review ON vocabulary(next_review);
-        CREATE INDEX IF NOT EXISTS idx_vocabulary_reviews_vocab_id ON vocabulary_reviews(vocabulary_id);
+        CREATE INDEX IF NOT EXISTS idx_highlights_next_review ON highlights(next_review);
+        CREATE INDEX IF NOT EXISTS idx_highlights_status ON highlights(status);
+        CREATE INDEX IF NOT EXISTS idx_highlights_created_at ON highlights(created_at);
         CREATE INDEX IF NOT EXISTS idx_study_plans_status ON study_plans(status);
       `);
-      
-      console.log('学习Agent相关表创建完成');
+
+      console.log('[S1] highlights / study_plans 表就绪');
     } catch (err) {
       console.error('创建学习Agent表失败:', err);
     }

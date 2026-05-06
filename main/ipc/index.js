@@ -635,62 +635,7 @@ function registerIpcHandlers({ app, ipcMain, dialog, BrowserWindow, store, state
     }
   });
 
-  // 获取视频观看统计数据
-  ipcMain.on('getWatchingStats', (event) => {
-    // console.log('【主进程】收到getWatchingStats请求');
-
-    const db = getDb();
-    const mainWindow = getMainWindow();
-    if (!db) {
-      console.error('【主进程】数据库未初始化，无法获取观看统计数据');
-      mainWindow.webContents.send('watchingStats', {
-        totalWatchTime: 0,
-        videoCount: 0,
-        recentWatched: []
-      });
-      return;
-    }
-
-    try {
-      // 获取总观看时长（秒）
-      const totalTimeStmt = db.prepare('SELECT SUM(total_time) as total FROM watch_time');
-      const totalResult = totalTimeStmt.get();
-      const totalWatchTime = totalResult.total || 0;
-
-      // 获取已观看视频数量
-      const countStmt = db.prepare('SELECT COUNT(*) as count FROM watch_time');
-      const countResult = countStmt.get();
-      const videoCount = countResult.count || 0;
-
-      // 获取最近观看的5个视频
-      const recentStmt = db.prepare(
-        'SELECT * FROM watch_time ORDER BY last_watched DESC LIMIT 5'
-      );
-      const recentWatched = recentStmt.all();
-
-      console.log('【主进程】观看统计数据:', {
-        totalWatchTime,
-        videoCount,
-        recentCount: recentWatched.length
-      });
-
-      mainWindow.webContents.send('watchingStats', {
-        totalWatchTime,
-        videoCount,
-        recentWatched
-      });
-    } catch (error) {
-      console.error('【主进程】获取观看统计数据失败:', error);
-      mainWindow.webContents.send('error', { message: '获取观看统计数据失败', error: error.message });
-
-      // 发送默认数据
-      mainWindow.webContents.send('watchingStats', {
-        totalWatchTime: 0,
-        videoCount: 0,
-        recentWatched: []
-      });
-    }
-  });
+  // [S7] 已删除 getWatchingStats（无前端调用方，watch_time 表也未在使用）
 
   // 新增: 处理提取视频帧请求
   ipcMain.handle('extract-frame', async (event, { videoPath, timestamp }) => {
@@ -709,76 +654,8 @@ function registerIpcHandlers({ app, ipcMain, dialog, BrowserWindow, store, state
     }
   });
 
-  // IPC 处理：保存 AI 查询记录
-  ipcMain.handle('saveAiQuery', (event, { query, explanation, timestamp }) => {
-    console.log('【主进程】收到 saveAiQuery 请求:', { query });
-    const db = getDb();
-    if (!db) return { success: false, error: '数据库未初始化' };
-    try {
-      const stmt = db.prepare('INSERT INTO ai_queries (query, explanation, created_at) VALUES (?, ?, ?)');
-      const result = stmt.run(query, explanation, timestamp);
-      return { success: true, id: result.lastInsertRowid };
-    } catch (error) {
-      console.error('【主进程】保存 AI 查询失败:', error);
-      return { success: false, error: error.message };
-    }
-  });
-
-  // IPC 处理：查询本地缓存的 AI 结果（命中则更新时间并返回）
-  ipcMain.handle('getCachedAiQuery', (event, { query }) => {
-    try {
-      const db = getDb();
-      if (!db) return { hit: false };
-      if (!query || typeof query !== 'string') return { hit: false };
-      const q = query.trim();
-      if (q.length === 0) return { hit: false };
-      const row = db.prepare('SELECT id, query, explanation, created_at, updated_at FROM ai_queries WHERE lower(query) = lower(?) ORDER BY updated_at DESC LIMIT 1').get(q);
-      if (!row) return { hit: false };
-      // 命中则更新更新时间
-      db.prepare('UPDATE ai_queries SET updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(row.id);
-      return { hit: true, explanation: row.explanation, row };
-    } catch (error) {
-      console.error('【主进程】获取缓存失败:', error);
-      return { hit: false, error: error.message };
-    }
-  });
-
-  // IPC 处理：保存查询历史记录
-  ipcMain.handle('saveQueryHistory', (event, { query_text, response_text, query_type, video_id }) => {
-    console.log('【主进程】收到 saveQueryHistory 请求:', { query_text });
-    const db = getDb();
-    if (!db) return { success: false, error: '数据库未初始化' };
-    try {
-      const stmt = db.prepare(
-        'INSERT INTO query_history (query_text, response_text, query_type, video_id, created_at) VALUES (?, ?, ?, ?, ?)'
-      );
-      const result = stmt.run(
-        query_text,
-        response_text,
-        query_type,
-        video_id,
-        new Date().toISOString()
-      );
-      return { success: true, id: result.lastInsertRowid };
-    } catch (error) {
-      console.error('【主进程】保存查询历史失败:', error);
-      return { success: false, error: error.message };
-    }
-  });
-
-  // 新增: 获取今日 AI 查询记录
-  ipcMain.handle('getAiQueriesToday', (event) => {
-    const db = getDb();
-    if (!db) return [];
-    try {
-      const stmt = db.prepare("SELECT * FROM ai_queries WHERE date(created_at) = date('now','localtime') ORDER BY created_at DESC");
-      const rows = stmt.all();
-      return rows;
-    } catch (error) {
-      console.error('【主进程】获取今日 AI 查询记录失败:', error);
-      return [];
-    }
-  });
+  // [S7] 已删除：saveAiQuery / getCachedAiQuery / saveQueryHistory / getAiQueriesToday
+  // 这些 handler 对应的 ai_queries / query_history 表已废弃，统一走 highlights。
 
   // 添加IPC处理器让渲染进程可以触发安装更新
   ipcMain.handle('install-update', () => {
@@ -1309,162 +1186,8 @@ function registerIpcHandlers({ app, ipcMain, dialog, BrowserWindow, store, state
 
   // ==================== 学习Agent相关IPC处理 ====================
 
-  // 获取学习概况
-  ipcMain.handle('getLearningOverview', (event) => {
-    const db = getDb();
-    if (!db) return { error: '数据库未初始化' };
-
-    try {
-      const gu = db.prepare('SELECT total_time FROM global_usage WHERE id = 1').get();
-      const totalTime = gu ? gu.total_time : 0;
-
-      const totalQueries = db.prepare('SELECT COUNT(*) as count FROM ai_queries').get().count;
-      const activeDays = db.prepare('SELECT COUNT(DISTINCT date(created_at)) as count FROM ai_queries').get().count;
-      const avgDailyTime = activeDays > 0 ? totalTime / activeDays : 0;
-
-      const today = new Date().toISOString().slice(0, 10);
-      const todayQueries = db.prepare('SELECT COUNT(*) as count FROM ai_queries WHERE date(created_at) = ?').get(today).count;
-
-      return {
-        totalTime,
-        totalQueries,
-        activeDays,
-        avgDailyTime,
-        todayQueries
-      };
-    } catch (error) {
-      console.error('获取学习概况失败:', error);
-      return { error: error.message };
-    }
-  });
-
-  // 分析学习模式
-  ipcMain.handle('analyzeLearningPattern', (event) => {
-    const db = getDb();
-    if (!db) return { error: '数据库未初始化' };
-
-    try {
-      // 分析最活跃时段
-      const hourStats = db.prepare(`
-      SELECT strftime('%H', created_at) as hour, COUNT(*) as count
-      FROM ai_queries
-      GROUP BY hour
-      ORDER BY count DESC
-      LIMIT 1
-    `).get();
-
-      const mostActiveHour = hourStats ? `${hourStats.hour}:00` : null;
-
-      // 分析学习频率（最近7天）
-      const recentCount = db.prepare(`
-      SELECT COUNT(*) as count FROM ai_queries
-      WHERE date(created_at) >= date('now', '-7 days')
-    `).get().count;
-
-      const frequency = recentCount > 30 ? '高频' : recentCount > 10 ? '中频' : '低频';
-
-      // 分析最近趋势（最近3天 vs 之前3天）
-      const recent3Days = db.prepare(`
-      SELECT COUNT(*) as count FROM ai_queries
-      WHERE date(created_at) >= date('now', '-3 days')
-    `).get().count;
-
-      const before3Days = db.prepare(`
-      SELECT COUNT(*) as count FROM ai_queries
-      WHERE date(created_at) >= date('now', '-6 days') AND date(created_at) < date('now', '-3 days')
-    `).get().count;
-
-      let recentTrend = '稳定';
-      if (recent3Days > before3Days * 1.2) recentTrend = '上升';
-      else if (recent3Days < before3Days * 0.8) recentTrend = '下降';
-
-      return {
-        mostActiveHour,
-        frequency,
-        recentTrend,
-        recentCount
-      };
-    } catch (error) {
-      console.error('分析学习模式失败:', error);
-      return { error: error.message };
-    }
-  });
-
-  // 获取学习报告
-  ipcMain.handle('getLearningReport', (event, options = {}) => {
-    const db = getDb();
-    if (!db) return { error: '数据库未初始化' };
-
-    const days = options.days || 7;
-
-    try {
-      const stats = db.prepare(`
-      SELECT 
-        COUNT(*) as totalQueries,
-        COUNT(DISTINCT date(created_at)) as activeDays,
-        SUM(strftime('%s', updated_at) - strftime('%s', created_at)) as totalTime
-      FROM ai_queries
-      WHERE date(created_at) >= date('now', '-${days} days')
-    `).get();
-
-      const dailyStats = db.prepare(`
-      SELECT 
-        date(created_at) as date,
-        COUNT(*) as count
-      FROM ai_queries
-      WHERE date(created_at) >= date('now', '-${days} days')
-      GROUP BY date
-      ORDER BY date DESC
-    `).all();
-
-      return {
-        period: `${days}天`,
-        totalQueries: stats.totalQueries || 0,
-        activeDays: stats.activeDays || 0,
-        dailyStats
-      };
-    } catch (error) {
-      console.error('获取学习报告失败:', error);
-      return { error: error.message };
-    }
-  });
-
-  // 获取单词频率统计
-  ipcMain.handle('getWordFrequencyStats', (event, options = {}) => {
-    const db = getDb();
-    if (!db) return { error: '数据库未初始化' };
-
-    const limit = options.limit || 50;
-
-    try {
-      // 从ai_queries中提取单词（简单提取，后续可以优化）
-      const queries = db.prepare(`
-      SELECT query FROM ai_queries
-      WHERE LENGTH(query) < 50 AND query NOT LIKE '% %'
-      ORDER BY created_at DESC
-      LIMIT 500
-    `).all();
-
-      // 统计单词频率
-      const wordMap = {};
-      queries.forEach(q => {
-        const word = q.query.trim().toLowerCase();
-        if (word.length > 0 && /^[a-z]+$/.test(word)) {
-          wordMap[word] = (wordMap[word] || 0) + 1;
-        }
-      });
-
-      const wordStats = Object.entries(wordMap)
-        .map(([word, count]) => ({ word, count }))
-        .sort((a, b) => b.count - a.count)
-        .slice(0, limit);
-
-      return wordStats;
-    } catch (error) {
-      console.error('获取单词频率统计失败:', error);
-      return { error: error.message };
-    }
-  });
+  // [S7] 已删除：getLearningOverview / analyzeLearningPattern / getLearningReport / getWordFrequencyStats
+  // 这些 handler 全部基于已废弃的 ai_queries 表，前端改为直接聚合 highlights。
 
   // 保存学习计划
   ipcMain.handle('saveStudyPlan', (event, payload) => {
@@ -1548,239 +1271,60 @@ function registerIpcHandlers({ app, ipcMain, dialog, BrowserWindow, store, state
     }
   });
 
-  // 获取需要复习的单词
-  ipcMain.handle('getWordsToReview', (event, options = {}) => {
-    const db = getDb();
-    if (!db) return { error: '数据库未初始化' };
-
-    const limit = options.limit || 20;
-    const now = new Date().toISOString();
-
-    try {
-      const words = db.prepare(`
-      SELECT * FROM vocabulary
-      WHERE next_review IS NULL OR next_review <= ?
-      ORDER BY next_review ASC NULLS FIRST, created_at ASC
-      LIMIT ?
-    `).all(now, limit);
-
-      return words;
-    } catch (error) {
-      console.error('获取复习单词失败:', error);
-      return { error: error.message };
-    }
-  });
-
-  // 获取单词卡片数据
-  ipcMain.handle('getVocabularyCard', (event, { wordId }) => {
-    const db = getDb();
-    if (!db) return { error: '数据库未初始化' };
-
-    try {
-      const card = db.prepare('SELECT * FROM vocabulary WHERE id = ?').get(wordId);
-      if (!card) return { error: '单词不存在' };
-
-      return {
-        ease: card.ease,
-        interval: card.interval,
-        repetitions: card.repetitions,
-        lastReview: card.last_review
-      };
-    } catch (error) {
-      console.error('获取单词卡片失败:', error);
-      return { error: error.message };
-    }
-  });
-
-  // 更新单词卡片
-  ipcMain.handle('updateVocabularyCard', (event, { wordId, ease, interval, repetitions, nextReview, lastReview, quality }) => {
-    const db = getDb();
-    if (!db) return { error: '数据库未初始化' };
-
-    try {
-      // 获取更新前的数据
-      const before = db.prepare('SELECT ease, interval FROM vocabulary WHERE id = ?').get(wordId);
-
-      // 更新单词卡片
-      db.prepare(`
-      UPDATE vocabulary
-      SET ease = ?, interval = ?, repetitions = ?, next_review = ?, last_review = ?, updated_at = ?
-      WHERE id = ?
-    `).run(ease, interval, repetitions, nextReview, lastReview, new Date().toISOString(), wordId);
-
-      // 记录复习历史
-      if (before) {
-        db.prepare(`
-        INSERT INTO vocabulary_reviews (vocabulary_id, quality, ease_before, ease_after, interval_before, interval_after)
-        VALUES (?, ?, ?, ?, ?, ?)
-      `).run(wordId, quality, before.ease, ease, before.interval, interval);
-      }
-
-      return { success: true };
-    } catch (error) {
-      console.error('更新单词卡片失败:', error);
-      return { error: error.message };
-    }
-  });
-
-  // 添加单词到词汇表
-  ipcMain.handle('addVocabularyWord', (event, wordData) => {
-    const db = getDb();
-    if (!db) return { error: '数据库未初始化' };
-
-    try {
-      const stmt = db.prepare(`
-      INSERT OR IGNORE INTO vocabulary 
-      (word, phonetic, meaning, example, explanation, ease, interval, repetitions, next_review, last_review, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `);
-
-      const now = new Date().toISOString();
-      stmt.run(
-        wordData.word,
-        wordData.phonetic || null,
-        wordData.meaning || null,
-        wordData.example || null,
-        wordData.explanation || null,
-        wordData.ease || 2.5,
-        wordData.interval || 0,
-        wordData.repetitions || 0,
-        wordData.nextReview || now,
-        wordData.lastReview || null,
-        now,
-        now
-      );
-
-      const word = db.prepare('SELECT * FROM vocabulary WHERE word = ?').get(wordData.word);
-      return word;
-    } catch (error) {
-      console.error('添加单词失败:', error);
-      return { error: error.message };
-    }
-  });
-
-  // 从查询记录中提取单词
-  ipcMain.handle('extractWordsFromQueries', (event, options = {}) => {
-    const db = getDb();
-    if (!db) return { error: '数据库未初始化' };
-
-    const limit = options.limit || 50;
-
-    try {
-      // 获取查询记录
-      const queries = db.prepare(`
-      SELECT DISTINCT query, explanation FROM ai_queries
-      WHERE LENGTH(query) < 50 AND query NOT LIKE '% %'
-      ORDER BY created_at DESC
-      LIMIT ?
-    `).all(limit);
-
-      let count = 0;
-      const wordPattern = /^[a-z]+$/i;
-
-      queries.forEach(q => {
-        const word = q.query.trim().toLowerCase();
-        if (word.length > 0 && wordPattern.test(word)) {
-          try {
-            // 尝试从explanation中提取音标和含义
-            let phonetic = null;
-            let meaning = null;
-
-            // 简单的提取逻辑（可以从explanation中解析）
-            const phoneticMatch = q.explanation.match(/`([^`]+)`/);
-            if (phoneticMatch) phonetic = phoneticMatch[1];
-
-            const meaningMatch = q.explanation.match(/\*\*.*?\*\*\s+"([^"]+)"/);
-            if (meaningMatch) meaning = meaningMatch[1];
-
-            db.prepare(`
-            INSERT OR IGNORE INTO vocabulary 
-            (word, phonetic, meaning, explanation, ease, interval, repetitions, next_review, created_at, updated_at)
-            VALUES (?, ?, ?, ?, 2.5, 0, 0, ?, ?, ?)
-          `).run(word, phonetic, meaning, q.explanation, new Date().toISOString(), new Date().toISOString(), new Date().toISOString());
-
-            count++;
-          } catch (err) {
-            // 忽略重复插入错误
-          }
-        }
-      });
-
-      return { count };
-    } catch (error) {
-      console.error('提取单词失败:', error);
-      return { error: error.message };
-    }
-  });
-
-  // 获取词汇学习统计
-  ipcMain.handle('getVocabularyStats', () => {
-    const db = getDb();
-    if (!db) return { error: '数据库未初始化' };
-
-    try {
-      const total = db.prepare('SELECT COUNT(*) as count FROM vocabulary').get().count;
-      const now = new Date().toISOString();
-      const dueCount = db.prepare(
-        'SELECT COUNT(*) as count FROM vocabulary WHERE next_review <= ? OR next_review IS NULL'
-      ).get(now).count;
-      const masteredCount = db.prepare(
-        'SELECT COUNT(*) as count FROM vocabulary WHERE repetitions >= 5'
-      ).get().count;
-
-      let recentReviews = 0;
-      try {
-        recentReviews = db.prepare(`
-          SELECT COUNT(*) as count FROM vocabulary_reviews
-          WHERE date(created_at) = date('now', 'localtime')
-        `).get().count;
-      } catch (err) {
-        // 老用户数据库没有 vocabulary_reviews 表，忽略
-        console.warn('vocabulary_reviews 统计跳过:', err.message);
-      }
-
-      return {
-        total,
-        dueCount,
-        masteredCount,
-        recentReviews
-      };
-    } catch (error) {
-      console.error('getVocabularyStats error:', error);
-      return { error: error.message };
-    }
-  });
+  // [S7] 已删除：getWordsToReview / getVocabularyCard / updateVocabularyCard / addVocabularyWord / extractWordsFromQueries / getVocabularyStats
+  // 这些 handler 全部基于已废弃的 vocabulary / vocabulary_reviews 表，前端改用 highlights 相关 API（getDueHighlights / submitReview / getHighlightsStats / createHighlight）。
 
   // ===== T1-2: highlights CRUD handlers =====
 
-  // createHighlight
+  // createHighlight (UPSERT by video_path + original_text)
   ipcMain.handle('createHighlight', (event, highlightData) => {
     const db = getDb();
     if (!db) return { error: '数据库未初始化' };
     try {
-      const id = require('crypto').randomUUID();
       const now = new Date().toISOString();
       const {
         video_path, video_title, start_time, end_time, original_text,
         context_before, context_after, explanation, user_note,
-        status, ease, interval, repetitions, next_review, last_review
+        language, status, ease, interval, repetitions, next_review, last_review
       } = highlightData || {};
 
+      const text = (original_text || '').trim();
+      if (!text) return { error: 'original_text required' };
+
+      // OCR 场景 video_path 可能没传，统一存 '' 而不是 null（让 UNIQUE 索引可去重）
+      const vp = video_path || '';
+      const id = require('crypto').randomUUID();
+
       db.prepare(`
-        INSERT INTO highlights (id, video_path, video_title, start_time, end_time, original_text,
-          context_before, context_after, explanation, user_note, status, ease, interval,
-          repetitions, next_review, last_review, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO highlights (
+          id, video_path, video_title, start_time, end_time, original_text,
+          context_before, context_after, explanation, user_note, language,
+          status, ease, interval, repetitions, next_review, last_review,
+          query_count, last_queried_at, created_at, updated_at
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?)
+        ON CONFLICT(video_path, original_text) DO UPDATE SET
+          query_count = query_count + 1,
+          last_queried_at = excluded.last_queried_at,
+          explanation = COALESCE(excluded.explanation, explanation),
+          language = COALESCE(excluded.language, language),
+          context_before = COALESCE(excluded.context_before, context_before),
+          context_after = COALESCE(excluded.context_after, context_after),
+          start_time = COALESCE(excluded.start_time, start_time),
+          end_time = COALESCE(excluded.end_time, end_time),
+          updated_at = excluded.updated_at
       `).run(
-        id, video_path || null, video_title || null, start_time || null, end_time || null,
-        original_text || null, context_before || null, context_after || null,
-        explanation || null, user_note || null, status || 'pending',
-        ease ?? 2.5, interval ?? 0, repetitions ?? 0,
-        next_review || null, last_review || null, now, now
+        id, vp, video_title || null, start_time ?? null, end_time ?? null,
+        text, context_before || null, context_after || null,
+        explanation || null, user_note || null, language || null,
+        status || 'learning', ease ?? 2.5, interval ?? 0, repetitions ?? 0,
+        next_review || null, last_review || null, now, now, now
       );
 
-      const highlight = db.prepare('SELECT * FROM highlights WHERE id = ?').get(id);
-      return { success: true, id, highlight };
+      const highlight = db.prepare(
+        'SELECT * FROM highlights WHERE video_path = ? AND original_text = ?'
+      ).get(vp, text);
+      return { success: true, id: highlight.id, highlight };
     } catch (error) {
       console.error('createHighlight error:', error);
       return { error: error.message };
@@ -1950,30 +1494,6 @@ function registerIpcHandlers({ app, ipcMain, dialog, BrowserWindow, store, state
         WHERE id = ?
       `).run(ease, interval, repetitions, next_review, id);
 
-      // Compatibility: only write vocabulary_reviews when a legacy vocabulary row exists.
-      try {
-        const legacyVocabulary = db.prepare(
-          'SELECT id FROM vocabulary WHERE id = ?'
-        ).get(id);
-
-        if (legacyVocabulary) {
-          db.prepare(`
-            INSERT INTO vocabulary_reviews (vocabulary_id, quality, ease_before, ease_after, interval_before, interval_after)
-            VALUES (?, ?, ?, ?, ?, ?)
-          `).run(
-            id,
-            quality,
-            highlight.ease,
-            ease,
-            highlight.interval,
-            interval
-          );
-        }
-      } catch (err) {
-        // Legacy compatibility only; highlights review is already persisted above.
-        console.log('vocabulary_reviews insert skipped:', err.message);
-      }
-
       return { success: true, srs_data: { ease, interval, repetitions, next_review } };
     } catch (error) {
       console.error('submitReview error:', error);
@@ -2024,6 +1544,53 @@ function registerIpcHandlers({ app, ipcMain, dialog, BrowserWindow, store, state
       };
     } catch (error) {
       console.error('getHighlightsStats error:', error);
+      return { error: error.message };
+    }
+  });
+
+  // S5: highlights 每日新增计数（趋势图用）
+  ipcMain.handle('getHighlightsDailyCount', (event, { days = 7 } = {}) => {
+    const db = getDb();
+    if (!db) return { error: '数据库未初始化' };
+    try {
+      const rows = db.prepare(`
+        SELECT date(created_at, 'localtime') as date, COUNT(*) as count
+        FROM highlights
+        WHERE date(created_at, 'localtime') >= date('now', 'localtime', ?)
+        GROUP BY date(created_at, 'localtime')
+        ORDER BY date ASC
+      `).all(`-${days - 1} days`);
+
+      // 填充缺失日期为 0，保证数组长度 = days
+      const map = {};
+      rows.forEach(r => { map[r.date] = r.count; });
+      const result = [];
+      for (let i = days - 1; i >= 0; i--) {
+        const d = new Date();
+        d.setDate(d.getDate() - i);
+        const key = d.toISOString().slice(0, 10);
+        result.push({ date: key, count: map[key] || 0 });
+      }
+      return result;
+    } catch (error) {
+      console.error('getHighlightsDailyCount error:', error);
+      return { error: error.message };
+    }
+  });
+
+  // S6: 获取今日新增的 highlights（按 created_at 当天 localtime）
+  ipcMain.handle('getTodayHighlights', () => {
+    const db = getDb();
+    if (!db) return { error: '数据库未初始化' };
+    try {
+      const rows = db.prepare(`
+        SELECT * FROM highlights
+        WHERE date(created_at, 'localtime') = date('now', 'localtime')
+        ORDER BY created_at DESC
+      `).all();
+      return rows;
+    } catch (error) {
+      console.error('getTodayHighlights error:', error);
       return { error: error.message };
     }
   });

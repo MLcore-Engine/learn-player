@@ -7,45 +7,28 @@ const { contextBridge, ipcRenderer } = require('electron');
 
 // 白名单，列出允许渲染进程调用的IPC通道
 const allowedInvokeChannels = [
-  'readVideoFile',           // 新增：读取视频文件二进制数据
-  'readVideoChunk',          // 新增：分段读取文件
-  'performAIRequest',        // 新增：AI 请求通过主进程发起，避免 CORS
-  'performAIStream',         // 新增：AI 流式请求
+  'performAIRequest',
+  'performAIStream',
   'extract-frame',
   'selectSubtitle',
   'selectVideo',
   'getWatchTime',
   'saveLearningRecord',
-  'saveAiQuery',
-  'getCachedAiQuery',
   'getLearningRecords',
-  'getAiQueriesToday',
   'saveApiKey',
   'getApiKey',
-  'install-update',          // 新增：用于触发更新安装
-  'saveQueryHistory',        // 新增：用于保存查询历史
+  'install-update',
   'getVideoServerPort',
   'prepareVideo',
-  'cleanupVideoCache',       // 添加新的通道
-  'checkFileExists',         // 添加：检查文件是否存在
-  'checkDatabaseStatus',     // 添加：检查数据库状态
-  'lookupWord',             // 添加：字典查询通道
-  'export-learning-today-pdf', // 添加：导出PDF通道
-  // 学习Agent相关
-  'getLearningOverview',
-  'analyzeLearningPattern',
-  'getLearningReport',
-  'getWordFrequencyStats',
+  'cleanupVideoCache',
+  'checkFileExists',
+  'lookupWord',
+  'export-learning-today-pdf',
+  // 学习计划
   'saveStudyPlan',
   'getCurrentStudyPlan',
   'updatePlanProgress',
-  'getWordsToReview',
-  'getVocabularyCard',
-  'updateVocabularyCard',
-  'addVocabularyWord',
-  'extractWordsFromQueries',
-  'getVocabularyStats',
-  // T1-6: highlights IPC channels
+  // highlights
   'createHighlight',
   'getHighlights',
   'getHighlight',
@@ -54,21 +37,18 @@ const allowedInvokeChannels = [
   'getDueHighlights',
   'submitReview',
   'getHighlightsStats',
+  'getHighlightsDailyCount',
+  'getTodayHighlights',
 ];
 
 const allowedSendChannels = [
-  'getCategories',
-  'getMovies',
   'updateWatchTime',
   'loadSubtitle',
-  'deleteLearningRecord', // 新增：删除学习记录
-  'getLearningStats',     // 新增：获取学习统计
-  'getWatchingStats'      // 新增：获取观看统计
+  'deleteLearningRecord',
+  'getLearningStats'
 ];
 
 const allowedReceiveChannels = [
-  'categories',
-  'movies',
   'watchTime',
   'error',
   'databaseInitError',
@@ -76,16 +56,15 @@ const allowedReceiveChannels = [
   'subtitleLoaded',
   'videoSelectedFromMenu',
   'openApiKeySettings',
-  'update-available',     // 新增：更新可用通知
-  'update-downloaded',    // 新增：更新已下载通知
-  'watchTimeUpdated',     // 新增：观看时间更新通知
-  'learningRecordDeleted', // 新增：学习记录删除通知
-  'learningStats',        // 新增：学习统计信息
-  'watchingStats',        // 新增：观看统计信息
-  'databaseStatus',       // 新增：数据库状态
-  'ai-stream',            // 新增：AI 流式事件
-  'conversion-progress',  // 新增：视频转换进度
-  'conversion-complete'   // 新增：视频转换完成
+  'update-available',
+  'update-downloaded',
+  'watchTimeUpdated',
+  'learningRecordDeleted',
+  'learningStats',
+  'databaseStatus',
+  'ai-stream',
+  'conversion-progress',
+  'conversion-complete'
 ];
 
 // 请求频率限制
@@ -224,8 +203,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   selectSubtitle: (videoPath) => ipcRenderer.invoke('selectSubtitle', { videoPath }),
   
   // 数据库相关
-  getCategories: () => ipcRenderer.send('getCategories'),
-  getMovies: (category_id, page) => ipcRenderer.send('getMovies', { category_id, page }),
   getWatchTime: (videoId) => {
     if (checkRateLimit('getWatchTime')) {
       throw new Error('Rate limit exceeded for channel: getWatchTime');
@@ -234,23 +211,15 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
   updateWatchTime: (watchTimeData) => ipcRenderer.send('updateWatchTime', watchTimeData),
   saveLearningRecord: (record) => ipcRenderer.invoke('saveLearningRecord', record),
-  saveAiQuery: (data) => ipcRenderer.invoke('saveAiQuery', data),
-  getCachedAiQuery: (payload) => ipcRenderer.invoke('getCachedAiQuery', payload),
-  getAiQueriesToday: () => ipcRenderer.invoke('getAiQueriesToday'),
   getLearningRecords: (videoId) => ipcRenderer.invoke('getLearningRecords', { videoId }),
-  
+
   // 系统信息
   platform: process.platform,
-  
+
   // AI 请求
   performAIRequest: (requestData, apiUrl, apiKey) => ipcRenderer.invoke('performAIRequest', { requestData, apiUrl, apiKey }),
   performAIStream: (requestData, apiUrl, apiKey) => ipcRenderer.invoke('performAIStream', { requestData, apiUrl, apiKey }),
-  
-  // 读取视频文件数据
-  readVideoFile: (filePath) => ipcRenderer.invoke('readVideoFile', filePath),
-  // 新增：分段读取视频文件
-  readVideoChunk: (videoPath, offset, length) => ipcRenderer.invoke('readVideoChunk', videoPath, offset, length),
-  
+
   // 获取本地视频 HTTP 服务端口
   getVideoServerPort: () => ipcRenderer.invoke('getVideoServerPort'),
   // 生成本地视频 HTTP URL
@@ -265,43 +234,24 @@ contextBridge.exposeInMainWorld('electronAPI', {
     }
     return `http://127.0.0.1:${port}/video?path=${encodeURIComponent(videoPath)}`;
   },
-  
+
   // 视频格式预处理：将 mkv/avi 转换为 mp4
   prepareVideo: (filePath) => ipcRenderer.invoke('prepareVideo', filePath),
-  
-  // 视频格式转换相关
-  convertVideo: (params) => ipcRenderer.invoke('convertVideo', params),
-  checkVideoFormat: (filePath) => ipcRenderer.invoke('checkVideoFormat', filePath),
-  
+
   // 清理视频缓存
   cleanupVideoCache: () => ipcRenderer.invoke('cleanupVideoCache'),
   // 检查文件是否存在
   checkFileExists: (filePath) => ipcRenderer.invoke('checkFileExists', filePath),
-  
+
   // 字典查询
   lookupWord: (word) => ipcRenderer.invoke('lookupWord', word),
-  
-  // ============== 学习Agent相关API ==============
-  // 学习分析
-  getLearningOverview: () => ipcRenderer.invoke('getLearningOverview'),
-  analyzeLearningPattern: () => ipcRenderer.invoke('analyzeLearningPattern'),
-  getLearningReport: (options) => ipcRenderer.invoke('getLearningReport', options),
-  getWordFrequencyStats: (options) => ipcRenderer.invoke('getWordFrequencyStats', options),
-  
-  // 学习计划
+
+  // ============== 学习计划 ==============
   saveStudyPlan: (data) => ipcRenderer.invoke('saveStudyPlan', data),
   getCurrentStudyPlan: () => ipcRenderer.invoke('getCurrentStudyPlan'),
   updatePlanProgress: (progress) => ipcRenderer.invoke('updatePlanProgress', progress),
-  
-  // 背单词（间隔重复）
-  getWordsToReview: (options) => ipcRenderer.invoke('getWordsToReview', options),
-  getVocabularyCard: (data) => ipcRenderer.invoke('getVocabularyCard', data),
-  updateVocabularyCard: (data) => ipcRenderer.invoke('updateVocabularyCard', data),
-  addVocabularyWord: (data) => ipcRenderer.invoke('addVocabularyWord', data),
-  extractWordsFromQueries: (options) => ipcRenderer.invoke('extractWordsFromQueries', options),
-  getVocabularyStats: () => ipcRenderer.invoke('getVocabularyStats'),
 
-  // ===== T1-6: highlights IPC channels =====
+  // ============== highlights ==============
   // CRUD
   createHighlight: (highlightData) => ipcRenderer.invoke('createHighlight', highlightData),
   getHighlights: (params) => ipcRenderer.invoke('getHighlights', params),
@@ -312,7 +262,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getDueHighlights: (params) => ipcRenderer.invoke('getDueHighlights', params),
   submitReview: (params) => ipcRenderer.invoke('submitReview', params),
   // Stats
-  getHighlightsStats: () => ipcRenderer.invoke('getHighlightsStats')
+  getHighlightsStats: () => ipcRenderer.invoke('getHighlightsStats'),
+  getHighlightsDailyCount: (params) => ipcRenderer.invoke('getHighlightsDailyCount', params),
+  getTodayHighlights: () => ipcRenderer.invoke('getTodayHighlights')
 });
 
 console.log('--- Preload script: END ---'); 

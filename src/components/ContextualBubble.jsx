@@ -5,8 +5,8 @@ import { Box, Button, CircularProgress } from '@mui/material';
  * ContextualBubble - 选词后浮出的操作气泡
  * @param {string} text - 选中的文本
  * @param {object} position - { x, y } 屏幕坐标
- * @param {function} onExplain - 点击"解释"回调 (text) => void
- * @param {function} onSaveToReview - 点击"加入生词本"回调 (text) => void
+ * @param {function} onExplain - 点击"中文解释"回调 (text) => void
+ * @param {function} onExplainEn - 点击"英文解释"回调 (text) => void
  * @param {function} onPlaySegment - 点击"播放片段"回调 (startTime) => void
  * @param {number|null} startTime - 视频时间戳（秒）
  * @param {boolean} loading - 是否正在解释
@@ -16,7 +16,7 @@ const ContextualBubble = ({
   text,
   position,
   onExplain,
-  onSaveToReview,
+  onExplainEn,
   onPlaySegment,
   startTime,
   loading = false,
@@ -71,17 +71,17 @@ const ContextualBubble = ({
           onClick={() => onExplain(text)}
           sx={{ fontSize: '12px', py: 0.5, px: 1, backgroundColor: '#1976d2' }}
         >
-          {loading ? <CircularProgress size={14} color="inherit" /> : '✦ 解释'}
+          {loading ? <CircularProgress size={14} color="inherit" /> : '✦ 中文解释'}
         </Button>
 
         <Button
-          variant="outlined"
+          variant="contained"
           size="small"
           disabled={loading}
-          onClick={() => onSaveToReview(text)}
-          sx={{ fontSize: '12px', py: 0.5, px: 1, borderColor: '#388e3c', color: '#66bb6a' }}
+          onClick={() => onExplainEn?.(text)}
+          sx={{ fontSize: '12px', py: 0.5, px: 1, backgroundColor: '#0d47a1' }}
         >
-          + 生词本
+          {loading ? <CircularProgress size={14} color="inherit" /> : '✦ 英文解释'}
         </Button>
 
         {startTime != null && (
