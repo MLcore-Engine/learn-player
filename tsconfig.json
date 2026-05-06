@@ -3,7 +3,7 @@
     "target": "es2019",
     "lib": ["dom", "dom.iterable", "esnext"],
     "module": "esnext",
-    "moduleResolution": "node",
+    "moduleResolution": "bundler",
     "jsx": "react-jsx",
     "allowJs": true,
     "checkJs": false,
@@ -16,8 +16,7 @@
     "noEmit": true,
     "strict": false,
     "noImplicitAny": false,
-    "strictNullChecks": false,
-    "baseUrl": "src"
+    "strictNullChecks": false
   },
   "include": ["src"]
 }
