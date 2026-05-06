@@ -1,40 +1,55 @@
 import React from 'react';
+import type { ApiKeyState } from '../types/state';
 
-const ApiKeySettings = ({ 
-  isVisible, 
+export interface ApiKeySettingsProps {
+  isVisible: boolean;
+  apiKey: string;
+  modelUrl: string;
+  storedApiKeyStatus: string;
+  configSource?: ApiKeyState['configSource'];
+  onApiKeyChange: (value: string) => void;
+  onModelUrlChange: (value: string) => void;
+  onSave: () => void;
+  onCancel: () => void;
+}
+
+const ApiKeySettings: React.FC<ApiKeySettingsProps> = ({
+  isVisible,
   apiKey,
   modelUrl,
   storedApiKeyStatus,
   configSource,
   onApiKeyChange,
   onModelUrlChange,
-  onSave, 
-  onCancel 
+  onSave,
+  onCancel
 }) => {
   if (!isVisible) return null;
 
-  const sourceLabels = {
+  const sourceLabels: Record<string, string> = {
     store: '用户设置',
     env: '环境变量',
     default: '默认',
     local: '本地'
   };
-  const apiKeySourceLabel = sourceLabels[configSource?.apiKey] || '未知';
-  const modelUrlSourceLabel = sourceLabels[configSource?.modelUrl] || '未知';
-  
+  const apiKeySourceLabel = (configSource && sourceLabels[configSource.apiKey]) || '未知';
+  const modelUrlSourceLabel = (configSource && sourceLabels[configSource.modelUrl]) || '未知';
+
   return (
-    <div style={{
-      position: 'fixed', 
-      top: '20px', 
-      left: '50%', 
-      transform: 'translateX(-50%)',
-      background: '#333', 
-      color: '#fff', 
-      padding: '20px', 
-      borderRadius: '5px',
-      zIndex: 2000, 
-      boxShadow: '0 5px 15px rgba(0,0,0,0.3)'
-    }}>
+    <div
+      style={{
+        position: 'fixed',
+        top: '20px',
+        left: '50%',
+        transform: 'translateX(-50%)',
+        background: '#333',
+        color: '#fff',
+        padding: '20px',
+        borderRadius: '5px',
+        zIndex: 2000,
+        boxShadow: '0 5px 15px rgba(0,0,0,0.3)'
+      }}
+    >
       <h5 style={{ marginTop: 0, marginBottom: '10px', fontSize: '1.05rem' }}>设置 StepFun API</h5>
       <p>当前状态: {storedApiKeyStatus}</p>
       <p style={{ fontSize: '0.9em', color: '#bbb' }}>
@@ -67,4 +82,4 @@ const ApiKeySettings = ({
   );
 };
 
-export default ApiKeySettings; 
+export default ApiKeySettings;
