@@ -1,12 +1,31 @@
 import React, { useState, useEffect } from 'react';
-import TimeStats from './TimeStats';
+import TimeStats, { type TimeStatsProps } from './TimeStats';
 import OCRContainer from '../containers/OCRContainer';
 import OCRResultModal from './OCRResultModal';
-import ContextualBubble from './ContextualBubble';
+import ContextualBubble, { type BubblePosition } from './ContextualBubble';
 import { Box } from '@mui/material';
 import { useVideo, useAI } from '../contexts/AppContext';
+import type { Language } from '../types/highlight';
+import type { OcrPayload } from '../hooks/useExplainFlow';
 
-const SidePanelHeader = ({
+export type SubtitleSelectedHandler = (text: string, startTime?: number | null) => void;
+export type SubtitleSelectedRegistrar = (handler: SubtitleSelectedHandler) => void;
+
+export interface SidePanelHeaderProps {
+  explainLoading: boolean;
+  hasExternalSubtitles: boolean;
+  isVideoLoaded: boolean;
+  ocrLoading: boolean;
+  ocrModalOpen: boolean;
+  ocrResult: string;
+  onCloseModal: () => void;
+  onExplain: (lang: Language, text: string, startTime?: number | null) => void;
+  onRecognize: (payload: string | OcrPayload) => void;
+  timeStatsProps: TimeStatsProps;
+  onSubtitleSelected?: SubtitleSelectedRegistrar;
+}
+
+const SidePanelHeader: React.FC<SidePanelHeaderProps> = ({
   explainLoading,
   hasExternalSubtitles,
   isVideoLoaded,
@@ -22,13 +41,13 @@ const SidePanelHeader = ({
   const { jumpToTime } = useVideo();
   const { selectedText } = useAI();
 
-  // Contextual bubble 状态
-  const [bubbleText, setBubbleText] = useState('');
-  const [bubblePosition, setBubblePosition] = useState({ x: 0, y: 0 });
-  const [bubbleStartTime, setBubbleStartTime] = useState(null);
+  const [bubbleText, setBubbleText] = useState<string>('');
+  const [bubblePosition, setBubblePosition] = useState<BubblePosition>({ x: 0, y: 0 });
+  const [bubbleStartTime, setBubbleStartTime] = useState<number | null>(null);
+
   useEffect(() => {
     if (typeof onSubtitleSelected === 'function') {
-      const handler = (text, startTime) => {
+      const handler: SubtitleSelectedHandler = (text, startTime) => {
         if (!text) return;
         setBubbleText(text);
         setBubblePosition({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
@@ -40,15 +59,17 @@ const SidePanelHeader = ({
 
   return (
     <>
-      <Box sx={{
-        width: '100%',
-        position: 'relative',
-        pt: 1.5,
-        pb: 0.5,
-        px: 2,
-        backgroundColor: 'background.paper',
-        borderBottom: '1px solid rgba(255,255,255,0.08)'
-      }}>
+      <Box
+        sx={{
+          width: '100%',
+          position: 'relative',
+          pt: 1.5,
+          pb: 0.5,
+          px: 2,
+          backgroundColor: 'background.paper',
+          borderBottom: '1px solid rgba(255,255,255,0.08)'
+        }}
+      >
         <Box sx={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between', gap: 2 }}>
           <Box sx={{ flex: 1, width: '48%' }}>
             <OCRContainer
@@ -76,6 +97,7 @@ const SidePanelHeader = ({
           isLoading={explainLoading}
         />
       )}
+
       {/* Contextual Bubble（OCR 弹窗打开时不显示） */}
       {!ocrModalOpen && bubbleText && (
         <ContextualBubble
@@ -104,7 +126,6 @@ const SidePanelHeader = ({
   );
 };
 
-// 暴露方法给父组件调用（通过 ref 转发）
 SidePanelHeader.displayName = 'SidePanelHeader';
 
 export default SidePanelHeader;

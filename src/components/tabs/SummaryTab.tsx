@@ -5,16 +5,18 @@ import {
 import { ArrowBack, Refresh, AutoStories, PictureAsPdf, ContentCopy } from '@mui/icons-material';
 import { ipcClient } from '../../services/ipcClient';
 import aiService from '../../services/aiService';
+import type { Highlight } from '../../types/highlight';
 
-// 构建导出 PDF 的 HTML（仅今日新增）
-const buildPdfHtml = (highlights) => {
+const buildPdfHtml = (highlights: Highlight[]): string => {
   const today = new Date().toISOString().slice(0, 10);
   const parts = [`<h1>今日学习记录 (${today})</h1>`];
   for (const h of highlights || []) {
     const word = (h.original_text || '').trim();
     let body = (h.explanation || h.user_note || '').trim();
     body = body
-      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
       .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
       .replace(/`(.+?)`/g, '<code>$1</code>')
       .replace(/\n/g, '<br/>');
@@ -27,8 +29,7 @@ const buildPdfHtml = (highlights) => {
   return parts.join('\n');
 };
 
-// 渲染 AI 故事（去掉 <shengcheng> 标签 + 简单 markdown）
-const renderStoryHtml = (raw) => {
+const renderStoryHtml = (raw: string): string => {
   const cleaned = (raw || '').replace(/<\/?shengcheng>/g, '');
   return cleaned
     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
@@ -36,32 +37,38 @@ const renderStoryHtml = (raw) => {
     .replace(/\n/g, '<br/>');
 };
 
-const SummaryTab = ({ onBackToSubtitle }) => {
-  const [todayWords, setTodayWords] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [story, setStory] = useState('');
-  const [storyBusy, setStoryBusy] = useState(false);
-  const [exportBusy, setExportBusy] = useState(false);
+export interface SummaryTabProps {
+  onBackToSubtitle?: () => void;
+}
 
-  const load = useCallback(async () => {
+const SummaryTab: React.FC<SummaryTabProps> = ({ onBackToSubtitle }) => {
+  const [todayWords, setTodayWords] = useState<Highlight[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string>('');
+  const [story, setStory] = useState<string>('');
+  const [storyBusy, setStoryBusy] = useState<boolean>(false);
+  const [exportBusy, setExportBusy] = useState<boolean>(false);
+
+  const load = useCallback(async (): Promise<void> => {
     setLoading(true);
     setError('');
     try {
       const result = await ipcClient.getTodayHighlights();
-      if (result && result.error) throw new Error(result.error);
+      if (result && 'error' in result && result.error) throw new Error(result.error);
       setTodayWords(Array.isArray(result) ? result : []);
     } catch (e) {
       console.error('SummaryTab 加载失败:', e);
-      setError(e.message || '加载失败');
+      setError((e as Error).message || '加载失败');
     } finally {
       setLoading(false);
     }
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    load();
+  }, [load]);
 
-  const handleGenerateStory = async () => {
+  const handleGenerateStory = async (): Promise<void> => {
     if (todayWords.length === 0) {
       alert('今天还没有新增单词');
       return;
@@ -73,13 +80,13 @@ const SummaryTab = ({ onBackToSubtitle }) => {
       setStory(result || '');
     } catch (e) {
       console.error('生成故事失败:', e);
-      alert('生成故事失败：' + (e.message || e));
+      alert('生成故事失败：' + ((e as Error).message || e));
     } finally {
       setStoryBusy(false);
     }
   };
 
-  const handleExportPdf = async () => {
+  const handleExportPdf = async (): Promise<void> => {
     if (todayWords.length === 0) {
       alert('今天还没有新增单词，无内容可导出');
       return;
@@ -102,13 +109,13 @@ const SummaryTab = ({ onBackToSubtitle }) => {
       }
     } catch (e) {
       console.error('导出 PDF 失败:', e);
-      alert('导出 PDF 失败：' + (e?.message || e));
+      alert('导出 PDF 失败：' + ((e as Error)?.message || e));
     } finally {
       setExportBusy(false);
     }
   };
 
-  const handleCopyStory = () => {
+  const handleCopyStory = (): void => {
     if (!story) return;
     navigator.clipboard.writeText(story.replace(/<\/?shengcheng>/g, ''));
   };
@@ -121,7 +128,6 @@ const SummaryTab = ({ onBackToSubtitle }) => {
       </Stack>
 
       <Box sx={{ flex: 1, overflow: 'auto', pr: 1 }}>
-        {/* 今日单词列表 */}
         <Paper variant="outlined" sx={{ p: 2, mb: 2 }}>
           <Typography variant="subtitle2" sx={{ mb: 1 }}>
             今日新增（{todayWords.length}）
@@ -140,7 +146,10 @@ const SummaryTab = ({ onBackToSubtitle }) => {
                 <ListItem key={h.id} disablePadding sx={{ py: 0.5 }}>
                   <ListItemText
                     primary={h.original_text}
-                    secondary={(h.explanation || '').slice(0, 60) + (h.explanation && h.explanation.length > 60 ? '...' : '')}
+                    secondary={
+                      (h.explanation || '').slice(0, 60) +
+                      (h.explanation && h.explanation.length > 60 ? '...' : '')
+                    }
                     primaryTypographyProps={{ variant: 'body2', fontWeight: 500 }}
                     secondaryTypographyProps={{ variant: 'caption' }}
                   />
@@ -150,7 +159,6 @@ const SummaryTab = ({ onBackToSubtitle }) => {
           )}
         </Paper>
 
-        {/* 操作按钮 */}
         <Stack direction="row" spacing={1} sx={{ mb: 2 }}>
           <Button
             variant="contained"
@@ -172,7 +180,6 @@ const SummaryTab = ({ onBackToSubtitle }) => {
           </Button>
         </Stack>
 
-        {/* 今日故事 */}
         {story && (
           <Paper variant="outlined" sx={{ p: 2 }}>
             <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>

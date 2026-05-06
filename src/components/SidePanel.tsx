@@ -1,19 +1,23 @@
 import React, { useState } from 'react';
 import { useTimeStats } from '../contexts/AppContext';
 import { Box } from '@mui/material';
-import SidePanelHeader from './SidePanelHeader';
+import SidePanelHeader, { type SubtitleSelectedRegistrar } from './SidePanelHeader';
 import SidePanelTabs from './SidePanelTabs';
 import SidePanelContent from './SidePanelContent';
 import useExplainFlow from '../hooks/useExplainFlow';
 import useResizablePanel from '../hooks/useResizablePanel';
 
+export interface SidePanelProps {
+  hasExternalSubtitles: boolean;
+  onSubtitleSelect?: SubtitleSelectedRegistrar;
+}
+
 /**
- * 侧边面板组件
- * 集成各个子容器组件
+ * 侧边面板组件 —— 集成各个子容器组件
  */
-const SidePanel = React.memo(({ hasExternalSubtitles, onSubtitleSelect }) => {
-  const { totalTime, sessionTime, remainingSeconds, formatTime } = useTimeStats();
-  const [panelTab, setPanelTab] = useState(0); // 0=AI助手, 1=学习Agent
+const SidePanel = React.memo<SidePanelProps>(({ hasExternalSubtitles, onSubtitleSelect }) => {
+  const { totalTime, sessionTime } = useTimeStats();
+  const [panelTab, setPanelTab] = useState<number>(0); // 0=解释,...,4=总结
   const { width, isDragging, handleDragStart } = useResizablePanel();
   const {
     explainLoading,
@@ -29,22 +33,22 @@ const SidePanel = React.memo(({ hasExternalSubtitles, onSubtitleSelect }) => {
 
   const timeStatsProps = {
     totalTime,
-    sessionTime,
-    remainingSeconds,
-    formatTime
+    sessionTime
   };
-  
+
   return (
-    <Box sx={{ 
-      width: width, 
-      borderLeft: '1px solid #444', 
-      backgroundColor: '#111', 
-      display: 'flex', 
-      flexDirection: 'column',
-      overflow: 'hidden',
-      position: 'relative',
-      height: '100%'
-    }}>
+    <Box
+      sx={{
+        width,
+        borderLeft: '1px solid #444',
+        backgroundColor: '#111',
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'hidden',
+        position: 'relative',
+        height: '100%'
+      }}
+    >
       {/* 拖动条 */}
       <Box
         sx={{
@@ -75,17 +79,20 @@ const SidePanel = React.memo(({ hasExternalSubtitles, onSubtitleSelect }) => {
         timeStatsProps={timeStatsProps}
         onSubtitleSelected={onSubtitleSelect}
       />
-      
-      {/* 标签页切换 */}
-      <SidePanelTabs panelTab={panelTab} onChange={(event, value) => setPanelTab(value)} />
-      
-      {/* 根据标签页显示不同内容 */}
-      <SidePanelContent panelTab={panelTab} onBackToSubtitle={() => {
-        cancelExplain();
-        setPanelTab(0);
-      }} />
+
+      <SidePanelTabs panelTab={panelTab} onChange={(_event, value) => setPanelTab(value)} />
+
+      <SidePanelContent
+        panelTab={panelTab}
+        onBackToSubtitle={() => {
+          cancelExplain();
+          setPanelTab(0);
+        }}
+      />
     </Box>
   );
 });
+
+SidePanel.displayName = 'SidePanel';
 
 export default SidePanel;
