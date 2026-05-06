@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { type ReactNode } from 'react';
 import {
   VideoProvider,
   TimeStatsProvider,
@@ -7,19 +7,22 @@ import {
   ErrorProvider
 } from '../contexts/AppContext';
 
-export const VideoProviders = ({ children }) => (
+interface ProviderProps {
+  children: ReactNode;
+}
+
+export const VideoProviders: React.FC<ProviderProps> = ({ children }) => (
   <VideoProvider>
     <TimeStatsProvider>{children}</TimeStatsProvider>
   </VideoProvider>
 );
 
-export const AIProviders = ({ children }) => (
+export const AIProviders: React.FC<ProviderProps> = ({ children }) => (
   <AIProvider>{children}</AIProvider>
 );
 
-export const AppProviders = ({ children }) => (
+export const AppProviders: React.FC<ProviderProps> = ({ children }) => (
   <ErrorProvider>
     <ApiKeyProvider>{children}</ApiKeyProvider>
   </ErrorProvider>
 );
-
