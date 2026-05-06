@@ -1,35 +1,42 @@
-import { ipcClient } from './ipcClient';
-
 /**
- * 学习计划服务（S6 重写）
+ * 学习计划服务（S6 重写版）
  *
  * 数据源统一到 highlights：用 getHighlightsStats 拿统计；
  * 计划是模板生成（无 AI 调用）；保存到 study_plans 表。
  */
+import { ipcClient } from './ipcClient';
+import type {
+  GenerateStudyPlanOptions,
+  GenerateStudyPlanResult,
+  StructuredPlan,
+  StudyPlanRow,
+  SaveStudyPlanPayload
+} from '../types/plan';
+import type { HighlightsStats } from '../types/highlight';
+
 class StudyPlanService {
-  /**
-   * 生成新计划
-   * @param {Object} options - { days, focus }
-   */
-  async generateStudyPlan(options = {}) {
+  async generateStudyPlan(options: GenerateStudyPlanOptions = {}): Promise<GenerateStudyPlanResult> {
     if (!ipcClient.isAvailable()) {
       throw new Error('Electron API 不可用');
     }
 
-    const days = options.days || 7;
-    const focus = options.focus || 'comprehensive';
+    const days = options.days ?? 7;
+    const focus = options.focus ?? 'comprehensive';
 
-    let stats = {};
+    let stats: HighlightsStats | Record<string, never> = {};
     try {
       const result = await ipcClient.getHighlightsStats();
       if (result && !result.error) stats = result;
-    } catch (_) {}
+    } catch {
+      /* ignore */
+    }
 
-    const total = stats.totalHighlights ?? 0;
-    const reviewed = stats.reviewedHighlights ?? 0;
-    const mastered = stats.masteredHighlights ?? 0;
-    const todayReviewed = stats.todayReviewed ?? 0;
-    const streak = stats.streakDays ?? 0;
+    const statsRef = stats as Partial<HighlightsStats>;
+    const total = statsRef.totalHighlights ?? 0;
+    const reviewed = statsRef.reviewedHighlights ?? 0;
+    const mastered = statsRef.masteredHighlights ?? 0;
+    const todayReviewed = statsRef.todayReviewed ?? 0;
+    const streak = statsRef.streakDays ?? 0;
 
     const lines = [
       `**学习周期**: ${days} 天`,
@@ -47,11 +54,12 @@ class StudyPlanService {
     ];
     const planText = lines.join('\n');
 
-    const structuredPlan = { days, focus, stats };
+    const structuredPlan: StructuredPlan = { days, focus, stats };
     const createdAt = new Date().toISOString();
 
     try {
-      await ipcClient.saveStudyPlan({ planData: planText, structuredPlan, days, createdAt });
+      const payload: SaveStudyPlanPayload = { planData: planText, structuredPlan, days, createdAt };
+      await ipcClient.saveStudyPlan(payload);
     } catch (e) {
       console.error('saveStudyPlan 失败:', e);
     }
@@ -59,7 +67,7 @@ class StudyPlanService {
     return { planText, plan: structuredPlan, days, createdAt };
   }
 
-  async getCurrentStudyPlan() {
+  async getCurrentStudyPlan(): Promise<StudyPlanRow | null> {
     if (!ipcClient.isAvailable()) throw new Error('Electron API 不可用');
     try {
       return await ipcClient.getCurrentStudyPlan();
@@ -69,7 +77,7 @@ class StudyPlanService {
     }
   }
 
-  async updatePlanProgress(progress) {
+  async updatePlanProgress(progress: { progress: number }): Promise<{ success?: boolean; error?: string }> {
     if (!ipcClient.isAvailable()) throw new Error('Electron API 不可用');
     try {
       return await ipcClient.updatePlanProgress(progress);

@@ -21,7 +21,7 @@ export interface ExplanationOptions {
 /** 流式解释的 handler 回调 */
 export interface StreamHandlers {
   onDelta?: (piece: string, full: string) => void;
-  onDone?: (fullText: string, meta?: { cached?: boolean }) => void;
+  onDone?: (fullText: string, meta?: unknown) => void;
   onError?: (error: unknown) => void;
 }
 
