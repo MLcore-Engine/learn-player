@@ -2,8 +2,20 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { Box, Typography, Button, CircularProgress, Paper, Stack } from '@mui/material';
 import { ArrowBack, Refresh, AutoAwesome } from '@mui/icons-material';
 import studyPlanService from '../../services/studyPlanService';
+import type { StudyPlanRow, StructuredPlan } from '../../types/plan';
 
-const renderPlanText = (text) => (
+type Phase = 'loading' | 'ready' | 'generating' | 'error';
+
+// 前端展示用的 plan 形态 —— 兼容 getCurrentStudyPlan 返回的 StudyPlanRow
+// 和 generateStudyPlan 返回的 {planText, plan, days, createdAt}
+interface DisplayPlan {
+  plan_data?: string;
+  structuredPlan?: StructuredPlan | null;
+  days?: number;
+  created_at?: string;
+}
+
+const renderPlanText = (text: string | undefined): React.ReactNode => (
   <Box
     sx={{
       whiteSpace: 'pre-wrap',
@@ -13,41 +25,47 @@ const renderPlanText = (text) => (
     }}
     dangerouslySetInnerHTML={{
       __html: (text || '')
-        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
         .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
         .replace(/\n/g, '<br/>')
     }}
   />
 );
 
-const PlanTab = ({ onBackToSubtitle }) => {
-  const [phase, setPhase] = useState('loading'); // loading | ready | generating | error
-  const [plan, setPlan] = useState(null);
-  const [error, setError] = useState('');
+export interface PlanTabProps {
+  onBackToSubtitle?: () => void;
+}
 
-  const loadCurrent = useCallback(async () => {
+const PlanTab: React.FC<PlanTabProps> = ({ onBackToSubtitle }) => {
+  const [phase, setPhase] = useState<Phase>('loading');
+  const [plan, setPlan] = useState<DisplayPlan | null>(null);
+  const [error, setError] = useState<string>('');
+
+  const loadCurrent = useCallback(async (): Promise<void> => {
     setPhase('loading');
     setError('');
     try {
-      const result = await studyPlanService.getCurrentStudyPlan();
-      if (result && result.error) throw new Error(result.error);
+      const result = (await studyPlanService.getCurrentStudyPlan()) as StudyPlanRow | null;
       setPlan(result || null);
       setPhase('ready');
     } catch (e) {
       console.error('PlanTab 加载失败:', e);
-      setError(e.message || '加载失败');
+      setError((e as Error).message || '加载失败');
       setPhase('error');
     }
   }, []);
 
-  useEffect(() => { loadCurrent(); }, [loadCurrent]);
+  useEffect(() => {
+    loadCurrent();
+  }, [loadCurrent]);
 
-  const handleGenerate = async () => {
+  const handleGenerate = async (): Promise<void> => {
     setPhase('generating');
     setError('');
     try {
       const result = await studyPlanService.generateStudyPlan({ days: 7, focus: 'comprehensive' });
-      // 服务返回 {planText, plan, days, createdAt}；统一形态成 plan_data + structuredPlan 以匹配 getCurrentStudyPlan 的形态
       setPlan({
         plan_data: result.planText,
         structuredPlan: result.plan,
@@ -57,12 +75,12 @@ const PlanTab = ({ onBackToSubtitle }) => {
       setPhase('ready');
     } catch (e) {
       console.error('生成计划失败:', e);
-      setError(e.message || '生成失败');
+      setError((e as Error).message || '生成失败');
       setPhase('error');
     }
   };
 
-  const renderBody = () => {
+  const renderBody = (): React.ReactNode => {
     if (phase === 'loading') {
       return (
         <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', flex: 1 }}>
@@ -102,9 +120,7 @@ const PlanTab = ({ onBackToSubtitle }) => {
       <Box sx={{ flex: 1, overflow: 'auto', pr: 1 }}>
         <Paper variant="outlined" sx={{ p: 2 }}>
           <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
-            <Typography variant="subtitle2">
-              当前计划（{plan.days || 7} 天）
-            </Typography>
+            <Typography variant="subtitle2">当前计划（{plan.days || 7} 天）</Typography>
             <Typography variant="caption" color="text.secondary">
               {plan.created_at ? new Date(plan.created_at).toLocaleDateString() : ''}
             </Typography>
@@ -113,12 +129,7 @@ const PlanTab = ({ onBackToSubtitle }) => {
         </Paper>
 
         <Box sx={{ mt: 2, textAlign: 'center' }}>
-          <Button
-            size="small"
-            variant="outlined"
-            startIcon={<AutoAwesome />}
-            onClick={handleGenerate}
-          >
+          <Button size="small" variant="outlined" startIcon={<AutoAwesome />} onClick={handleGenerate}>
             重新生成
           </Button>
         </Box>

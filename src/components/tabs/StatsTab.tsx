@@ -3,9 +3,11 @@ import { Box, Typography, Button, CircularProgress, Paper, Stack, Grid } from '@
 import { ArrowBack, Refresh } from '@mui/icons-material';
 import { ipcClient } from '../../services/ipcClient';
 import { useTimeStats } from '../../contexts/AppContext';
+import type { HighlightsStats, HighlightDailyCount } from '../../types/highlight';
 
-// 格式化秒为 "Xh Ym" 或 "Ym" — 与 TimeStats 组件一致的最小实现
-const formatDuration = (seconds) => {
+type Phase = 'loading' | 'ready' | 'error';
+
+const formatDuration = (seconds: number): string => {
   if (!seconds || seconds <= 0) return '0m';
   const h = Math.floor(seconds / 3600);
   const m = Math.floor((seconds % 3600) / 60);
@@ -13,17 +15,16 @@ const formatDuration = (seconds) => {
   return `${m}m`;
 };
 
-const StatCard = ({ label, value }) => (
+const StatCard: React.FC<{ label: string; value: number }> = ({ label, value }) => (
   <Paper variant="outlined" sx={{ p: 2, textAlign: 'center' }}>
     <Typography variant="h5" color="primary.main" sx={{ fontWeight: 600 }}>{value}</Typography>
     <Typography variant="caption" color="text.secondary">{label}</Typography>
   </Paper>
 );
 
-// 纯 CSS 柱状图
-const BarChart = ({ data }) => {
+const BarChart: React.FC<{ data: HighlightDailyCount[] }> = ({ data }) => {
   if (!data || data.length === 0) return null;
-  const max = Math.max(1, ...data.map(d => d.count));
+  const max = Math.max(1, ...data.map((d) => d.count));
   return (
     <Box sx={{ display: 'flex', alignItems: 'flex-end', gap: 1, height: 120, px: 1 }}>
       {data.map(({ date, count }) => {
@@ -57,14 +58,18 @@ const BarChart = ({ data }) => {
   );
 };
 
-const StatsTab = ({ onBackToSubtitle }) => {
-  const { totalTime, sessionTime } = useTimeStats();
-  const [phase, setPhase] = useState('loading'); // loading | ready | error
-  const [stats, setStats] = useState(null);
-  const [trend, setTrend] = useState([]);
-  const [error, setError] = useState('');
+export interface StatsTabProps {
+  onBackToSubtitle?: () => void;
+}
 
-  const load = useCallback(async () => {
+const StatsTab: React.FC<StatsTabProps> = ({ onBackToSubtitle }) => {
+  const { totalTime, sessionTime } = useTimeStats();
+  const [phase, setPhase] = useState<Phase>('loading');
+  const [stats, setStats] = useState<HighlightsStats | null>(null);
+  const [trend, setTrend] = useState<HighlightDailyCount[]>([]);
+  const [error, setError] = useState<string>('');
+
+  const load = useCallback(async (): Promise<void> => {
     setPhase('loading');
     setError('');
     try {
@@ -73,22 +78,24 @@ const StatsTab = ({ onBackToSubtitle }) => {
         ipcClient.getHighlightsDailyCount({ days: 7 })
       ]);
       if (statsResult && statsResult.error) throw new Error(statsResult.error);
-      if (trendResult && trendResult.error) throw new Error(trendResult.error);
+      if (trendResult && 'error' in trendResult && trendResult.error) throw new Error(trendResult.error);
       setStats(statsResult || null);
       setTrend(Array.isArray(trendResult) ? trendResult : []);
       setPhase('ready');
     } catch (e) {
       console.error('StatsTab 加载失败:', e);
-      setError(e.message || '加载失败');
+      setError((e as Error).message || '加载失败');
       setPhase('error');
     }
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    load();
+  }, [load]);
 
   const todayNew = trend.length > 0 ? trend[trend.length - 1].count : 0;
 
-  const renderBody = () => {
+  const renderBody = (): React.ReactNode => {
     if (phase === 'loading') {
       return (
         <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', flex: 1 }}>
@@ -107,17 +114,15 @@ const StatsTab = ({ onBackToSubtitle }) => {
 
     return (
       <Box sx={{ flex: 1, overflow: 'auto', pr: 1 }}>
-        {/* 计数卡片 */}
         <Grid container spacing={1} sx={{ mb: 2 }}>
-          <Grid item xs={6} sm={4}><StatCard label="总词数" value={stats?.totalHighlights ?? 0} /></Grid>
-          <Grid item xs={6} sm={4}><StatCard label="今日新增" value={todayNew} /></Grid>
-          <Grid item xs={6} sm={4}><StatCard label="今日复习" value={stats?.todayReviewed ?? 0} /></Grid>
-          <Grid item xs={6} sm={4}><StatCard label="已掌握" value={stats?.masteredHighlights ?? 0} /></Grid>
-          <Grid item xs={6} sm={4}><StatCard label="连续天数" value={stats?.streakDays ?? 0} /></Grid>
-          <Grid item xs={6} sm={4}><StatCard label="视频数" value={stats?.totalVideos ?? 0} /></Grid>
+          <Grid size={{ xs: 6, sm: 4 }}><StatCard label="总词数" value={stats?.totalHighlights ?? 0} /></Grid>
+          <Grid size={{ xs: 6, sm: 4 }}><StatCard label="今日新增" value={todayNew} /></Grid>
+          <Grid size={{ xs: 6, sm: 4 }}><StatCard label="今日复习" value={stats?.todayReviewed ?? 0} /></Grid>
+          <Grid size={{ xs: 6, sm: 4 }}><StatCard label="已掌握" value={stats?.masteredHighlights ?? 0} /></Grid>
+          <Grid size={{ xs: 6, sm: 4 }}><StatCard label="连续天数" value={stats?.streakDays ?? 0} /></Grid>
+          <Grid size={{ xs: 6, sm: 4 }}><StatCard label="视频数" value={stats?.totalVideos ?? 0} /></Grid>
         </Grid>
 
-        {/* 学习时长 */}
         <Paper variant="outlined" sx={{ p: 2, mb: 2 }}>
           <Typography variant="subtitle2" sx={{ mb: 1 }}>学习时长</Typography>
           <Stack direction="row" spacing={3}>
@@ -132,7 +137,6 @@ const StatsTab = ({ onBackToSubtitle }) => {
           </Stack>
         </Paper>
 
-        {/* 7 天趋势 */}
         <Paper variant="outlined" sx={{ p: 2 }}>
           <Typography variant="subtitle2" sx={{ mb: 1 }}>最近 7 天新增词汇</Typography>
           <BarChart data={trend} />

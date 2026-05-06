@@ -5,20 +5,26 @@ import HighlightCard from '../HighlightCard';
 import { getDueHighlights, submitReview } from '../../services/highlightService';
 import { ipcClient } from '../../services/ipcClient';
 import { useVideo } from '../../contexts/AppContext';
+import type { Highlight, HighlightsStats, ReviewQuality } from '../../types/highlight';
+
+type Phase = 'loading' | 'reviewing' | 'empty' | 'done' | 'error';
+
+export interface ReviewTabProps {
+  onBackToSubtitle?: () => void;
+}
 
 /**
- * 复习 Tab（S4）
- * 打开即加载到期卡片 + 统计；有卡片自动开始复习，无卡片显示统计 + 提示
+ * 复习 Tab —— 打开即加载到期卡片 + 统计
  */
-const ReviewTab = ({ onBackToSubtitle }) => {
+const ReviewTab: React.FC<ReviewTabProps> = ({ onBackToSubtitle }) => {
   const { jumpToTime } = useVideo();
-  const [phase, setPhase] = useState('loading'); // loading | reviewing | empty | done | error
-  const [cards, setCards] = useState([]);
-  const [index, setIndex] = useState(0);
-  const [stats, setStats] = useState(null);
-  const [error, setError] = useState('');
+  const [phase, setPhase] = useState<Phase>('loading');
+  const [cards, setCards] = useState<Highlight[]>([]);
+  const [index, setIndex] = useState<number>(0);
+  const [stats, setStats] = useState<HighlightsStats | null>(null);
+  const [error, setError] = useState<string>('');
 
-  const loadData = useCallback(async () => {
+  const loadData = useCallback(async (): Promise<void> => {
     setPhase('loading');
     setError('');
     try {
@@ -27,7 +33,7 @@ const ReviewTab = ({ onBackToSubtitle }) => {
         ipcClient.getHighlightsStats()
       ]);
 
-      if (dueResult && dueResult.error) throw new Error(dueResult.error);
+      if (dueResult && 'error' in dueResult && dueResult.error) throw new Error(dueResult.error);
       if (statsResult && statsResult.error) throw new Error(statsResult.error);
 
       setStats(statsResult || null);
@@ -37,43 +43,52 @@ const ReviewTab = ({ onBackToSubtitle }) => {
       setPhase(list.length > 0 ? 'reviewing' : 'empty');
     } catch (e) {
       console.error('ReviewTab 加载失败:', e);
-      setError(e.message || '加载失败');
+      setError((e as Error).message || '加载失败');
       setPhase('error');
     }
   }, []);
 
-  useEffect(() => { loadData(); }, [loadData]);
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
-  const handleReviewed = useCallback(async (quality) => {
-    const current = cards[index];
-    if (!current) return;
-    try {
-      const result = await submitReview(current.id, quality);
-      if (result && result.error) {
-        console.error('submitReview 失败:', result.error);
-      }
-    } catch (e) {
-      console.error('submitReview 异常:', e);
-    }
-
-    const next = index + 1;
-    if (next >= cards.length) {
-      // 刷新统计后进入 done 态
+  const handleReviewed = useCallback(
+    async (quality: ReviewQuality): Promise<void> => {
+      const current = cards[index];
+      if (!current) return;
       try {
-        const statsResult = await ipcClient.getHighlightsStats();
-        if (statsResult && !statsResult.error) setStats(statsResult);
-      } catch (_) {}
-      setPhase('done');
-    } else {
-      setIndex(next);
-    }
-  }, [cards, index]);
+        const result = await submitReview(current.id, quality);
+        if (result && result.error) {
+          console.error('submitReview 失败:', result.error);
+        }
+      } catch (e) {
+        console.error('submitReview 异常:', e);
+      }
 
-  const handlePlaySegment = useCallback((start) => {
-    if (typeof jumpToTime === 'function') jumpToTime(start);
-  }, [jumpToTime]);
+      const next = index + 1;
+      if (next >= cards.length) {
+        try {
+          const statsResult = await ipcClient.getHighlightsStats();
+          if (statsResult && !statsResult.error) setStats(statsResult);
+        } catch {
+          /* ignore */
+        }
+        setPhase('done');
+      } else {
+        setIndex(next);
+      }
+    },
+    [cards, index]
+  );
 
-  const renderStats = () => {
+  const handlePlaySegment = useCallback(
+    (start: number): void => {
+      if (typeof jumpToTime === 'function') jumpToTime(start);
+    },
+    [jumpToTime]
+  );
+
+  const renderStats = (): React.ReactNode => {
     if (!stats) return null;
     const items = [
       { label: '总词数', value: stats.totalHighlights ?? 0 },
@@ -84,7 +99,7 @@ const ReviewTab = ({ onBackToSubtitle }) => {
     return (
       <Paper variant="outlined" sx={{ p: 2, mb: 2 }}>
         <Stack direction="row" spacing={2} justifyContent="space-around">
-          {items.map(it => (
+          {items.map((it) => (
             <Box key={it.label} sx={{ textAlign: 'center' }}>
               <Typography variant="h5" color="primary.main">{it.value}</Typography>
               <Typography variant="caption" color="text.secondary">{it.label}</Typography>
@@ -95,15 +110,14 @@ const ReviewTab = ({ onBackToSubtitle }) => {
     );
   };
 
-  const renderBackButton = () => (
+  const renderBackButton = (): React.ReactNode =>
     onBackToSubtitle && (
       <Button size="small" variant="outlined" startIcon={<ArrowBack />} onClick={onBackToSubtitle}>
         返回字幕
       </Button>
-    )
-  );
+    );
 
-  const renderBody = () => {
+  const renderBody = (): React.ReactNode => {
     if (phase === 'loading') {
       return (
         <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', flex: 1 }}>
@@ -138,7 +152,6 @@ const ReviewTab = ({ onBackToSubtitle }) => {
       );
     }
 
-    // empty | done
     const msg = phase === 'done' ? '今日复习完成 🎉' : '今日没有需要复习的单词';
     return (
       <Box sx={{ flex: 1 }}>
@@ -160,9 +173,7 @@ const ReviewTab = ({ onBackToSubtitle }) => {
         <Button size="small" startIcon={<Refresh />} onClick={loadData}>刷新</Button>
       </Stack>
       {renderBody()}
-      <Box sx={{ mt: 1 }}>
-        {renderBackButton()}
-      </Box>
+      <Box sx={{ mt: 1 }}>{renderBackButton()}</Box>
     </Box>
   );
 };
