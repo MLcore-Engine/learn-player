@@ -86,9 +86,13 @@ export interface SaveApiKeyPayload {
   modelUrl: string;
 }
 
+/** getApiKey handler 返回形态（见 main/ipc/index.js getApiKey） */
 export interface ApiKeyResult {
-  apiKey: string;
-  modelUrl: string;
+  success: boolean;
+  apiKey?: string;
+  modelUrl?: string;
+  source?: { apiKey: string; modelUrl: string };
+  error?: string;
 }
 
 export interface PerformAIRequestResult {
