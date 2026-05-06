@@ -20,6 +20,7 @@ yarn-error.log*
 docs/architecture.md
 resources/dictionary
 .cursor/
+.claude/
 
 models/
 public/models/

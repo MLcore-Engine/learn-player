@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useTimeStats } from '../contexts/AppContext';
 import { Box } from '@mui/material';
-import SidePanelHeader, { type SubtitleSelectedRegistrar } from './SidePanelHeader';
+import SidePanelHeader from './SidePanelHeader';
 import SidePanelTabs from './SidePanelTabs';
 import SidePanelContent from './SidePanelContent';
 import useExplainFlow from '../hooks/useExplainFlow';
@@ -9,13 +9,12 @@ import useResizablePanel from '../hooks/useResizablePanel';
 
 export interface SidePanelProps {
   hasExternalSubtitles: boolean;
-  onSubtitleSelect?: SubtitleSelectedRegistrar;
 }
 
 /**
  * 侧边面板组件 —— 集成各个子容器组件
  */
-const SidePanel = React.memo<SidePanelProps>(({ hasExternalSubtitles, onSubtitleSelect }) => {
+const SidePanel = React.memo<SidePanelProps>(({ hasExternalSubtitles }) => {
   const { totalTime, sessionTime } = useTimeStats();
   const [panelTab, setPanelTab] = useState<number>(0); // 0=解释,...,4=总结
   const { width, isDragging, handleDragStart } = useResizablePanel();
@@ -77,7 +76,6 @@ const SidePanel = React.memo<SidePanelProps>(({ hasExternalSubtitles, onSubtitle
         onExplain={handleExplain}
         onRecognize={handleOCRRecognize}
         timeStatsProps={timeStatsProps}
-        onSubtitleSelected={onSubtitleSelect}
       />
 
       <SidePanelTabs panelTab={panelTab} onChange={(_event, value) => setPanelTab(value)} />

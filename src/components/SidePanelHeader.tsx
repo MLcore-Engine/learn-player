@@ -1,15 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import TimeStats, { type TimeStatsProps } from './TimeStats';
 import OCRContainer from '../containers/OCRContainer';
 import OCRResultModal from './OCRResultModal';
-import ContextualBubble, { type BubblePosition } from './ContextualBubble';
 import { Box } from '@mui/material';
-import { useVideo, useAI } from '../contexts/AppContext';
+import { useAI } from '../contexts/AppContext';
 import type { Language } from '../types/highlight';
 import type { OcrPayload } from '../hooks/useExplainFlow';
-
-export type SubtitleSelectedHandler = (text: string, startTime?: number | null) => void;
-export type SubtitleSelectedRegistrar = (handler: SubtitleSelectedHandler) => void;
 
 export interface SidePanelHeaderProps {
   explainLoading: boolean;
@@ -22,7 +18,6 @@ export interface SidePanelHeaderProps {
   onExplain: (lang: Language, text: string, startTime?: number | null) => void;
   onRecognize: (payload: string | OcrPayload) => void;
   timeStatsProps: TimeStatsProps;
-  onSubtitleSelected?: SubtitleSelectedRegistrar;
 }
 
 const SidePanelHeader: React.FC<SidePanelHeaderProps> = ({
@@ -35,27 +30,9 @@ const SidePanelHeader: React.FC<SidePanelHeaderProps> = ({
   onCloseModal,
   onExplain,
   onRecognize,
-  timeStatsProps,
-  onSubtitleSelected
+  timeStatsProps
 }) => {
-  const { jumpToTime } = useVideo();
   const { selectedText } = useAI();
-
-  const [bubbleText, setBubbleText] = useState<string>('');
-  const [bubblePosition, setBubblePosition] = useState<BubblePosition>({ x: 0, y: 0 });
-  const [bubbleStartTime, setBubbleStartTime] = useState<number | null>(null);
-
-  useEffect(() => {
-    if (typeof onSubtitleSelected === 'function') {
-      const handler: SubtitleSelectedHandler = (text, startTime) => {
-        if (!text) return;
-        setBubbleText(text);
-        setBubblePosition({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
-        setBubbleStartTime(startTime ?? null);
-      };
-      onSubtitleSelected(handler);
-    }
-  }, [onSubtitleSelected]);
 
   return (
     <>
@@ -95,31 +72,6 @@ const SidePanelHeader: React.FC<SidePanelHeaderProps> = ({
           }}
           onClose={onCloseModal}
           isLoading={explainLoading}
-        />
-      )}
-
-      {/* Contextual Bubble（OCR 弹窗打开时不显示） */}
-      {!ocrModalOpen && bubbleText && (
-        <ContextualBubble
-          text={bubbleText}
-          position={bubblePosition}
-          startTime={bubbleStartTime}
-          loading={explainLoading}
-          onExplain={(text) => {
-            onExplain('zh', text, bubbleStartTime);
-            setBubbleText('');
-          }}
-          onExplainEn={(text) => {
-            onExplain('en', text, bubbleStartTime);
-            setBubbleText('');
-          }}
-          onPlaySegment={(startTime) => {
-            if (typeof jumpToTime === 'function') {
-              jumpToTime(startTime);
-            }
-            setBubbleText('');
-          }}
-          onClose={() => setBubbleText('')}
         />
       )}
     </>
