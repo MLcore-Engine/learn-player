@@ -1,11 +1,10 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import TimeStats from './TimeStats';
 import OCRContainer from '../containers/OCRContainer';
 import OCRResultModal from './OCRResultModal';
 import ContextualBubble from './ContextualBubble';
 import { Box } from '@mui/material';
-import { useVideo } from '../contexts/AppContext';
-import { createHighlight } from '../services/highlightService';
+import { useVideo, useAI } from '../contexts/AppContext';
 
 const SidePanelHeader = ({
   explainLoading,
@@ -18,10 +17,10 @@ const SidePanelHeader = ({
   onExplain,
   onRecognize,
   timeStatsProps,
-  onSubtitleSelected,
-  onSaveToHighlight
+  onSubtitleSelected
 }) => {
-  const { jumpToTime, videoPath } = useVideo();
+  const { jumpToTime } = useVideo();
+  const { selectedText } = useAI();
 
   // Contextual bubble 状态
   const [bubbleText, setBubbleText] = useState('');
@@ -38,21 +37,6 @@ const SidePanelHeader = ({
       onSubtitleSelected(handler);
     }
   }, [onSubtitleSelected]);
-
-  // T2-2: 一键加入生词本
-  const handleSaveToReview = useCallback(async (text) => {
-    try {
-      await createHighlight({
-        video_path: videoPath || '',
-        original_text: text,
-        start_time: bubbleStartTime ?? null,
-        status: 'pending'
-      });
-    } catch (e) {
-      console.error('添加生词本失败:', e);
-    }
-    setBubbleText('');
-  }, [videoPath, bubbleStartTime]);
 
   return (
     <>
@@ -80,14 +64,13 @@ const SidePanelHeader = ({
         </Box>
       </Box>
 
-      {/* OCR 识别结果弹窗（优先于 contextual bubble） */}
-      {ocrModalOpen && (
+      {/* OCR 识别结果弹窗（解释时隐藏，返回字幕后重新出现） */}
+      {ocrModalOpen && !selectedText && (
         <OCRResultModal
           isOpen={ocrModalOpen}
           result={ocrResult}
           onExplain={(lang, txt) => {
             onExplain(lang, txt);
-            onCloseModal();
           }}
           onClose={onCloseModal}
           isLoading={explainLoading}
@@ -101,11 +84,13 @@ const SidePanelHeader = ({
           startTime={bubbleStartTime}
           loading={explainLoading}
           onExplain={(text) => {
-            // handleExplain signature: (lang, selectedText, startTimeFromSubtitle)
             onExplain('zh', text, bubbleStartTime);
             setBubbleText('');
           }}
-          onSaveToReview={handleSaveToReview}
+          onExplainEn={(text) => {
+            onExplain('en', text, bubbleStartTime);
+            setBubbleText('');
+          }}
           onPlaySegment={(startTime) => {
             if (typeof jumpToTime === 'function') {
               jumpToTime(startTime);

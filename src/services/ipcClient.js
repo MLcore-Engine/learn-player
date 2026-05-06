@@ -3,7 +3,7 @@
  * All IPC channel names are centralized here to avoid string literals in callers.
  *
  * Channel definitions:
- * - invoke: request/response channels (only for new channels when there is no dedicated API yet)
+ * - invoke: request/response channels
  * - send: fire-and-forget channels
  * - receive: event channels pushed from main process
  */
@@ -11,8 +11,6 @@ import { getElectronAPI, isElectronAvailable } from './electronApi';
 
 export const IPC_CHANNELS = {
   invoke: {
-    readVideoFile: 'readVideoFile',
-    readVideoChunk: 'readVideoChunk',
     performAIRequest: 'performAIRequest',
     performAIStream: 'performAIStream',
     extractFrame: 'extract-frame',
@@ -20,34 +18,18 @@ export const IPC_CHANNELS = {
     selectVideo: 'selectVideo',
     getWatchTime: 'getWatchTime',
     saveLearningRecord: 'saveLearningRecord',
-    saveAiQuery: 'saveAiQuery',
-    getCachedAiQuery: 'getCachedAiQuery',
     getLearningRecords: 'getLearningRecords',
-    getAiQueriesToday: 'getAiQueriesToday',
     saveApiKey: 'saveApiKey',
     getApiKey: 'getApiKey',
-    checkDatabaseStatus: 'checkDatabaseStatus',
     exportLearningTodayPdf: 'export-learning-today-pdf',
     getVideoServerPort: 'getVideoServerPort',
     prepareVideo: 'prepareVideo',
     cleanupVideoCache: 'cleanupVideoCache',
     checkFileExists: 'checkFileExists',
     lookupWord: 'lookupWord',
-    convertVideo: 'convertVideo',
-    checkVideoFormat: 'checkVideoFormat',
-    getLearningOverview: 'getLearningOverview',
-    analyzeLearningPattern: 'analyzeLearningPattern',
-    getLearningReport: 'getLearningReport',
-    getWordFrequencyStats: 'getWordFrequencyStats',
     saveStudyPlan: 'saveStudyPlan',
     getCurrentStudyPlan: 'getCurrentStudyPlan',
     updatePlanProgress: 'updatePlanProgress',
-    getWordsToReview: 'getWordsToReview',
-    getVocabularyCard: 'getVocabularyCard',
-    updateVocabularyCard: 'updateVocabularyCard',
-    addVocabularyWord: 'addVocabularyWord',
-    extractWordsFromQueries: 'extractWordsFromQueries',
-    getVocabularyStats: 'getVocabularyStats',
     createHighlight: 'createHighlight',
     getHighlights: 'getHighlights',
     getHighlight: 'getHighlight',
@@ -55,17 +37,15 @@ export const IPC_CHANNELS = {
     deleteHighlight: 'deleteHighlight',
     getDueHighlights: 'getDueHighlights',
     submitReview: 'submitReview',
-    getHighlightsStats: 'getHighlightsStats'
+    getHighlightsStats: 'getHighlightsStats',
+    getHighlightsDailyCount: 'getHighlightsDailyCount',
+    getTodayHighlights: 'getTodayHighlights'
   },
   send: {
-    getCategories: 'getCategories',
-    getMovies: 'getMovies',
     updateWatchTime: 'updateWatchTime',
     loadSubtitle: 'loadSubtitle'
   },
   receive: {
-    categories: 'categories',
-    movies: 'movies',
     watchTime: 'watchTime',
     error: 'error',
     databaseInitError: 'databaseInitError',
@@ -78,7 +58,6 @@ export const IPC_CHANNELS = {
     watchTimeUpdated: 'watchTimeUpdated',
     learningRecordDeleted: 'learningRecordDeleted',
     learningStats: 'learningStats',
-    watchingStats: 'watchingStats',
     databaseStatus: 'databaseStatus',
     aiStream: 'ai-stream',
     conversionProgress: 'conversion-progress',
@@ -180,13 +159,7 @@ export const ipcClient = {
   },
   updateWatchTime: (watchTimeData) => send(IPC_CHANNELS.send.updateWatchTime, watchTimeData),
   loadSubtitle: (subtitlePath) => send(IPC_CHANNELS.send.loadSubtitle, { subtitlePath }),
-  getCategories: () => send(IPC_CHANNELS.send.getCategories),
-  getMovies: (category_id, page) => send(IPC_CHANNELS.send.getMovies, { category_id, page }),
   checkFileExists: (filePath) => invoke(IPC_CHANNELS.invoke.checkFileExists, filePath),
-
-  saveAiQuery: (data) => invoke(IPC_CHANNELS.invoke.saveAiQuery, data),
-  getCachedAiQuery: (payload) => invoke(IPC_CHANNELS.invoke.getCachedAiQuery, payload),
-  getAiQueriesToday: () => invoke(IPC_CHANNELS.invoke.getAiQueriesToday),
 
   performAIRequest: (requestData, apiUrl, apiKey) =>
     invoke(IPC_CHANNELS.invoke.performAIRequest, { requestData, apiUrl, apiKey }),
@@ -202,12 +175,8 @@ export const ipcClient = {
   },
   saveApiKey: (payload) => invoke(IPC_CHANNELS.invoke.saveApiKey, payload),
 
-  checkDatabaseStatus: () => invoke(IPC_CHANNELS.invoke.checkDatabaseStatus),
   exportLearningTodayPdf: (payload) => invoke(IPC_CHANNELS.invoke.exportLearningTodayPdf, payload),
 
-  readVideoFile: (filePath) => invoke(IPC_CHANNELS.invoke.readVideoFile, filePath),
-  readVideoChunk: (videoPath, offset, length) =>
-    invoke(IPC_CHANNELS.invoke.readVideoChunk, videoPath, offset, length),
   getVideoServerPort: () => {
     const api = getElectronAPI();
     if (api?.getVideoServerPort) {
@@ -223,27 +192,13 @@ export const ipcClient = {
     return api.getVideoHttpUrl(videoPath);
   },
   prepareVideo: (filePath) => invoke(IPC_CHANNELS.invoke.prepareVideo, filePath),
-  convertVideo: (params) => invoke(IPC_CHANNELS.invoke.convertVideo, params),
-  checkVideoFormat: (filePath) => invoke(IPC_CHANNELS.invoke.checkVideoFormat, filePath),
   cleanupVideoCache: () => invoke(IPC_CHANNELS.invoke.cleanupVideoCache),
 
   lookupWord: (word) => invoke(IPC_CHANNELS.invoke.lookupWord, word),
 
-  getLearningOverview: () => invoke(IPC_CHANNELS.invoke.getLearningOverview),
-  analyzeLearningPattern: () => invoke(IPC_CHANNELS.invoke.analyzeLearningPattern),
-  getLearningReport: (options) => invoke(IPC_CHANNELS.invoke.getLearningReport, options),
-  getWordFrequencyStats: (options) => invoke(IPC_CHANNELS.invoke.getWordFrequencyStats, options),
-
   saveStudyPlan: (data) => invoke(IPC_CHANNELS.invoke.saveStudyPlan, data),
   getCurrentStudyPlan: () => invoke(IPC_CHANNELS.invoke.getCurrentStudyPlan),
   updatePlanProgress: (progress) => invoke(IPC_CHANNELS.invoke.updatePlanProgress, progress),
-
-  getWordsToReview: (options) => invoke(IPC_CHANNELS.invoke.getWordsToReview, options),
-  getVocabularyCard: (data) => invoke(IPC_CHANNELS.invoke.getVocabularyCard, data),
-  updateVocabularyCard: (data) => invoke(IPC_CHANNELS.invoke.updateVocabularyCard, data),
-  addVocabularyWord: (data) => invoke(IPC_CHANNELS.invoke.addVocabularyWord, data),
-  extractWordsFromQueries: (options) => invoke(IPC_CHANNELS.invoke.extractWordsFromQueries, options),
-  getVocabularyStats: () => invoke(IPC_CHANNELS.invoke.getVocabularyStats),
 
   createHighlight: (data) => invoke(IPC_CHANNELS.invoke.createHighlight, data),
   getHighlights: (options) => invoke(IPC_CHANNELS.invoke.getHighlights, options),
@@ -252,7 +207,9 @@ export const ipcClient = {
   deleteHighlight: (options) => invoke(IPC_CHANNELS.invoke.deleteHighlight, options),
   getDueHighlights: (options) => invoke(IPC_CHANNELS.invoke.getDueHighlights, options),
   submitReview: (options) => invoke(IPC_CHANNELS.invoke.submitReview, options),
-  getHighlightsStats: () => invoke(IPC_CHANNELS.invoke.getHighlightsStats)
+  getHighlightsStats: () => invoke(IPC_CHANNELS.invoke.getHighlightsStats),
+  getHighlightsDailyCount: (options) => invoke(IPC_CHANNELS.invoke.getHighlightsDailyCount, options),
+  getTodayHighlights: () => invoke(IPC_CHANNELS.invoke.getTodayHighlights)
 };
 
 export default ipcClient;

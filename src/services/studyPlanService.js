@@ -1,129 +1,80 @@
 import { ipcClient } from './ipcClient';
-import learningAnalyticsService from './learningAnalyticsService';
 
 /**
- * 学习计划服务
- * 负责生成和管理学习计划
+ * 学习计划服务（S6 重写）
+ *
+ * 数据源统一到 highlights：用 getHighlightsStats 拿统计；
+ * 计划是模板生成（无 AI 调用）；保存到 study_plans 表。
  */
-
 class StudyPlanService {
   /**
-   * 生成学习计划
-   * @param {Object} options - 生成选项
-   * @returns {Promise<Object>} 生成的学习计划
+   * 生成新计划
+   * @param {Object} options - { days, focus }
    */
   async generateStudyPlan(options = {}) {
     if (!ipcClient.isAvailable()) {
-      throw new Error('Electron API不可用');
+      throw new Error('Electron API 不可用');
     }
 
-    // 并行获取所有数据，个别失败不影响整体
-    const [analyticsResult, patternResult, wordStatsResult] = await Promise.allSettled([
-      learningAnalyticsService.getLearningOverview(),
-      this._safeAnalyzeLearningPattern(),
-      this._safeGetWordFrequencyStats(20)
-    ]);
+    const days = options.days || 7;
+    const focus = options.focus || 'comprehensive';
 
-    // 提取成功的结果，失败时使用空对象
-    const analytics = analyticsResult.status === 'fulfilled' ? analyticsResult.value : {};
-    const pattern = patternResult.status === 'fulfilled' ? patternResult.value : {};
-    const wordStats = wordStatsResult.status === 'fulfilled' ? wordStatsResult.value : [];
+    let stats = {};
+    try {
+      const result = await ipcClient.getHighlightsStats();
+      if (result && !result.error) stats = result;
+    } catch (_) {}
 
-    // 处理 pattern 和 wordStats 可能返回的 error 对象
-    const safePattern = pattern?.error ? {} : pattern;
-    const safeWordStats = Array.isArray(wordStats) ? wordStats : [];
+    const total = stats.totalHighlights ?? 0;
+    const reviewed = stats.reviewedHighlights ?? 0;
+    const mastered = stats.masteredHighlights ?? 0;
+    const todayReviewed = stats.todayReviewed ?? 0;
+    const streak = stats.streakDays ?? 0;
 
-    const structuredPlan = {
-      analytics,
-      pattern: safePattern,
-      wordStats: safeWordStats,
-      ...options
-    };
-
-    const planText = [
-      `**学习周期**: ${options.days || 7} 天`,
-      `**学习重点**: ${options.focus || 'comprehensive'}`,
-      `**总高亮数**: ${analytics?.totalHighlights || 0}`,
-      `**已复习数**: ${analytics?.reviewedCount || 0}`,
-      `**待处理数**: ${analytics?.pendingCount || 0}`,
-      `**复习率**: ${analytics?.reviewRate || 0}%`,
+    const lines = [
+      `**学习周期**: ${days} 天`,
+      `**学习重点**: ${focus}`,
+      `**总词数**: ${total}`,
+      `**已复习**: ${reviewed}`,
+      `**已掌握**: ${mastered}`,
+      `**今日已复习**: ${todayReviewed}`,
+      `**连续天数**: ${streak}`,
       '',
       '**建议行动**',
-      '- 优先复习已到期或未复习的高亮',
-      '- 结合高频词结果安排每日复习任务',
-      '- 先完成当天复习，再继续新增高亮'
-    ].join('\n');
+      '- 每日打开"复习"Tab 完成到期单词',
+      '- 保持每天至少新增 5-10 个生词',
+      '- 一周内完成连续复习以提升记忆曲线'
+    ];
+    const planText = lines.join('\n');
 
-    await ipcClient.saveStudyPlan({
-      planData: planText,
-      structuredPlan,
-      days: options.days || 7,
-      createdAt: new Date().toISOString()
-    });
+    const structuredPlan = { days, focus, stats };
+    const createdAt = new Date().toISOString();
 
-    return {
-      planText,
-      plan: structuredPlan,
-      days: options.days || 7,
-      createdAt: new Date().toISOString()
-    };
-  }
-
-  // 安全调用 analyzeLearningPattern，失败时返回空对象
-  async _safeAnalyzeLearningPattern() {
     try {
-      const result = await ipcClient.analyzeLearningPattern();
-      if (result?.error) return {};
-      return result;
-    } catch {
-      return {};
+      await ipcClient.saveStudyPlan({ planData: planText, structuredPlan, days, createdAt });
+    } catch (e) {
+      console.error('saveStudyPlan 失败:', e);
     }
+
+    return { planText, plan: structuredPlan, days, createdAt };
   }
 
-  // 安全调用 getWordFrequencyStats，失败时返回空数组
-  async _safeGetWordFrequencyStats(limit) {
-    try {
-      const result = await ipcClient.getWordFrequencyStats({ limit });
-      if (result?.error) return [];
-      return result;
-    } catch {
-      return [];
-    }
-  }
-
-  /**
-   * 获取当前学习计划
-   * @returns {Promise<Object>} 当前计划
-   */
   async getCurrentStudyPlan() {
-    if (!ipcClient.isAvailable()) {
-      throw new Error('Electron API不可用');
-    }
-
+    if (!ipcClient.isAvailable()) throw new Error('Electron API 不可用');
     try {
-      const plan = await ipcClient.getCurrentStudyPlan();
-      return plan;
+      return await ipcClient.getCurrentStudyPlan();
     } catch (error) {
-      console.error('获取学习计划失败:', error);
+      console.error('getCurrentStudyPlan 失败:', error);
       throw error;
     }
   }
 
-  /**
-   * 更新计划进度
-   * @param {Object} progress - 进度数据
-   * @returns {Promise<Object>} 更新结果
-   */
   async updatePlanProgress(progress) {
-    if (!ipcClient.isAvailable()) {
-      throw new Error('Electron API不可用');
-    }
-
+    if (!ipcClient.isAvailable()) throw new Error('Electron API 不可用');
     try {
-      const result = await ipcClient.updatePlanProgress(progress);
-      return result;
+      return await ipcClient.updatePlanProgress(progress);
     } catch (error) {
-      console.error('更新学习计划进度失败:', error);
+      console.error('updatePlanProgress 失败:', error);
       throw error;
     }
   }

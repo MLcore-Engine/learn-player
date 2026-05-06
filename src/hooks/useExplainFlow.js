@@ -1,7 +1,7 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useState, useRef } from 'react';
 import { useAI, useVideo } from '../contexts/AppContext';
 import aiService from '../services/aiService';
-import { ipcClient } from '../services/ipcClient';
+import { createHighlight } from '../services/highlightService';
 
 const useExplainFlow = ({ hasExternalSubtitles }) => {
   const [ocrModalOpen, setOcrModalOpen] = useState(false);
@@ -9,6 +9,8 @@ const useExplainFlow = ({ hasExternalSubtitles }) => {
   const [ocrStatus, setOcrStatus] = useState('idle');
   const [ocrError, setOcrError] = useState('');
   const [explainLoading, setExplainLoading] = useState(false);
+  // 追踪正在进行的 explain 请求，防止返回字幕/并发请求后，旧流的 onDelta 回写
+  const generationRef = useRef(0);
   const { setSelectedText, setExplanation, setLoading: setAiLoading, addRecord } = useAI();
   const { isLoaded: isVideoLoaded, playerRef, videoPath } = useVideo();
 
@@ -71,14 +73,22 @@ const useExplainFlow = ({ hasExternalSubtitles }) => {
   }, [hasExternalSubtitles, playerRef]);
 
   const handleExplain = useCallback(async (lang, selectedText, startTimeFromSubtitle) => {
+    // C2: 防止并发调用（双击、切换语言时旧请求还在跑）
+    if (explainLoading) return;
+
     const text = selectedText || ocrResult;
     if (!text) {
       alert('没有可解释的文字');
       return;
     }
+
+    // H3: 每次 explain 分配一个 generation；若中途被取消或新的 explain 开始，旧流 onDelta 会被忽略
+    const gen = ++generationRef.current;
+
     setExplainLoading(true);
     setAiLoading(true);
     setSelectedText(text);
+    let streamSucceeded = false;
     try {
       setExplanation('');
       let buffer = '';
@@ -86,6 +96,8 @@ const useExplainFlow = ({ hasExternalSubtitles }) => {
       const currentTime = startTimeFromSubtitle ?? playerRef.current?.currentTime?.() ?? null;
       const explanation = await aiService.streamExplanation(text, {
         onDelta: (piece, full) => {
+          // 旧 generation 的 chunk 直接丢弃（用户已取消或切换语言）
+          if (gen !== generationRef.current) return;
           buffer = full;
           setExplanation(buffer);
         }
@@ -94,23 +106,54 @@ const useExplainFlow = ({ hasExternalSubtitles }) => {
         videoPath,
         currentTime
       });
-      addRecord({ subtitle_text: text, explanation, timestamp: Date.now() });
-      if (ipcClient.isAvailable()) {
-        ipcClient.saveAiQuery({
-          query: text,
+
+      // 被取消 / 被后续请求取代，不记录、不存库、不加生词本
+      if (gen !== generationRef.current) return;
+      streamSucceeded = true;
+
+      // 后置写入：失败也不要清 UI（解释已经成功展示）
+      try {
+        addRecord({ subtitle_text: text, explanation, timestamp: Date.now() });
+      } catch (e) {
+        console.error('addRecord 失败:', e);
+      }
+      try {
+        const result = await createHighlight({
+          video_path: videoPath || '',
+          original_text: text,
+          start_time: currentTime ?? 0,
+          language: lang,
           explanation,
-          timestamp: new Date().toISOString()
+          status: 'learning'
         });
+        if (result && result.error) {
+          console.error('自动保存生词本失败:', result.error);
+        }
+      } catch (e) {
+        console.error('自动保存生词本失败:', e);
       }
     } catch (error) {
       console.error('AI解释失败:', error);
-  } finally {
-    setAiLoading(false);
+      // C4: 仅在流式过程中失败时恢复 UI；流式完成后的失败不影响展示
+      if (!streamSucceeded && gen === generationRef.current) {
+        setSelectedText('');
+        setExplanation('');
+      }
+    } finally {
+      // 只有当前 generation 才清 loading（避免新请求被旧请求的 finally 误关）
+      if (gen === generationRef.current) {
+        setAiLoading(false);
+        setExplainLoading(false);
+      }
+    }
+  }, [explainLoading, addRecord, ocrResult, setAiLoading, setExplanation, setSelectedText, playerRef, videoPath]);
+
+  // H3: 取消当前进行中的 explain 流（被"返回字幕"等外部操作调用）
+  const cancelExplain = useCallback(() => {
+    generationRef.current++;
     setExplainLoading(false);
-    // 不在这里关闭 ocrModalOpen，让用户可以返回继续看字幕列表
-    // OCRResultModal 只在用户主动点关闭 或 跳转到其他面板时才关闭
-  }
-  }, [addRecord, ocrResult, setAiLoading, setExplanation, setSelectedText, playerRef, videoPath]);
+    setAiLoading(false);
+  }, [setAiLoading]);
 
   const handleCloseModal = useCallback(() => {
     setOcrModalOpen(false);
@@ -125,6 +168,7 @@ const useExplainFlow = ({ hasExternalSubtitles }) => {
     handleCloseModal,
     handleExplain,
     handleOCRRecognize,
+    cancelExplain,
     isVideoLoaded,
     ocrLoading: ocrStatus === 'loading',
     ocrModalOpen,
