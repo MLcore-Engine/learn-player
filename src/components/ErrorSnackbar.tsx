@@ -2,10 +2,9 @@ import React from 'react';
 import { Snackbar, Alert } from '@mui/material';
 import { useError } from '../contexts/AppContext';
 
-const ErrorSnackbar = () => {
+const ErrorSnackbar: React.FC = () => {
   const { error, showError, hideError } = useError();
 
-  // 只在有错误信息时才显示
   if (!error) return null;
 
   return (
@@ -15,16 +14,16 @@ const ErrorSnackbar = () => {
       onClose={hideError}
       anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
     >
-      <Alert 
-        onClose={hideError} 
-        severity="error" 
+      <Alert
+        onClose={hideError}
+        severity="error"
         variant="filled"
         sx={{ width: '100%' }}
       >
-        {error}
+        {String(error)}
       </Alert>
     </Snackbar>
   );
 };
 
-export default ErrorSnackbar; 
+export default ErrorSnackbar;

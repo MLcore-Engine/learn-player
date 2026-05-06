@@ -1,18 +1,26 @@
 import React, { useEffect, useRef } from 'react';
 import { Box, Button, CircularProgress } from '@mui/material';
 
+export interface BubblePosition {
+  x: number;
+  y: number;
+}
+
+export interface ContextualBubbleProps {
+  text: string;
+  position: BubblePosition;
+  onExplain: (text: string) => void;
+  onExplainEn?: (text: string) => void;
+  onPlaySegment?: ((startTime: number) => void) | null;
+  startTime?: number | null;
+  loading?: boolean;
+  onClose: () => void;
+}
+
 /**
  * ContextualBubble - 选词后浮出的操作气泡
- * @param {string} text - 选中的文本
- * @param {object} position - { x, y } 屏幕坐标
- * @param {function} onExplain - 点击"中文解释"回调 (text) => void
- * @param {function} onExplainEn - 点击"英文解释"回调 (text) => void
- * @param {function} onPlaySegment - 点击"播放片段"回调 (startTime) => void
- * @param {number|null} startTime - 视频时间戳（秒）
- * @param {boolean} loading - 是否正在解释
- * @param {function} onClose - 关闭气泡回调
  */
-const ContextualBubble = ({
+const ContextualBubble: React.FC<ContextualBubbleProps> = ({
   text,
   position,
   onExplain,
@@ -22,12 +30,11 @@ const ContextualBubble = ({
   loading = false,
   onClose
 }) => {
-  const ref = useRef(null);
+  const ref = useRef<HTMLDivElement | null>(null);
 
-  // 点击外部关闭
   useEffect(() => {
-    const handleClickOutside = (e) => {
-      if (ref.current && !ref.current.contains(e.target)) {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (ref.current && e.target instanceof Node && !ref.current.contains(e.target)) {
         onClose();
       }
     };
@@ -54,7 +61,7 @@ const ContextualBubble = ({
         maxWidth: '280px',
         display: 'flex',
         flexDirection: 'column',
-        gap: '6px',
+        gap: '6px'
       }}
     >
       {/* 选中的文本 */}
@@ -84,7 +91,7 @@ const ContextualBubble = ({
           {loading ? <CircularProgress size={14} color="inherit" /> : '✦ 英文解释'}
         </Button>
 
-        {startTime != null && (
+        {startTime != null && onPlaySegment && (
           <Button
             variant="outlined"
             size="small"
@@ -99,7 +106,15 @@ const ContextualBubble = ({
 
       {/* 关闭按钮 */}
       <Box
-        sx={{ position: 'absolute', top: '4px', right: '6px', cursor: 'pointer', color: '#666', fontSize: '14px', lineHeight: 1 }}
+        sx={{
+          position: 'absolute',
+          top: '4px',
+          right: '6px',
+          cursor: 'pointer',
+          color: '#666',
+          fontSize: '14px',
+          lineHeight: 1
+        }}
         onClick={onClose}
       >
         ×

@@ -3,53 +3,65 @@ import { LinearProgress, Typography, Box, Paper, Chip } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import { ipcClient } from '../services/ipcClient';
 
-/**
- * 视频转换进度显示组件
- */
-const VideoConversionProgress = ({ isVisible, onCancel }) => {
-  const [progress, setProgress] = useState(0);
-  const [status, setStatus] = useState('准备中...');
-  const [currentFile, setCurrentFile] = useState('');
-  const [estimatedTime, setEstimatedTime] = useState('');
+export interface VideoConversionProgressProps {
+  isVisible: boolean;
+  onCancel?: () => void;
+}
+
+interface ProgressPayload {
+  percent?: number;
+  timemark?: string;
+  inputPath?: string;
+  fps?: number;
+}
+
+interface ConversionCompletePayload {
+  success: boolean;
+  error?: string;
+}
+
+const VideoConversionProgress: React.FC<VideoConversionProgressProps> = ({ isVisible, onCancel }) => {
+  const [progress, setProgress] = useState<number>(0);
+  const [status, setStatus] = useState<string>('准备中...');
+  const [currentFile, setCurrentFile] = useState<string>('');
+  const [estimatedTime, setEstimatedTime] = useState<string>('');
 
   useEffect(() => {
     if (!isVisible) return;
 
-    // 监听转换进度事件
-    const handleProgress = (progressData) => {
+    const handleProgress = (...args: unknown[]): void => {
+      const progressData = args[0] as ProgressPayload | undefined;
+      if (!progressData) return;
       console.log('转换进度:', progressData);
 
-      // 解析进度数据
       if (typeof progressData.percent === 'number') {
         setProgress(progressData.percent);
       } else if (progressData.timemark) {
-        // 从时间戳估算进度（需要知道总时长）
-        // 这里可以根据实际情况调整
-        setProgress(Math.min(95, Math.random() * 90 + 5)); // 临时方案
+        setProgress(Math.min(95, Math.random() * 90 + 5));
       }
 
       if (progressData.inputPath) {
-        const fileName = progressData.inputPath.split('/').pop() || progressData.inputPath.split('\\').pop();
+        const fileName =
+          progressData.inputPath.split('/').pop() ||
+          progressData.inputPath.split('\\').pop() ||
+          '';
         setCurrentFile(fileName);
       }
 
-      // 更新状态信息
       if (progressData.fps) {
         setStatus(`转换中... ${progressData.fps} fps`);
       } else {
         setStatus('转换中...');
       }
 
-      // 估算剩余时间
       if (progressData.timemark && progressData.timemark !== '00:00:00.00') {
-        // 这里需要总时长信息才能准确计算
-        // 暂时显示处理时间
         setEstimatedTime(`已处理: ${progressData.timemark}`);
       }
     };
 
-    // 监听转换完成事件
-    const handleConversionComplete = (result) => {
+    const handleConversionComplete = (...args: unknown[]): void => {
+      const result = args[0] as ConversionCompletePayload | undefined;
+      if (!result) return;
       if (result.success) {
         setProgress(100);
         setStatus('转换完成');
@@ -57,16 +69,14 @@ const VideoConversionProgress = ({ isVisible, onCancel }) => {
           onCancel && onCancel();
         }, 2000);
       } else {
-        setStatus(`转换失败: ${result.error}`);
+        setStatus(`转换失败: ${result.error ?? '未知错误'}`);
         setProgress(0);
       }
     };
 
-    // 注册事件监听器
     const cleanupProgress = ipcClient.onConversionProgress(handleProgress);
     const cleanupComplete = ipcClient.onConversionComplete(handleConversionComplete);
 
-    // 清理函数
     return () => {
       if (cleanupProgress) cleanupProgress();
       if (cleanupComplete) cleanupComplete();
@@ -84,12 +94,7 @@ const VideoConversionProgress = ({ isVisible, onCancel }) => {
 
         {currentFile && (
           <Box mb={2}>
-            <Chip
-              label={`文件: ${currentFile}`}
-              variant="outlined"
-              size="small"
-              sx={{ maxWidth: '100%' }}
-            />
+            <Chip label={`文件: ${currentFile}`} variant="outlined" size="small" sx={{ maxWidth: '100%' }} />
           </Box>
         )}
 
@@ -97,11 +102,7 @@ const VideoConversionProgress = ({ isVisible, onCancel }) => {
           <Typography variant="body2" color="text.secondary" gutterBottom>
             {status}
           </Typography>
-          <LinearProgress
-            variant="determinate"
-            value={progress}
-            sx={{ height: 8, borderRadius: 4 }}
-          />
+          <LinearProgress variant="determinate" value={progress} sx={{ height: 8, borderRadius: 4 }} />
           <Typography variant="caption" color="text.secondary" sx={{ mt: 1 }}>
             {Math.round(progress)}% 完成
           </Typography>
@@ -117,8 +118,7 @@ const VideoConversionProgress = ({ isVisible, onCancel }) => {
   );
 };
 
-// 样式组件
-const ProgressOverlay = styled(Box)(({ theme }) => ({
+const ProgressOverlay = styled(Box)(() => ({
   position: 'fixed',
   top: 0,
   left: 0,
@@ -128,14 +128,14 @@ const ProgressOverlay = styled(Box)(({ theme }) => ({
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
-  zIndex: 9999,
+  zIndex: 9999
 }));
 
 const ProgressContainer = styled(Paper)(({ theme }) => ({
   padding: theme.spacing(3),
   minWidth: 400,
   maxWidth: 600,
-  textAlign: 'center',
+  textAlign: 'center'
 }));
 
 export default VideoConversionProgress;
