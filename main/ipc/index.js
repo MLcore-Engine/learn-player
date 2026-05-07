@@ -515,7 +515,7 @@ function registerIpcHandlers({ app, ipcMain, dialog, BrowserWindow, store, state
       );
       return { success: true, data: response.data };
     } catch (error) {
-      console.error('【主进程】AI 请求失败:', error);
+      console.error('【主进程】AI 请求失败:', error.message || error.code || 'unknown');
       return { success: false, error: error.message };
     }
   });
@@ -621,14 +621,14 @@ function registerIpcHandlers({ app, ipcMain, dialog, BrowserWindow, store, state
       });
 
       stream.on('error', (err) => {
-        console.error('【主进程】SSE 流错误:', err);
+        console.error('【主进程】SSE 流错误:', err?.message || err?.code || 'unknown');
         sendError(err?.message || 'SSE 流错误');
       });
 
       // 立即返回请求ID，让渲染进程开始监听
       return { success: true, requestId };
     } catch (error) {
-      console.error('【主进程】AI 流式请求失败:', error);
+      console.error('【主进程】AI 流式请求失败:', error.message || error.code || 'unknown');
       return { success: false, error: error?.message || 'AI 流式请求失败' };
     }
   });
