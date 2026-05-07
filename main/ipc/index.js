@@ -635,7 +635,7 @@ function registerIpcHandlers({ app, ipcMain, dialog, BrowserWindow, store, state
     }
   });
 
-  // [S7] 已删除 getWatchingStats（无前端调用方，watch_time 表也未在使用）
+  // [post-ts-migration cleanup] 已删除 getWatchingStats（无前端调用方，watch_time 表也未在使用）
 
   // 新增: 处理提取视频帧请求
   ipcMain.handle('extract-frame', async (event, { videoPath, timestamp }) => {

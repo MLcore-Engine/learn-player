@@ -45,8 +45,7 @@ export const useTimeStats = (): UseTimeStatsResult => {
       errorCountRef.current++;
       return { totalTime: 0, sessionTime: 0, lastPosition: 0 };
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [videoPath]);
+  }, [videoPath, updateStats]);
 
   const updateWatchTime = useCallback(async (): Promise<void> => {
     if (!ipcClient.isAvailable() || !videoPath || !videoRef.current) return;
