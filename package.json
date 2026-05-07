@@ -28,7 +28,7 @@
     "prune-deps": "npm prune --production"
   },
   "author": "adam gao",
-  "license": "SEE LICENSE IN LICENSE",
+  "license": "PolyForm-Noncommercial-1.0.0",
   "dependencies": {
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.0",

@@ -1,118 +1,62 @@
-Custom Non-Commercial License (自定义非商业许可证)
+PolyForm Noncommercial License 1.0.0
 
-Copyright (c) 2026 LEP (Learn English Player) Author
-版权所有 (c) 2026 LEP (Learn English Player) 作者
+<https://polyformproject.org/licenses/noncommercial/1.0.0>
 
-================================================================================
-English Version
-================================================================================
+Terms and Conditions for Use, Reproduction, and Distribution
 
-1. Definitions
-   "The Software" refers to this project (LEP / Learn English Player), including
-   its source code, assets, documentation, and any derivative works thereof.
-   "Commercial Use" means any use of The Software, in original or modified form,
-   that is primarily intended for or directed toward commercial advantage or
-   monetary compensation, including but not limited to:
-     (a) selling, licensing, or sublicensing the Software or any derivative;
-     (b) offering the Software (or a derivative) as a paid product, paid
-         subscription, or paid SaaS / cloud service;
-     (c) using the Software inside a for-profit organization to support its
-         business operations or paid services;
-     (d) bundling the Software with paid goods or services;
-     (e) generating revenue via advertising, sponsorship, or data monetization
-         based on the Software's functionality.
+1. Definitions.
 
-2. Grant of Rights (Non-Commercial)
-   Subject to the conditions below, you are granted a worldwide, royalty-free,
-   non-exclusive license to:
-     - use, copy, and run the Software for personal, educational, or research
-       purposes;
-     - modify the Software and create derivative works for the same
-       non-commercial purposes;
-     - share unmodified or modified copies of the Software, provided this
-       LICENSE file is included unchanged and the same restrictions are
-       imposed on recipients.
+The following terms, used in this License, have the following meanings:
 
-3. Commercial Use Requires Prior Written Consent
-   Any Commercial Use of the Software, whether in original form or as a
-   modified / derivative version, REQUIRES the prior, explicit, written
-   consent of the original author. Without such consent, Commercial Use is
-   strictly prohibited.
+"License" means this PolyForm Noncommercial License 1.0.0.
 
-4. Modified Versions
-   You may modify the Software for non-commercial use. However, you MAY NOT
-   distribute, deploy, or otherwise make available a modified version of the
-   Software for any Commercial Use without the original author's prior
-   written consent. The non-commercial restriction applies to all derivative
-   works.
+"Licensor" means the individual or entity offering the Software under this
+License.
 
-5. Attribution
-   All copies and derivative works must retain the original copyright notice
-   and a copy of this LICENSE.
+"Software" means the work of authorship made available under this License.
 
-6. No Warranty
-   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-   FITNESS FOR A PARTICULAR PURPOSE, AND NONINFRINGEMENT. IN NO EVENT SHALL
-   THE AUTHOR BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER LIABILITY ARISING
-   FROM, OUT OF, OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
-   DEALINGS IN THE SOFTWARE.
+"You" means a person or entity exercising permissions granted by this License.
 
-7. Termination
-   Any breach of this License (in particular, unauthorized Commercial Use)
-   automatically terminates all rights granted to you under this License.
+"Your" means the same as You.
 
-8. Commercial Licensing
-   To request a commercial license, contact the author. Commercial terms will
-   be negotiated separately and provided in writing.
+"Use" means anything you do with the Software requiring one of Your rights
+under copyright law.
 
-================================================================================
-中文版本（简体）
-================================================================================
+"Noncommercial Purpose" means a purpose that is not directed to commercial
+advantage or monetary compensation.
 
-1. 定义
-   「本软件」指本项目（LEP / Learn English Player），包括其源代码、资源
-   文件、文档及任何衍生作品。
-   「商业用途」指对本软件（无论原版还是修改版）的任何使用，只要其主要目的
-   或导向是为了获取商业利益或经济回报，包括但不限于：
-     (a) 销售、授权或再授权本软件或其衍生版本；
-     (b) 将本软件（或衍生版本）作为付费产品、付费订阅、付费 SaaS / 云服务
-         对外提供；
-     (c) 在以营利为目的的组织内部使用本软件来支持其业务运营或付费服务；
-     (d) 将本软件与付费商品或服务捆绑；
-     (e) 基于本软件的功能通过广告、赞助、数据变现等方式获取收入。
+2. License Grant.
 
-2. 授予的权利（仅限非商业）
-   在遵守以下条款的前提下，您被授予全球范围、免版税、非排他的许可，可以：
-     - 出于个人、教育或研究目的使用、复制、运行本软件；
-     - 出于上述非商业目的修改本软件并创建衍生作品；
-     - 分发本软件的未修改或修改版本，前提是完整保留本 LICENSE 文件，并对
-       接收方施加相同的限制。
+Subject to the terms and conditions of this License, Licensor grants You a
+worldwide, royalty-free, non-exclusive license to Use the Software for
+Noncommercial Purposes.
 
-3. 商业用途须事先获得书面同意
-   任何商业用途（无论是使用原版还是修改/衍生版本），均**必须**事先获得原作者
-   明确的、书面的同意。未经此种同意，严禁任何商业用途。
+3. Limitations.
 
-4. 修改版本
-   您可以为非商业用途修改本软件。但是，未经原作者事先书面同意，您**不得**
-   将修改后的版本分发、部署或以任何形式提供用于任何商业用途。该非商业限制
-   同样适用于一切衍生作品。
+You may not Use the Software for a commercial purpose.
 
-5. 署名
-   所有副本及衍生作品必须保留原版权声明及本 LICENSE 全文。
+4. Notices.
 
-6. 免责声明
-   本软件按「现状」提供，不附带任何明示或默示的保证，包括但不限于对适销性、
-   适用于特定用途及不侵权的保证。在任何情况下，作者均不对因使用本软件或
-   与本软件相关的任何索赔、损害或其他责任承担责任。
+You must ensure that everyone who gets a copy of any part of the Software from
+You, with or without changes, also gets the text of this License and these
+required notices:
 
-7. 终止
-   任何违反本许可证的行为（特别是未经授权的商业用途）将自动终止您依据本
-   许可证所获得的全部权利。
+Licensor: 高新
+Contact: gxin0426@126.com
 
-8. 商业授权
-   如需商业授权，请联系原作者。商业条款将另行书面协商并签署。
+5. No Warranty.
 
-================================================================================
-END OF LICENSE
-================================================================================
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE, TITLE, AND NON-INFRINGEMENT.
+
+6. Liability.
+
+TO THE EXTENT PERMITTED BY LAW, IN NO EVENT WILL THE LICENSOR BE LIABLE TO YOU
+ON ANY LEGAL THEORY FOR ANY DAMAGES ARISING OUT OF OR RELATED TO THIS LICENSE
+OR THE USE OR INABILITY TO USE THE SOFTWARE.
+
+7. Termination.
+
+If You violate this License, all rights granted to You under this License end
+immediately.
