@@ -1,0 +1,163 @@
+import React, { useState } from 'react';
+import { Box, Button, Typography, Card, CardContent } from '@mui/material';
+import type { Highlight, ReviewQuality } from '../types/highlight';
+
+export interface HighlightCardProps {
+  highlight: Highlight;
+  onPlaySegment?: (start: number, end: number) => void;
+  onReviewed?: (quality: ReviewQuality) => void;
+}
+
+/**
+ * HighlightCard - SRS 复习翻转卡片
+ */
+const HighlightCard: React.FC<HighlightCardProps> = ({ highlight, onPlaySegment, onReviewed }) => {
+  const [flipped, setFlipped] = useState<boolean>(false);
+
+  if (!highlight) return null;
+
+  const formatTime = (seconds: number | null | undefined): string => {
+    if (seconds == null) return '--:--';
+    const m = Math.floor(seconds / 60);
+    const s = Math.floor(seconds % 60);
+    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  };
+
+  const handlePlay = (): void => {
+    if (onPlaySegment) {
+      const start = highlight.start_time != null ? highlight.start_time - 2 : 0;
+      const end = highlight.end_time != null ? highlight.end_time + 2 : start + 4;
+      onPlaySegment(start, end);
+    }
+  };
+
+  return (
+    <Box
+      sx={{
+        perspective: '1000px',
+        width: '100%',
+        maxWidth: 600,
+        mx: 'auto',
+        flex: '1 1 auto',
+        minHeight: { xs: 260, sm: 300 },
+        display: 'flex',
+        flexDirection: 'column'
+      }}
+    >
+      <Box
+        onClick={() => !flipped && setFlipped(true)}
+        sx={{
+          position: 'relative',
+          width: '100%',
+          flex: '1 1 auto',
+          minHeight: { xs: 260, sm: 300 },
+          transformStyle: 'preserve-3d',
+          transition: 'transform 0.5s',
+          transform: flipped ? 'rotateY(180deg)' : 'rotateY(0deg)',
+          cursor: flipped ? 'default' : 'pointer'
+        }}
+      >
+        {/* 正面 */}
+        <Card
+          sx={{
+            position: 'absolute',
+            width: '100%',
+            height: '100%',
+            minHeight: { xs: 260, sm: 300 },
+            backfaceVisibility: 'hidden',
+            bgcolor: '#1a1a1a',
+            color: '#fff',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}
+        >
+          <CardContent sx={{ p: 3, textAlign: 'center', width: '100%' }}>
+            <Typography variant="h4" gutterBottom sx={{ fontWeight: 'bold', wordBreak: 'break-word' }}>
+              {highlight.original_text}
+            </Typography>
+            {highlight.start_time != null && (
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                在 {formatTime(highlight.start_time)} 处添加
+              </Typography>
+            )}
+            {highlight.context_before && (
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 2, fontStyle: 'italic' }}>
+                "...{highlight.context_before} {highlight.original_text} {highlight.context_after}..."
+              </Typography>
+            )}
+            {!flipped && (
+              <Typography variant="caption" color="text.secondary" sx={{ mt: 3, display: 'block' }}>
+                点击卡片显示答案
+              </Typography>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* 背面 */}
+        <Card
+          sx={{
+            position: 'absolute',
+            width: '100%',
+            height: '100%',
+            minHeight: { xs: 260, sm: 300 },
+            backfaceVisibility: 'hidden',
+            transform: 'rotateY(180deg)',
+            bgcolor: '#1a1a1a',
+            color: '#fff',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}
+        >
+          <CardContent sx={{ p: 3, width: '100%' }}>
+            <Typography variant="body1" sx={{ mb: 2, lineHeight: 1.8, wordBreak: 'break-word' }}>
+              {highlight.explanation || highlight.user_note || '（暂无解释）'}
+            </Typography>
+            {highlight.start_time != null && (
+              <Button
+                variant="outlined"
+                size="small"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handlePlay();
+                }}
+                sx={{ borderColor: '#f57c00', color: '#ffb74d' }}
+              >
+                ▶ 播放视频片段
+              </Button>
+            )}
+          </CardContent>
+        </Card>
+      </Box>
+
+      {/* 评价按钮（仅背面显示） */}
+      {flipped && (
+        <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center', mt: 2, flexWrap: 'wrap' }}>
+          {(
+            [
+              { label: '重来', quality: 0, color: '#d32f2f' },
+              { label: '困难', quality: 1, color: '#f57c00' },
+              { label: '良好', quality: 2, color: '#388e3c' },
+              { label: '简单', quality: 3, color: '#1976d2' }
+            ] as Array<{ label: string; quality: ReviewQuality; color: string }>
+          ).map(({ label, quality, color }) => (
+            <Button
+              key={quality}
+              variant="contained"
+              onClick={() => {
+                setFlipped(false);
+                onReviewed?.(quality);
+              }}
+              sx={{ bgcolor: color, '&:hover': { bgcolor: color, opacity: 0.9 } }}
+            >
+              {label}
+            </Button>
+          ))}
+        </Box>
+      )}
+    </Box>
+  );
+};
+
+export default HighlightCard;

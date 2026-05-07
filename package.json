@@ -50,6 +50,9 @@
     "video.js": "^8.22.0"
   },
   "devDependencies": {
+    "@types/node": "^25.6.0",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
     "bootstrap": "^5.3.5",
     "concurrently": "^8.2.2",
     "cross-env": "^7.0.3",
@@ -60,6 +63,7 @@
     "react-app-rewired": "^2.2.1",
     "react-scripts": "5.0.1",
     "source-map-explorer": "^2.5.3",
+    "typescript": "^6.0.3",
     "wait-on": "^7.2.0"
   },
   "build": {
