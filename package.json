@@ -28,7 +28,7 @@
     "prune-deps": "npm prune --production"
   },
   "author": "adam gao",
-  "license": "AGPL-3.0",
+  "license": "SEE LICENSE IN LICENSE",
   "dependencies": {
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.0",

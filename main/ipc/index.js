@@ -473,6 +473,129 @@ function registerIpcHandlers({ app, ipcMain, dialog, BrowserWindow, store, state
     return result;
   });
 
+<<<<<<< HEAD
+=======
+  // 添加新的IPC处理函数，用于检查数据库状态
+  ipcMain.handle('checkDatabaseStatus', (event) => {
+    console.log('【主进程】收到检查数据库状态请求');
+
+    const db = getDb();
+    try {
+      if (!db) {
+        console.log('【主进程】数据库未初始化');
+        return { isConnected: false, error: '数据库未初始化' };
+      }
+
+      // 尝试执行简单查询以确认数据库状态正常
+      const result = db.prepare('SELECT COUNT(*) as count FROM ai_queries').get();
+      console.log('【主进程】数据库状态检查结果:', result);
+
+      return {
+        isConnected: true,
+        recordCount: result.count
+      };
+    } catch (error) {
+      console.error('【主进程】检查数据库状态失败:', error);
+      return {
+        isConnected: false,
+        error: error.message
+      };
+    }
+  });
+
+  // 删除学习记录
+  ipcMain.on('deleteLearningRecord', (event, { recordId }) => {
+    console.log('【主进程】收到deleteLearningRecord请求:', { recordId });
+
+    const db = getDb();
+    const mainWindow = getMainWindow();
+    if (!db) {
+      console.error('【主进程】数据库未初始化，无法删除学习记录');
+      mainWindow.webContents.send('error', { message: '数据库未初始化，无法删除学习记录' });
+      return;
+    }
+
+    try {
+      const stmt = db.prepare('DELETE FROM learning_records WHERE id = ?');
+      const result = stmt.run(recordId);
+
+      console.log('【主进程】删除学习记录结果:', result);
+
+      if (result.changes > 0) {
+        console.log('【主进程】成功删除学习记录');
+        mainWindow.webContents.send('learningRecordDeleted', {
+          success: true,
+          recordId
+        });
+      } else {
+        console.log('【主进程】未找到要删除的记录');
+        mainWindow.webContents.send('learningRecordDeleted', {
+          success: false,
+          message: '未找到要删除的记录'
+        });
+      }
+    } catch (error) {
+      console.error('【主进程】删除学习记录失败:', error);
+      mainWindow.webContents.send('error', { message: '删除学习记录失败', error: error.message });
+    }
+  });
+
+  // 获取学习统计数据
+  ipcMain.on('getLearningStats', (event) => {
+    console.log('【主进程】收到getLearningStats请求');
+
+    const db = getDb();
+    const mainWindow = getMainWindow();
+    if (!db) {
+      console.error('【主进程】数据库未初始化，无法获取学习统计');
+      mainWindow.webContents.send('learningStats', {
+        totalRecords: 0,
+        totalVideos: 0,
+        recentRecords: []
+      });
+      return;
+    }
+
+    try {
+      // 获取总记录数
+      const totalRecordsStmt = db.prepare('SELECT COUNT(*) as count FROM learning_records');
+      const totalRecords = totalRecordsStmt.get().count;
+
+      // 获取学习过的视频数量
+      const totalVideosStmt = db.prepare('SELECT COUNT(DISTINCT video_id) as count FROM learning_records');
+      const totalVideos = totalVideosStmt.get().count;
+
+      // 获取最近10条学习记录
+      const recentRecordsStmt = db.prepare(
+        'SELECT * FROM learning_records ORDER BY created_at DESC LIMIT 10'
+      );
+      const recentRecords = recentRecordsStmt.all();
+
+      console.log('【主进程】学习统计数据:', {
+        totalRecords,
+        totalVideos,
+        recentRecordsCount: recentRecords.length
+      });
+
+      mainWindow.webContents.send('learningStats', {
+        totalRecords,
+        totalVideos,
+        recentRecords
+      });
+    } catch (error) {
+      console.error('【主进程】获取学习统计失败:', error);
+      mainWindow.webContents.send('error', { message: '获取学习统计失败', error: error.message });
+
+      // 发送默认数据
+      mainWindow.webContents.send('learningStats', {
+        totalRecords: 0,
+        totalVideos: 0,
+        recentRecords: []
+      });
+    }
+  });
+
+>>>>>>> refactor/typescript
   // [post-ts-migration cleanup] 已删除 getWatchingStats（无前端调用方，watch_time 表也未在使用）
 
   // 新增: 处理提取视频帧请求
