@@ -1,6 +1,11 @@
 Custom Non-Commercial License (自定义非商业许可证)
 
 Copyright (c) 2026 高新
+版权所有 (c) 2026 高新
+
+================================================================================
+中文版本（简体）
+================================================================================
 
 本项目采用 自定义非商业许可证 (Custom Non-Commercial License)：
 
@@ -13,3 +18,21 @@ Copyright (c) 2026 高新
 1. 任何分发（原始版或修改版）都必须附带本 LICENSE 文件。
 2. 作者联系方式：gxin0426@126.com。
 3. 本软件按“现状”提供，不附带任何明示或暗示担保。
+4. 如需商业授权，请通过邮箱联系作者并取得书面许可。
+
+================================================================================
+English Summary (Non-authoritative)
+================================================================================
+
+- Personal learning, research, and non-commercial use are allowed.
+- Reading and modifying source code for private use are allowed.
+- Any commercial use (including selling, paid subscription, commercial SaaS,
+  internal enterprise commercial usage, ad monetization, etc.) is prohibited
+  without prior written consent from the author.
+- Derivative/modified versions may not be used for commercial purposes without
+  authorization.
+- Redistributions must include this LICENSE file.
+- Contact: gxin0426@126.com
+- The software is provided "AS IS", without warranty of any kind.
+
+In case of ambiguity, the Chinese version shall prevail.
