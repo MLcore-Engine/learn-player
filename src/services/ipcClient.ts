@@ -12,7 +12,6 @@ import type {
   ExtractFrameResult,
   WatchTime,
   WatchTimeUpdate,
-  LearningRecord,
   SaveApiKeyPayload,
   ApiKeyResult,
   PerformAIRequestResult,
@@ -45,8 +44,6 @@ export const IPC_CHANNELS = {
     selectSubtitle: 'selectSubtitle',
     selectVideo: 'selectVideo',
     getWatchTime: 'getWatchTime',
-    saveLearningRecord: 'saveLearningRecord',
-    getLearningRecords: 'getLearningRecords',
     saveApiKey: 'saveApiKey',
     getApiKey: 'getApiKey',
     exportLearningTodayPdf: 'export-learning-today-pdf',
@@ -174,8 +171,6 @@ export interface IpcClient {
   selectVideo: () => Promise<SelectVideoResult>;
   selectSubtitle: (videoPath: string) => Promise<SelectSubtitleResult>;
   extractFrame: (videoPath: string, timestamp: number) => Promise<ExtractFrameResult>;
-  saveLearningRecord: (record: Partial<LearningRecord>) => Promise<{ success?: boolean; id?: number; error?: string }>;
-  getLearningRecords: (videoId: string) => Promise<LearningRecord[]>;
   getWatchTime: (videoId: string) => Promise<WatchTime>;
   updateWatchTime: (watchTimeData: WatchTimeUpdate) => void;
   loadSubtitle: (subtitlePath: string) => void;
@@ -228,8 +223,6 @@ export const ipcClient: IpcClient = {
   },
   selectSubtitle: (videoPath) => invoke(IPC_CHANNELS.invoke.selectSubtitle, { videoPath }),
   extractFrame: (videoPath, timestamp) => invoke(IPC_CHANNELS.invoke.extractFrame, { videoPath, timestamp }),
-  saveLearningRecord: (record) => invoke(IPC_CHANNELS.invoke.saveLearningRecord, record),
-  getLearningRecords: (videoId) => invoke(IPC_CHANNELS.invoke.getLearningRecords, { videoId }),
   getWatchTime: (videoId) => {
     const api = getElectronAPI() as ElectronAPI;
     if (api.getWatchTime) {

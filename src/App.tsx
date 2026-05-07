@@ -36,13 +36,6 @@ const AppContent: React.FC = () => {
     }
   }, []);
 
-  // VideoContainer 需要一个 (text, startTime) => void 的回调（cuechange 触发）。
-  // 当前设计里这只是记录一下，不会真的传到 SidePanel 的 bubble 里——SidePanel 的
-  // bubble 只由 OCR 点词路径触发。保留这个 no-op 以便未来接入。
-  const handleSubtitleSelect = useCallback((_text: string, _startTime: number): void => {
-    // reserved for future cue-change wiring
-  }, []);
-
   const apiKeyProps = {
     isVisible: showApiKeyInput,
     apiKey,
@@ -71,7 +64,7 @@ const AppContent: React.FC = () => {
           overflow: 'hidden'
         }}
       >
-        <VideoContainer onPlayerReady={handlePlayerReady} onSubtitleSelect={handleSubtitleSelect} />
+        <VideoContainer onPlayerReady={handlePlayerReady} />
 
         <AIProviders>
           <SidePanel hasExternalSubtitles={hasExternalSubtitles} />

@@ -21,7 +21,6 @@ import type {
   VideoState,
   TimeStatsState,
   AiState,
-  AiRecord,
   ApiKeyState,
   ErrorState,
   ErrorAction
@@ -70,9 +69,6 @@ export interface AiActions {
   setSelectedText: (text: string) => void;
   setExplanation: (explanation: string) => void;
   setLoading: (loading: boolean) => void;
-  addRecord: (record: AiRecord) => void;
-  clearRecords: () => void;
-  removeRecord: (index: number) => void;
 }
 
 export interface AIContextValue extends AiState, AiActions {}
@@ -299,8 +295,7 @@ export const AIProvider: React.FC<ProviderProps> = ({ children }) => {
   const [state, dispatch] = useReducer(aiReducer, {
     selectedText: '',
     explanation: '',
-    loading: false,
-    records: [] as AiRecord[]
+    loading: false
   });
 
   const actions: AiActions = {
@@ -312,15 +307,6 @@ export const AIProvider: React.FC<ProviderProps> = ({ children }) => {
     },
     setLoading: (loading) => {
       dispatch({ type: 'SET_LOADING', payload: loading });
-    },
-    addRecord: (record) => {
-      dispatch({ type: 'ADD_RECORD', payload: record });
-    },
-    clearRecords: () => {
-      dispatch({ type: 'CLEAR_RECORDS' });
-    },
-    removeRecord: (index) => {
-      dispatch({ type: 'REMOVE_RECORD', payload: index });
     }
   };
 

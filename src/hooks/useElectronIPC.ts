@@ -1,28 +1,11 @@
-import { useEffect, useCallback, useRef } from 'react';
+import { useEffect, useCallback } from 'react';
 import { useVideo } from '../contexts/AppContext';
 import { ipcClient } from '../services/ipcClient';
 import { isElectronAvailable } from '../services/electronApi';
-import type {
-  LearningRecord,
-  SelectVideoResult,
-  ExtractFrameResult
-} from '../types/ipc';
-
-interface LearningRecordsCache {
-  [videoId: string]: {
-    timestamp: number;
-    data: LearningRecord[];
-  };
-}
-
-interface RequestCache {
-  learningRecords: LearningRecordsCache;
-}
+import type { SelectVideoResult, ExtractFrameResult } from '../types/ipc';
 
 export interface UseElectronIPCResult {
   selectVideo: () => Promise<SelectVideoResult>;
-  saveLearningRecord: (record: Partial<LearningRecord>) => Promise<{ success?: boolean; id?: number; error?: string }>;
-  getLearningRecords: (videoId: string) => Promise<LearningRecord[]>;
   extractFrame: (videoPath: string, timestamp: number) => Promise<ExtractFrameResult>;
   checkFileExists: (filePath: string) => Promise<boolean>;
 }
@@ -32,7 +15,6 @@ export interface UseElectronIPCResult {
  */
 export const useElectronIPC = (): UseElectronIPCResult => {
   const { setVideoPath } = useVideo();
-  const requestCacheRef = useRef<RequestCache>({ learningRecords: {} });
 
   useEffect(() => {
     if (!isElectronAvailable()) return;
@@ -69,44 +51,6 @@ export const useElectronIPC = (): UseElectronIPCResult => {
     }
   }, [setVideoPath]);
 
-  const saveLearningRecord = useCallback(async (record: Partial<LearningRecord>) => {
-    if (!isElectronAvailable()) {
-      return { success: false, error: 'Electron API不可用' };
-    }
-    try {
-      return await ipcClient.saveLearningRecord(record);
-    } catch (error) {
-      console.error('保存学习记录失败:', error);
-      return { success: false, error: (error as Error).message };
-    }
-  }, []);
-
-  const getLearningRecords = useCallback(async (videoId: string): Promise<LearningRecord[]> => {
-    if (!isElectronAvailable()) {
-      return [];
-    }
-    const now = Date.now();
-    const cache = requestCacheRef.current.learningRecords;
-    if (cache[videoId] && now - cache[videoId].timestamp < 5000) {
-      console.log(`使用缓存的学习记录: ${videoId}`);
-      return cache[videoId].data;
-    }
-    try {
-      console.log(`请求学习记录: ${videoId}`);
-      const records = await ipcClient.getLearningRecords(videoId);
-      const safeRecords = Array.isArray(records) ? records : [];
-      if (!Array.isArray(records)) {
-        console.warn('获取学习记录返回非数组，已兜底为空数组:', records);
-      }
-      console.log(`获取学习记录响应: ${videoId}, 记录数: ${safeRecords.length}`);
-      cache[videoId] = { timestamp: now, data: safeRecords };
-      return safeRecords;
-    } catch (error) {
-      console.error('获取学习记录失败:', error);
-      return [];
-    }
-  }, []);
-
   const extractFrame = useCallback(
     async (videoPath: string, timestamp: number): Promise<ExtractFrameResult> => {
       if (!isElectronAvailable()) {
@@ -129,8 +73,6 @@ export const useElectronIPC = (): UseElectronIPCResult => {
 
   return {
     selectVideo,
-    saveLearningRecord,
-    getLearningRecords,
     extractFrame,
     checkFileExists
   };

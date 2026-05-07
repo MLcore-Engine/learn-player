@@ -463,51 +463,9 @@ function registerIpcHandlers({ app, ipcMain, dialog, BrowserWindow, store, state
     return { totalTime, sessionTime, lastPosition };
   });
 
-  // 保存学习记录
-  ipcMain.handle('saveLearningRecord', (event, { videoId, subtitleId, content, translation, note }) => {
-    console.log('【主进程】收到saveLearningRecord请求:', { videoId, subtitleId, content });
-
-    const db = getDb();
-    if (!db) {
-      console.error('【主进程】数据库未初始化，无法保存学习记录');
-      return { success: false, error: '数据库未初始化' };
-    }
-
-    const created_at = new Date().toISOString();
-
-    try {
-      const stmt = db.prepare(
-        'INSERT INTO learning_records (video_id, subtitle_id, content, translation, note, created_at) VALUES (?, ?, ?, ?, ?, ?)'
-      );
-      const result = stmt.run(videoId, subtitleId, content, translation, note, created_at);
-      console.log('【主进程】保存学习记录成功:', result);
-      return { success: true, id: result.lastInsertRowid }; // 返回成功和 ID
-    } catch (error) {
-      console.error('【主进程】保存学习记录失败:', error);
-      return { success: false, error: error.message }; // 返回失败
-    }
-  });
-
-  // 获取学习记录
-  ipcMain.handle('getLearningRecords', (event, { videoId }) => {
-    console.log('【主进程】收到getLearningRecords请求:', { videoId });
-
-    const db = getDb();
-    if (!db) {
-      console.error('【主进程】数据库未初始化，返回空学习记录');
-      return []; // 直接返回空数组
-    }
-
-    try {
-      const stmt = db.prepare('SELECT * FROM learning_records WHERE video_id = ? ORDER BY created_at DESC');
-      const rows = stmt.all(videoId);
-      console.log('【主进程】获取学习记录成功，共', rows.length, '条记录');
-      return rows; // 直接返回记录数组
-    } catch (error) {
-      console.error('【主进程】获取学习记录失败:', error);
-      return []; // 出错时也返回空数组
-    }
-  });
+  // [post-ts-migration cleanup] 已删除：saveLearningRecord / getLearningRecords /
+  // checkDatabaseStatus / deleteLearningRecord / getLearningStats —— 它们读写
+  // learning_records 或 ai_queries（均已废弃），且前端无任何调用方。
 
   // 文件选择器对话框
   ipcMain.handle('dialog:openFile', async (event, options) => {
@@ -515,6 +473,8 @@ function registerIpcHandlers({ app, ipcMain, dialog, BrowserWindow, store, state
     return result;
   });
 
+<<<<<<< HEAD
+=======
   // 添加新的IPC处理函数，用于检查数据库状态
   ipcMain.handle('checkDatabaseStatus', (event) => {
     console.log('【主进程】收到检查数据库状态请求');
@@ -635,6 +595,7 @@ function registerIpcHandlers({ app, ipcMain, dialog, BrowserWindow, store, state
     }
   });
 
+>>>>>>> refactor/typescript
   // [post-ts-migration cleanup] 已删除 getWatchingStats（无前端调用方，watch_time 表也未在使用）
 
   // 新增: 处理提取视频帧请求

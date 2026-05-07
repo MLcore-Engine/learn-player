@@ -66,18 +66,6 @@ export const aiReducer = (state: AiState, action: AiAction): AiState => {
       return { ...state, explanation: action.payload };
     case 'SET_LOADING':
       return { ...state, loading: action.payload };
-    case 'ADD_RECORD':
-      return {
-        ...state,
-        records: [action.payload, ...state.records].slice(0, 100) // 限制最多保存 100 条记录
-      };
-    case 'CLEAR_RECORDS':
-      return { ...state, records: [] };
-    case 'REMOVE_RECORD':
-      return {
-        ...state,
-        records: state.records.filter((_, index) => index !== action.payload)
-      };
     default:
       return state;
   }
