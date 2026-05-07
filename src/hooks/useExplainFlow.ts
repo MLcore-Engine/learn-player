@@ -38,7 +38,7 @@ const useExplainFlow = ({ hasExternalSubtitles }: UseExplainFlowOptions): UseExp
   const [explainLoading, setExplainLoading] = useState<boolean>(false);
   // 追踪正在进行的 explain 请求，防止返回字幕/并发请求后，旧流的 onDelta 回写
   const generationRef = useRef<number>(0);
-  const { setSelectedText, setExplanation, setLoading: setAiLoading, addRecord } = useAI();
+  const { setSelectedText, setExplanation, setLoading: setAiLoading } = useAI();
   const { isLoaded: isVideoLoaded, playerRef, videoPath } = useVideo();
 
   const handleOCRRecognize = useCallback(
@@ -148,11 +148,6 @@ const useExplainFlow = ({ hasExternalSubtitles }: UseExplainFlowOptions): UseExp
         streamSucceeded = true;
 
         try {
-          addRecord({ subtitle_text: text, explanation, timestamp: Date.now() });
-        } catch (e) {
-          console.error('addRecord 失败:', e);
-        }
-        try {
           const result = await createHighlight({
             video_path: videoPath || '',
             original_text: text,
@@ -180,7 +175,7 @@ const useExplainFlow = ({ hasExternalSubtitles }: UseExplainFlowOptions): UseExp
         }
       }
     },
-    [explainLoading, addRecord, ocrResult, setAiLoading, setExplanation, setSelectedText, playerRef, videoPath]
+    [explainLoading, ocrResult, setAiLoading, setExplanation, setSelectedText, playerRef, videoPath]
   );
 
   const cancelExplain = useCallback((): void => {

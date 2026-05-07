@@ -126,19 +126,7 @@ app.whenReady().then(async () => {
         );
       `);
       
-      // 创建 learning_records 表，保存学习记录
-      db.exec(`
-        CREATE TABLE IF NOT EXISTS learning_records (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          video_id TEXT,
-          subtitle_id INTEGER,
-          content TEXT,
-          translation TEXT,
-          note TEXT,
-          created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-          updated_at TEXT DEFAULT CURRENT_TIMESTAMP
-        );
-      `);
+      // learning_records 表已废弃，删除创建语句
 
       console.log('数据库表创建完成');
     }
@@ -147,13 +135,14 @@ app.whenReady().then(async () => {
     try {
       // ===== S1: 数据层重构 =====
       // 废弃的旧表（学习数据统一到 highlights）
-      // ai_queries / vocabulary / vocabulary_reviews / query_history 不再使用
-      console.warn('[S1] 清理废弃表：ai_queries / vocabulary / vocabulary_reviews / query_history');
+      // ai_queries / vocabulary / vocabulary_reviews / query_history / learning_records 不再使用
+      console.warn('[S1] 清理废弃表：ai_queries / vocabulary / vocabulary_reviews / query_history / learning_records');
       db.exec(`
         DROP TABLE IF EXISTS ai_queries;
         DROP TABLE IF EXISTS vocabulary_reviews;
         DROP TABLE IF EXISTS vocabulary;
         DROP TABLE IF EXISTS query_history;
+        DROP TABLE IF EXISTS learning_records;
         DROP TABLE IF EXISTS highlights;
       `);
 

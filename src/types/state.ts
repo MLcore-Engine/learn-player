@@ -34,26 +34,16 @@ export type TimeStatsAction =
   | { type: 'RESET_SESSION_TIME' };
 
 // ============ AI ============
-export interface AiRecord {
-  subtitle_text: string;
-  explanation: string;
-  timestamp: number;
-}
-
 export interface AiState {
   selectedText: string;
   explanation: string;
   loading: boolean;
-  records: AiRecord[];
 }
 
 export type AiAction =
   | { type: 'SET_SELECTED_TEXT'; payload: string }
   | { type: 'SET_EXPLANATION'; payload: string }
-  | { type: 'SET_LOADING'; payload: boolean }
-  | { type: 'ADD_RECORD'; payload: AiRecord }
-  | { type: 'CLEAR_RECORDS' }
-  | { type: 'REMOVE_RECORD'; payload: number };
+  | { type: 'SET_LOADING'; payload: boolean };
 
 // ============ API key ============
 export type ConfigSourceKind = 'default' | 'env' | 'store';
