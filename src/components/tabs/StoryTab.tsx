@@ -104,13 +104,19 @@ const StoryTab: React.FC<StoryTabProps> = ({ onBackToSubtitle }) => {
 
   const [history, setHistory] = useState<StoryRow[]>([]);
   const [historyLoading, setHistoryLoading] = useState<boolean>(false);
+  const [progress, setProgress] = useState<string>('');
 
   const loadVocab = useCallback(async (): Promise<void> => {
     try {
       const result = await ipcClient.getHighlights({ limit: 200 });
+      // 主进程返回形状: { highlights: Highlight[], total: number } | { error: string }
+      const maybeShaped = result as unknown as { highlights?: Highlight[]; error?: string };
       if (Array.isArray(result)) {
         setVocabPool(result);
+      } else if (maybeShaped && Array.isArray(maybeShaped.highlights)) {
+        setVocabPool(maybeShaped.highlights);
       } else {
+        if (maybeShaped?.error) console.warn('getHighlights error:', maybeShaped.error);
         setVocabPool([]);
       }
     } catch (e) {
@@ -200,6 +206,7 @@ const StoryTab: React.FC<StoryTabProps> = ({ onBackToSubtitle }) => {
     setAudioPath('');
     setAudioDataUrl('');
     setStoryId(null);
+    setProgress('');
     try {
       const words = Array.from(selectedWords);
       const result = await generateStoryText({
@@ -207,7 +214,8 @@ const StoryTab: React.FC<StoryTabProps> = ({ onBackToSubtitle }) => {
         style,
         difficulty,
         length,
-        bilingual
+        bilingual,
+        onProgress: (acc) => setProgress(acc)
       });
       setTitle(result.title);
       setBodyEn(result.bodyEn);
@@ -222,6 +230,7 @@ const StoryTab: React.FC<StoryTabProps> = ({ onBackToSubtitle }) => {
       });
       setStoryId(id);
       setPhase('textReady');
+      setProgress('');
       loadHistory();
     } catch (e) {
       console.error(e);
@@ -566,6 +575,14 @@ const StoryTab: React.FC<StoryTabProps> = ({ onBackToSubtitle }) => {
                 生成语音
               </Button>
             </Stack>
+            {phase === 'generatingText' && progress && (
+              <Paper variant="outlined" sx={{ p: 1.5, bgcolor: 'action.hover', maxHeight: 120, overflowY: 'auto' }}>
+                <Typography variant="caption" color="text.secondary">生成中…（流式）</Typography>
+                <Typography variant="body2" sx={{ fontFamily: 'monospace', fontSize: 12, whiteSpace: 'pre-wrap', mt: 0.5 }}>
+                  {progress.slice(-400)}
+                </Typography>
+              </Paper>
+            )}
             {error && (
               <Typography variant="caption" color="error">{error}</Typography>
             )}

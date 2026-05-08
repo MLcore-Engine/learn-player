@@ -17,12 +17,21 @@ export interface GenerateStoryTextOptions {
   length: StoryLength;
   bilingual: boolean;
   model?: string;
+  /** Progressive text callback (receives the accumulated raw string so far). */
+  onProgress?: (accumulated: string) => void;
 }
 
 export interface GeneratedStoryText {
   title: string;
   bodyEn: string;
   bodyZh: string;
+}
+
+interface StreamEvent {
+  requestId?: string;
+  type?: 'delta' | 'complete' | 'error';
+  content?: string;
+  message?: string;
 }
 
 const LENGTH_HINT: Record<StoryLength, string> = {
@@ -43,7 +52,9 @@ const buildPrompt = (opts: GenerateStoryTextOptions): { system: string; user: st
     'You are an English teacher writing engaging learning material for Chinese learners.',
     'Use the target words naturally — every target word MUST appear at least once.',
     'Keep grammar at the requested CEFR level.',
-    'Output strictly valid JSON, no markdown fences, no commentary.',
+    'CRITICAL: Output a single valid JSON object and NOTHING else.',
+    'No markdown fences, no prose before or after, no comments.',
+    'The JSON MUST start with { and end with }.',
     'JSON shape: {"title": string, "body_en": string, "body_zh": string}.',
     opts.bilingual
       ? '"body_zh" must be a faithful Chinese translation of "body_en", paragraph-aligned.'
@@ -55,7 +66,7 @@ const buildPrompt = (opts: GenerateStoryTextOptions): { system: string; user: st
     `CEFR level: ${opts.difficulty}.`,
     `Length: ${LENGTH_HINT[opts.length]}.`,
     'Wrap each target word in **double asterisks** in body_en the first time it appears.',
-    'Return JSON only.'
+    'Return one JSON object, no other output.'
   ].join('\n');
   return { system, user };
 };
@@ -64,6 +75,32 @@ const stripJsonFences = (s: string): string => {
   const trimmed = s.trim();
   const fenced = trimmed.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/i);
   return fenced ? fenced[1] : trimmed;
+};
+
+/** 从任意文本里抽第一段看起来是 JSON 对象的片段，容错模型在 JSON 前后加了描述文字。 */
+const extractFirstJsonObject = (s: string): string => {
+  const cleaned = stripJsonFences(s);
+  const start = cleaned.indexOf('{');
+  if (start < 0) return cleaned;
+  let depth = 0;
+  let inStr = false;
+  let esc = false;
+  for (let i = start; i < cleaned.length; i++) {
+    const ch = cleaned[i];
+    if (inStr) {
+      if (esc) esc = false;
+      else if (ch === '\\') esc = true;
+      else if (ch === '"') inStr = false;
+    } else {
+      if (ch === '"') inStr = true;
+      else if (ch === '{') depth++;
+      else if (ch === '}') {
+        depth--;
+        if (depth === 0) return cleaned.slice(start, i + 1);
+      }
+    }
+  }
+  return cleaned.slice(start);
 };
 
 export const generateStoryText = async (opts: GenerateStoryTextOptions): Promise<GeneratedStoryText> => {
@@ -78,26 +115,67 @@ export const generateStoryText = async (opts: GenerateStoryTextOptions): Promise
     ],
     temperature: 0.8,
     max_tokens: 1500,
-    stream: false,
-    response_format: { type: 'json_object' }
+    stream: true
   };
-  const result = await ipcClient.performAIRequest(requestData, apiUrl, apiKey);
-  if (!result.success) throw new Error(result.error || '生成故事失败');
-  const data = result.data as { choices?: Array<{ message?: { content?: string } }> };
-  const content = data?.choices?.[0]?.message?.content || '';
-  if (!content) throw new Error('模型返回为空');
-  let parsed: { title?: string; body_en?: string; body_zh?: string };
-  try {
-    parsed = JSON.parse(stripJsonFences(content));
-  } catch (e) {
-    throw new Error(`解析模型 JSON 失败: ${(e as Error).message}`);
-  }
-  if (!parsed.body_en) throw new Error('模型未返回 body_en');
-  return {
-    title: parsed.title || '',
-    bodyEn: parsed.body_en,
-    bodyZh: parsed.body_zh || ''
-  };
+
+  return new Promise<GeneratedStoryText>((resolve, reject) => {
+    let accumulated = '';
+    let unsubscribe: (() => void) | null = null;
+    let settled = false;
+
+    const finish = (fn: () => void): void => {
+      if (settled) return;
+      settled = true;
+      if (unsubscribe) unsubscribe();
+      fn();
+    };
+
+    (async () => {
+      try {
+        const result = await ipcClient.performAIStream(requestData, apiUrl, apiKey);
+        if (!result || result.success !== true) {
+          throw new Error(result?.error || '主进程 AI 流式请求失败');
+        }
+        const { requestId } = result;
+
+        unsubscribe = ipcClient.onAiStream((...args: unknown[]) => {
+          const payload = args[0] as StreamEvent | undefined;
+          if (!payload || payload.requestId !== requestId) return;
+          if (payload.type === 'delta') {
+            accumulated += payload.content || '';
+            opts.onProgress?.(accumulated);
+          } else if (payload.type === 'complete') {
+            finish(() => {
+              if (!accumulated) {
+                reject(new Error('模型返回为空'));
+                return;
+              }
+              let parsed: { title?: string; body_en?: string; body_zh?: string };
+              try {
+                parsed = JSON.parse(extractFirstJsonObject(accumulated));
+              } catch (e) {
+                reject(new Error(`解析模型 JSON 失败: ${(e as Error).message}`));
+                return;
+              }
+              if (!parsed.body_en) {
+                reject(new Error('模型未返回 body_en'));
+                return;
+              }
+              resolve({
+                title: parsed.title || '',
+                bodyEn: parsed.body_en,
+                bodyZh: parsed.body_zh || ''
+              });
+            });
+          } else if (payload.type === 'error') {
+            finish(() => reject(new Error(payload.message || '流式错误')));
+          }
+        });
+      } catch (error) {
+        finish(() => reject(error as Error));
+      }
+    })();
+  });
 };
 
 export interface GenerateAudioOptions {
