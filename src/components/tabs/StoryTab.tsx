@@ -15,9 +15,10 @@ import {
   Stack,
   Switch,
   TextField,
+  Tooltip,
   Typography
 } from '@mui/material';
-import { ArrowBack, Delete, Download, GraphicEq, Refresh, Shuffle } from '@mui/icons-material';
+import { Add, ArrowBack, Delete, Download, GraphicEq, Refresh, Shuffle } from '@mui/icons-material';
 import { ipcClient } from '../../services/ipcClient';
 import {
   deleteStory,
@@ -30,7 +31,7 @@ import {
   saveStory,
   updateStoryAudio
 } from '../../services/storyService';
-import type { Highlight } from '../../types/highlight';
+import type { Highlight, HighlightStatus } from '../../types/highlight';
 import type {
   StoryDifficulty,
   StoryLength,
@@ -50,8 +51,17 @@ export interface StoryTabProps {
 }
 
 type Phase = 'idle' | 'generatingText' | 'textReady' | 'generatingAudio' | 'audioReady' | 'error';
+type StatusFilter = 'all' | HighlightStatus;
 
 const DEFAULT_WORD_COUNT = 5;
+const SENTENCE_THRESHOLD = 50;
+
+const STATUS_FILTERS: Array<{ key: StatusFilter; label: string }> = [
+  { key: 'all', label: '全部' },
+  { key: 'learning', label: '学习中' },
+  { key: 'reviewed', label: '复习中' },
+  { key: 'mastered', label: '已掌握' }
+];
 
 const renderInlineBold = (text: string): React.ReactNode => {
   const parts = text.split(/(\*\*[^*]+\*\*)/g);
@@ -70,7 +80,10 @@ const renderInlineBold = (text: string): React.ReactNode => {
 
 const StoryTab: React.FC<StoryTabProps> = ({ onBackToSubtitle }) => {
   const [vocabPool, setVocabPool] = useState<Highlight[]>([]);
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+  const [includeSentences, setIncludeSentences] = useState<boolean>(false);
   const [selectedWords, setSelectedWords] = useState<Set<string>>(new Set());
+  const [customInput, setCustomInput] = useState<string>('');
   const [style, setStyle] = useState<StoryStyle>('dialogue');
   const [difficulty, setDifficulty] = useState<StoryDifficulty>('B1');
   const [length, setLength] = useState<StoryLength>('medium');
@@ -94,7 +107,7 @@ const StoryTab: React.FC<StoryTabProps> = ({ onBackToSubtitle }) => {
 
   const loadVocab = useCallback(async (): Promise<void> => {
     try {
-      const result = await ipcClient.getHighlights({ status: 'learning', limit: 100 });
+      const result = await ipcClient.getHighlights({ limit: 200 });
       if (Array.isArray(result)) {
         setVocabPool(result);
       } else {
@@ -123,8 +136,24 @@ const StoryTab: React.FC<StoryTabProps> = ({ onBackToSubtitle }) => {
   }, [loadVocab, loadHistory]);
 
   const wordList = useMemo(() => {
-    return Array.from(new Set(vocabPool.map((h) => h.original_text.trim()).filter(Boolean)));
-  }, [vocabPool]);
+    const seen = new Set<string>();
+    const out: string[] = [];
+    for (const h of vocabPool) {
+      if (statusFilter !== 'all' && h.status !== statusFilter) continue;
+      const t = (h.original_text || '').trim();
+      if (!t) continue;
+      if (!includeSentences && t.length > SENTENCE_THRESHOLD) continue;
+      if (seen.has(t)) continue;
+      seen.add(t);
+      out.push(t);
+    }
+    return out;
+  }, [vocabPool, statusFilter, includeSentences]);
+
+  const totalWordCount = useMemo(
+    () => new Set(vocabPool.map((h) => (h.original_text || '').trim()).filter(Boolean)).size,
+    [vocabPool]
+  );
 
   const toggleWord = (w: string): void => {
     setSelectedWords((prev) => {
@@ -142,6 +171,22 @@ const StoryTab: React.FC<StoryTabProps> = ({ onBackToSubtitle }) => {
       [pool[i], pool[j]] = [pool[j], pool[i]];
     }
     setSelectedWords(new Set(pool.slice(0, Math.min(DEFAULT_WORD_COUNT, pool.length))));
+  };
+
+  const clearSelected = (): void => setSelectedWords(new Set());
+
+  const addCustomWords = (): void => {
+    const tokens = customInput
+      .split(/[,，;；\s]+/)
+      .map((s) => s.trim())
+      .filter((s) => s.length > 0 && s.length <= 80);
+    if (!tokens.length) return;
+    setSelectedWords((prev) => {
+      const next = new Set(prev);
+      for (const t of tokens) next.add(t);
+      return next;
+    });
+    setCustomInput('');
   };
 
   const handleGenerateText = async (): Promise<void> => {
@@ -294,28 +339,103 @@ const StoryTab: React.FC<StoryTabProps> = ({ onBackToSubtitle }) => {
       <Box sx={{ flex: 1, minHeight: 0, overflowY: 'auto', pr: 0.5 }}>
         <Paper variant="outlined" sx={{ p: 2, mb: 2 }}>
           <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1 }}>
-            <Typography variant="subtitle2">选择生词 ({selectedWords.size} / {wordList.length})</Typography>
-            <Button size="small" startIcon={<Shuffle />} onClick={pickRandom} disabled={!wordList.length}>
-              随机选 {DEFAULT_WORD_COUNT}
-            </Button>
+            <Typography variant="subtitle2">
+              选择生词 ({selectedWords.size} 已选 / {wordList.length} 可选 / {totalWordCount} 总数)
+            </Typography>
+            <Stack direction="row" spacing={0.5}>
+              <Button size="small" startIcon={<Shuffle />} onClick={pickRandom} disabled={!wordList.length}>
+                随机 {DEFAULT_WORD_COUNT}
+              </Button>
+              <Button size="small" onClick={clearSelected} disabled={!selectedWords.size}>
+                清空
+              </Button>
+            </Stack>
           </Stack>
-          <Box sx={{ maxHeight: 160, overflowY: 'auto', display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-            {wordList.length === 0 && (
-              <Typography variant="caption" color="text.secondary">
-                还没有生词。先去字幕里点几个吧。
-              </Typography>
-            )}
-            {wordList.map((w) => (
+          <Stack direction="row" spacing={0.5} sx={{ mb: 1, flexWrap: 'wrap' }}>
+            {STATUS_FILTERS.map((f) => (
               <Chip
-                key={w}
-                label={w}
+                key={f.key}
+                label={f.label}
                 size="small"
-                color={selectedWords.has(w) ? 'primary' : 'default'}
-                variant={selectedWords.has(w) ? 'filled' : 'outlined'}
-                onClick={() => toggleWord(w)}
+                color={statusFilter === f.key ? 'primary' : 'default'}
+                variant={statusFilter === f.key ? 'filled' : 'outlined'}
+                onClick={() => setStatusFilter(f.key)}
               />
             ))}
+            <FormControlLabel
+              sx={{ ml: 1 }}
+              control={
+                <Switch
+                  size="small"
+                  checked={includeSentences}
+                  onChange={(e) => setIncludeSentences(e.target.checked)}
+                />
+              }
+              label={<Typography variant="caption">包含整句</Typography>}
+            />
+          </Stack>
+          <Box sx={{ maxHeight: 200, overflowY: 'auto', display: 'flex', flexWrap: 'wrap', gap: 0.5, mb: 1 }}>
+            {wordList.length === 0 && (
+              <Typography variant="caption" color="text.secondary">
+                {totalWordCount === 0
+                  ? '还没有生词。先去字幕里点几个吧。'
+                  : '当前筛选下没有可选词。试试切到「全部」或打开「包含整句」。'}
+              </Typography>
+            )}
+            {wordList.map((w) => {
+              const long = w.length > 30;
+              const chip = (
+                <Chip
+                  key={w}
+                  label={long ? `${w.slice(0, 28)}…` : w}
+                  size="small"
+                  color={selectedWords.has(w) ? 'primary' : 'default'}
+                  variant={selectedWords.has(w) ? 'filled' : 'outlined'}
+                  onClick={() => toggleWord(w)}
+                  sx={{ maxWidth: 260 }}
+                />
+              );
+              return long ? (
+                <Tooltip key={w} title={w} placement="top">
+                  {chip}
+                </Tooltip>
+              ) : (
+                chip
+              );
+            })}
           </Box>
+          <Stack direction="row" spacing={1} alignItems="center">
+            <TextField
+              size="small"
+              fullWidth
+              placeholder="自定义单词，逗号或空格分隔（如 cup, dog, run）"
+              value={customInput}
+              onChange={(e) => setCustomInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  addCustomWords();
+                }
+              }}
+            />
+            <Button size="small" variant="outlined" startIcon={<Add />} onClick={addCustomWords} disabled={!customInput.trim()}>
+              添加
+            </Button>
+          </Stack>
+          {selectedWords.size > 0 && (
+            <Box sx={{ mt: 1, display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+              {Array.from(selectedWords).map((w) => (
+                <Chip
+                  key={`sel-${w}`}
+                  label={w.length > 30 ? `${w.slice(0, 28)}…` : w}
+                  size="small"
+                  color="primary"
+                  onDelete={() => toggleWord(w)}
+                  sx={{ maxWidth: 260 }}
+                />
+              ))}
+            </Box>
+          )}
         </Paper>
 
         <Paper variant="outlined" sx={{ p: 2, mb: 2 }}>
@@ -353,7 +473,12 @@ const StoryTab: React.FC<StoryTabProps> = ({ onBackToSubtitle }) => {
             <Stack direction="row" spacing={1} alignItems="center">
               <FormControl size="small" sx={{ flex: 1 }}>
                 <InputLabel>TTS 模型</InputLabel>
-                <Select label="TTS 模型" value={ttsModel} onChange={(e) => setTtsModel(e.target.value)}>
+                <Select
+                  label="TTS 模型"
+                  value={ttsModel}
+                  onChange={(e) => setTtsModel(e.target.value)}
+                  renderValue={(v) => v as string}
+                >
                   {STEP_TTS_MODELS.map((m) => (
                     <MenuItem key={m.id} value={m.id}>
                       <Box sx={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
@@ -370,7 +495,15 @@ const StoryTab: React.FC<StoryTabProps> = ({ onBackToSubtitle }) => {
             <Stack direction="row" spacing={1} alignItems="center">
               <FormControl size="small" sx={{ flex: 2 }}>
                 <InputLabel>语音</InputLabel>
-                <Select label="语音" value={voice} onChange={(e) => setVoice(e.target.value)}>
+                <Select
+                  label="语音"
+                  value={voice}
+                  onChange={(e) => setVoice(e.target.value)}
+                  renderValue={(v) => {
+                    const found = STEP_TTS_VOICES.find((x) => x.id === v);
+                    return found ? found.label : (v as string);
+                  }}
+                >
                   {STEP_TTS_VOICES.map((v) => {
                     const tagColor =
                       v.englishFitness === 'best' ? 'success' :
