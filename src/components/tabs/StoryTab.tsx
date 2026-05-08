@@ -39,9 +39,11 @@ import type {
   StoryStyle
 } from '../../types/story';
 import {
+  DEFAULT_CHAT_MODEL,
   DEFAULT_INSTRUCTION,
   DEFAULT_TTS_MODEL,
   DEFAULT_TTS_VOICE,
+  STEP_CHAT_MODELS,
   STEP_TTS_MODELS,
   STEP_TTS_VOICES
 } from '../../types/story';
@@ -89,6 +91,7 @@ const StoryTab: React.FC<StoryTabProps> = ({ onBackToSubtitle }) => {
   const [length, setLength] = useState<StoryLength>('medium');
   const [bilingual, setBilingual] = useState<boolean>(true);
   const [voice, setVoice] = useState<string>(DEFAULT_TTS_VOICE);
+  const [chatModel, setChatModel] = useState<string>(DEFAULT_CHAT_MODEL);
   const [ttsModel, setTtsModel] = useState<string>(DEFAULT_TTS_MODEL);
   const [instruction, setInstruction] = useState<string>(DEFAULT_INSTRUCTION);
   const [speed, setSpeed] = useState<number>(1.0);
@@ -215,6 +218,7 @@ const StoryTab: React.FC<StoryTabProps> = ({ onBackToSubtitle }) => {
         difficulty,
         length,
         bilingual,
+        model: chatModel,
         onProgress: (acc) => setProgress(acc)
       });
       setTitle(result.title);
@@ -226,7 +230,8 @@ const StoryTab: React.FC<StoryTabProps> = ({ onBackToSubtitle }) => {
         bodyZh: result.bodyZh,
         vocabWords: words,
         style,
-        difficulty
+        difficulty,
+        chatModel
       });
       setStoryId(id);
       setPhase('textReady');
@@ -303,6 +308,7 @@ const StoryTab: React.FC<StoryTabProps> = ({ onBackToSubtitle }) => {
     if (row.difficulty) setDifficulty(row.difficulty as StoryDifficulty);
     if (row.voice) setVoice(row.voice);
     if (row.model) setTtsModel(row.model);
+    if (row.chat_model) setChatModel(row.chat_model);
     setAudioPath(row.audio_path || '');
     setAudioDataUrl('');
     if (row.audio_path) {
@@ -479,6 +485,34 @@ const StoryTab: React.FC<StoryTabProps> = ({ onBackToSubtitle }) => {
               control={<Switch checked={bilingual} onChange={(e) => setBilingual(e.target.checked)} />}
               label="同时生成中文翻译"
             />
+            <Divider textAlign="left" sx={{ mt: 1 }}>
+              <Typography variant="caption" color="text.secondary">① 文本生成（对话模型）</Typography>
+            </Divider>
+            <Stack direction="row" spacing={1} alignItems="center">
+              <FormControl size="small" sx={{ flex: 1 }}>
+                <InputLabel>对话模型</InputLabel>
+                <Select
+                  label="对话模型"
+                  value={chatModel}
+                  onChange={(e) => setChatModel(e.target.value)}
+                  renderValue={(v) => v as string}
+                >
+                  {STEP_CHAT_MODELS.map((m) => (
+                    <MenuItem key={m.id} value={m.id}>
+                      <Box sx={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+                        <Typography variant="body2">{m.label}</Typography>
+                        {m.hint && (
+                          <Typography variant="caption" color="text.secondary" noWrap>{m.hint}</Typography>
+                        )}
+                      </Box>
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Stack>
+            <Divider textAlign="left" sx={{ mt: 1 }}>
+              <Typography variant="caption" color="text.secondary">② 语音合成（TTS 模型 + 音色）</Typography>
+            </Divider>
             <Stack direction="row" spacing={1} alignItems="center">
               <FormControl size="small" sx={{ flex: 1 }}>
                 <InputLabel>TTS 模型</InputLabel>

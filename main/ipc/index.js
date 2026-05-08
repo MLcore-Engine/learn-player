@@ -1536,13 +1536,14 @@ function registerIpcHandlers({ app, ipcMain, dialog, BrowserWindow, store, state
         style = '',
         difficulty = '',
         model = '',
+        chatModel = '',
         voice = '',
         audioPath = null,
         audioSize = null
       } = payload;
       const stmt = db.prepare(`
-        INSERT INTO stories (title, body_en, body_zh, vocab_words, style, difficulty, model, voice, audio_path, audio_size)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO stories (title, body_en, body_zh, vocab_words, style, difficulty, model, chat_model, voice, audio_path, audio_size)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `);
       const info = stmt.run(
         title,
@@ -1552,6 +1553,7 @@ function registerIpcHandlers({ app, ipcMain, dialog, BrowserWindow, store, state
         style,
         difficulty,
         model,
+        chatModel,
         voice,
         audioPath,
         audioSize

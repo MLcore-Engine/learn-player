@@ -10,7 +10,10 @@ export interface StoryRow {
   vocab_words: string[];
   style: string | null;
   difficulty: string | null;
+  /** TTS 模型（转语音时用的） */
   model: string | null;
+  /** 对话/文本模型（生成故事文本时用的） */
+  chat_model: string | null;
   voice: string | null;
   audio_path: string | null;
   audio_size: number | null;
@@ -50,7 +53,10 @@ export interface SaveStoryPayload {
   vocabWords?: string[];
   style?: string;
   difficulty?: string;
+  /** TTS 模型 */
   model?: string;
+  /** 对话/文本模型 */
+  chatModel?: string;
   voice?: string;
   audioPath?: string | null;
   audioSize?: number | null;
@@ -119,12 +125,22 @@ export interface ModelOption {
   supportsInstruction?: boolean;
 }
 
+/** StepFun 对话/文本生成模型 — 用来生成故事文本（与 TTS 模型无关）。 */
+export const STEP_CHAT_MODELS: ModelOption[] = [
+  { id: 'step-3.5-flash', label: 'step-3.5-flash', hint: '默认 · 快且质量好，适合短/中故事' },
+  { id: 'step-2-mini', label: 'step-2-mini', hint: '更便宜、速度更快，质量略低' },
+  { id: 'step-2-16k', label: 'step-2-16k', hint: '更长上下文，适合长故事/多轮对话' },
+  { id: 'step-1-8k', label: 'step-1-8k', hint: '稳定但较旧' }
+];
+
+/** StepFun TTS 模型 — 用来把文本转语音（与对话模型无关）。 */
 export const STEP_TTS_MODELS: ModelOption[] = [
   { id: 'step-tts-mini', label: 'step-tts-mini', hint: '轻量、快速、便宜（默认）' },
   { id: 'step-tts-2', label: 'step-tts-2', hint: '英文重音/连读更接近母语，质量更高' },
   { id: 'stepaudio-2.5-tts', label: 'stepaudio-2.5-tts', hint: '支持 instruction 文本指令，可控更细', supportsInstruction: true }
 ];
 
+export const DEFAULT_CHAT_MODEL = 'step-3.5-flash';
 export const DEFAULT_TTS_VOICE = 'boyinnansheng';
 export const DEFAULT_TTS_MODEL = 'step-tts-mini';
 export const DEFAULT_INSTRUCTION = 'Speak in a clear, neutral American English accent with natural intonation.';

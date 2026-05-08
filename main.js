@@ -199,12 +199,20 @@ app.whenReady().then(async () => {
           style TEXT,
           difficulty TEXT,
           model TEXT,
+          chat_model TEXT,
           voice TEXT,
           audio_path TEXT,
           audio_size INTEGER,
           created_at TEXT DEFAULT CURRENT_TIMESTAMP
         );
       `);
+
+      // 已存在的旧 stories 表如果没有 chat_model 列，追加（SQLite 不支持 IF NOT EXISTS）。
+      try {
+        db.exec('ALTER TABLE stories ADD COLUMN chat_model TEXT');
+      } catch (_) {
+        /* 已有该列 */
+      }
 
       // 索引
       db.exec(`
