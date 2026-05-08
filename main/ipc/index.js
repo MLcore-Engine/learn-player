@@ -555,7 +555,30 @@ function registerIpcHandlers({ app, ipcMain, dialog, BrowserWindow, store, state
       const stream = response.data; // Node Readable
       let buffer = '';
       let deltaCount = 0;
+      let eventCount = 0;
       let rawCapture = '';
+      const sampleDataStrings = [];
+
+      const finalDiagnostic = (reason) => {
+        if (deltaCount === 0) {
+          console.warn(`【主进程】SSE 结束 reason=${reason} delta=0 event=${eventCount}`);
+          console.warn('【主进程】原始响应前 800 字节:', rawCapture.slice(0, 800));
+          console.warn('【主进程】首个解析后的 data JSON（样本）:', sampleDataStrings.slice(0, 3));
+          const trimmed = rawCapture.trim();
+          if (trimmed.startsWith('{')) {
+            try {
+              const obj = JSON.parse(trimmed);
+              const msg = obj?.error?.message || obj?.message || JSON.stringify(obj);
+              console.error('【主进程】API 返回非流 JSON 错误:', msg);
+              sendError(`API 返回错误: ${msg}`);
+              return true;
+            } catch (_) { /* fall through */ }
+          }
+        } else {
+          console.log(`【主进程】SSE 结束 reason=${reason} delta=${deltaCount} event=${eventCount} requestId=${requestId}`);
+        }
+        return false;
+      };
 
       const sendDelta = (content) => {
         if (content && typeof content === 'string' && content.length > 0) {
@@ -600,24 +623,36 @@ function registerIpcHandlers({ app, ipcMain, dialog, BrowserWindow, store, state
         if (dataLines.length === 0) return;
         const dataStr = dataLines.join('\n');
         if (dataStr === '[DONE]') {
+          finalDiagnostic('[DONE]');
           sendComplete();
           try { stream.destroy(); } catch (_) {}
           return;
         }
+        eventCount++;
         try {
           const json = JSON.parse(dataStr);
-          // 兼容多种返回结构
+          if (sampleDataStrings.length < 3) {
+            sampleDataStrings.push(json);
+          }
+          // 兼容多种返回结构（含 StepFun 的可能变体）
           const choice = json?.choices?.[0] || {};
-          const deltaContent = choice?.delta?.content;
-          const messageContent = choice?.message?.content;
-          const textField = json?.text || json?.data?.text || json?.result?.text;
-          const piece = deltaContent || messageContent || textField || '';
-          if (typeof piece === 'string') {
-            if (piece.length > 0) deltaCount++;
+          const deltaObj = choice?.delta || {};
+          const messageObj = choice?.message || {};
+          const piece =
+            (typeof deltaObj.content === 'string' && deltaObj.content) ||
+            (typeof deltaObj.reasoning_content === 'string' && deltaObj.reasoning_content) ||
+            (typeof messageObj.content === 'string' && messageObj.content) ||
+            (typeof choice.text === 'string' && choice.text) ||
+            (typeof json.text === 'string' && json.text) ||
+            (typeof json?.data?.text === 'string' && json.data.text) ||
+            (typeof json?.result?.text === 'string' && json.result.text) ||
+            '';
+          if (typeof piece === 'string' && piece.length > 0) {
+            deltaCount++;
             sendDelta(piece);
           }
         } catch (e) {
-          // 不是 JSON 则忽略
+          console.warn('【主进程】SSE data JSON 解析失败，前 200 字节:', dataStr.slice(0, 200));
         }
       };
 
@@ -637,23 +672,7 @@ function registerIpcHandlers({ app, ipcMain, dialog, BrowserWindow, store, state
       });
 
       stream.on('end', () => {
-        if (deltaCount === 0) {
-          console.warn('【主进程】SSE 流结束但 delta=0。');
-          console.warn('【主进程】原始响应前 800 字节:', rawCapture.slice(0, 800));
-          // 尝试把 raw 解析成非 SSE 的错误 JSON
-          const trimmed = rawCapture.trim();
-          if (trimmed.startsWith('{')) {
-            try {
-              const obj = JSON.parse(trimmed);
-              const msg = obj?.error?.message || obj?.message || JSON.stringify(obj);
-              console.error('【主进程】API 返回非流 JSON 错误:', msg);
-              sendError(`API 返回错误: ${msg}`);
-              return;
-            } catch (_) { /* fall through */ }
-          }
-        } else {
-          console.log(`【主进程】SSE 流结束，共 ${deltaCount} 条 delta，requestId=${requestId}`);
-        }
+        if (finalDiagnostic('end')) return;
         sendComplete();
       });
 
