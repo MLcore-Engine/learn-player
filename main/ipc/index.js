@@ -634,13 +634,14 @@ function registerIpcHandlers({ app, ipcMain, dialog, BrowserWindow, store, state
           if (sampleDataStrings.length < 3) {
             sampleDataStrings.push(json);
           }
-          // 兼容多种返回结构（含 StepFun 的可能变体）
+          // 兼容多种返回结构（含 StepFun 的可能变体）。注意：
+          // step-3 / step-3.5-flash 等推理模型会把中间思考写入 delta.reasoning，
+          // 我们绝对不能把 reasoning 当作 content 输出 —— 那是思维链，不是答案。
           const choice = json?.choices?.[0] || {};
           const deltaObj = choice?.delta || {};
           const messageObj = choice?.message || {};
           const piece =
             (typeof deltaObj.content === 'string' && deltaObj.content) ||
-            (typeof deltaObj.reasoning_content === 'string' && deltaObj.reasoning_content) ||
             (typeof messageObj.content === 'string' && messageObj.content) ||
             (typeof choice.text === 'string' && choice.text) ||
             (typeof json.text === 'string' && json.text) ||

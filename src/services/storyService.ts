@@ -108,13 +108,13 @@ export const generateStoryText = async (opts: GenerateStoryTextOptions): Promise
   const { apiKey, apiUrl } = await resolveAiConfig({ requireApiKey: true });
   const { system, user } = buildPrompt(opts);
   const requestData = {
-    model: opts.model || 'step-3.5-flash',
+    model: opts.model || 'step-2-mini',
     messages: [
       { role: 'system', content: system },
       { role: 'user', content: user }
     ],
     temperature: 0.8,
-    max_tokens: 1500,
+    max_tokens: 3000,
     stream: true
   };
 
