@@ -120,8 +120,13 @@ export const generateStoryText = async (opts: GenerateStoryTextOptions): Promise
 
   return new Promise<GeneratedStoryText>((resolve, reject) => {
     let accumulated = '';
-    let unsubscribe: (() => void) | null = null;
+    let deltaCount = 0;
+    // 订阅必须在 performAIStream 之前注册，否则首批 delta 会在拿到 requestId
+    // 之前就被主进程发出 → 渲染端还没监听 → 事件被丢弃。
+    let knownRequestId: string | null = null;
+    const buffered: StreamEvent[] = [];
     let settled = false;
+    let unsubscribe: (() => void) | null = null;
 
     const finish = (fn: () => void): void => {
       if (settled) return;
@@ -130,47 +135,63 @@ export const generateStoryText = async (opts: GenerateStoryTextOptions): Promise
       fn();
     };
 
+    const handleEvent = (payload: StreamEvent): void => {
+      if (payload.type === 'delta') {
+        accumulated += payload.content || '';
+        deltaCount++;
+        opts.onProgress?.(accumulated);
+      } else if (payload.type === 'complete') {
+        finish(() => {
+          if (!accumulated) {
+            reject(new Error(`模型返回为空（deltas=${deltaCount}）。请检查主进程日志或切换到 step-2-mini / step-1 重试。`));
+            return;
+          }
+          let parsed: { title?: string; body_en?: string; body_zh?: string };
+          try {
+            parsed = JSON.parse(extractFirstJsonObject(accumulated));
+          } catch (e) {
+            reject(new Error(`解析模型 JSON 失败: ${(e as Error).message}. 原始: ${accumulated.slice(0, 200)}…`));
+            return;
+          }
+          if (!parsed.body_en) {
+            reject(new Error('模型未返回 body_en'));
+            return;
+          }
+          resolve({
+            title: parsed.title || '',
+            bodyEn: parsed.body_en,
+            bodyZh: parsed.body_zh || ''
+          });
+        });
+      } else if (payload.type === 'error') {
+        finish(() => reject(new Error(payload.message || '流式错误')));
+      }
+    };
+
+    unsubscribe = ipcClient.onAiStream((...args: unknown[]) => {
+      const payload = args[0] as StreamEvent | undefined;
+      if (!payload) return;
+      if (knownRequestId === null) {
+        buffered.push(payload);
+        return;
+      }
+      if (payload.requestId !== knownRequestId) return;
+      handleEvent(payload);
+    });
+
     (async () => {
       try {
         const result = await ipcClient.performAIStream(requestData, apiUrl, apiKey);
         if (!result || result.success !== true) {
           throw new Error(result?.error || '主进程 AI 流式请求失败');
         }
-        const { requestId } = result;
-
-        unsubscribe = ipcClient.onAiStream((...args: unknown[]) => {
-          const payload = args[0] as StreamEvent | undefined;
-          if (!payload || payload.requestId !== requestId) return;
-          if (payload.type === 'delta') {
-            accumulated += payload.content || '';
-            opts.onProgress?.(accumulated);
-          } else if (payload.type === 'complete') {
-            finish(() => {
-              if (!accumulated) {
-                reject(new Error('模型返回为空'));
-                return;
-              }
-              let parsed: { title?: string; body_en?: string; body_zh?: string };
-              try {
-                parsed = JSON.parse(extractFirstJsonObject(accumulated));
-              } catch (e) {
-                reject(new Error(`解析模型 JSON 失败: ${(e as Error).message}`));
-                return;
-              }
-              if (!parsed.body_en) {
-                reject(new Error('模型未返回 body_en'));
-                return;
-              }
-              resolve({
-                title: parsed.title || '',
-                bodyEn: parsed.body_en,
-                bodyZh: parsed.body_zh || ''
-              });
-            });
-          } else if (payload.type === 'error') {
-            finish(() => reject(new Error(payload.message || '流式错误')));
-          }
-        });
+        knownRequestId = result.requestId || null;
+        // 回放拿到 id 前缓存的事件
+        for (const ev of buffered) {
+          if (ev.requestId === knownRequestId) handleEvent(ev);
+          if (settled) break;
+        }
+        buffered.length = 0;
       } catch (error) {
         finish(() => reject(error as Error));
       }

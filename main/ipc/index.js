@@ -539,6 +539,8 @@ function registerIpcHandlers({ app, ipcMain, dialog, BrowserWindow, store, state
 
       const stream = response.data; // Node Readable
       let buffer = '';
+      let deltaCount = 0;
+      let rawCapture = '';
 
       const sendDelta = (content) => {
         if (content && typeof content === 'string' && content.length > 0) {
@@ -596,6 +598,7 @@ function registerIpcHandlers({ app, ipcMain, dialog, BrowserWindow, store, state
           const textField = json?.text || json?.data?.text || json?.result?.text;
           const piece = deltaContent || messageContent || textField || '';
           if (typeof piece === 'string') {
+            if (piece.length > 0) deltaCount++;
             sendDelta(piece);
           }
         } catch (e) {
@@ -605,7 +608,9 @@ function registerIpcHandlers({ app, ipcMain, dialog, BrowserWindow, store, state
 
       stream.on('data', (chunk) => {
         try {
-          buffer += chunk.toString('utf8');
+          const text = chunk.toString('utf8');
+          if (rawCapture.length < 2000) rawCapture += text;
+          buffer += text;
           const parts = buffer.split('\n\n');
           buffer = parts.pop() || '';
           for (const part of parts) {
@@ -617,6 +622,11 @@ function registerIpcHandlers({ app, ipcMain, dialog, BrowserWindow, store, state
       });
 
       stream.on('end', () => {
+        if (deltaCount === 0) {
+          console.warn('【主进程】SSE 流结束但 delta=0。前 500 字节原始数据:', rawCapture.slice(0, 500));
+        } else {
+          console.log(`【主进程】SSE 流结束，共 ${deltaCount} 条 delta，requestId=${requestId}`);
+        }
         sendComplete();
       });
 
