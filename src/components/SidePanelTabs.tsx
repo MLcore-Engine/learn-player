@@ -1,8 +1,8 @@
 import React from 'react';
 import { Box, Tab, Tabs } from '@mui/material';
 
-// Tab 索引约定：0=解释, 1=复习, 2=统计, 3=计划, 4=总结
-const TABS = ['解释', '复习', '统计', '计划', '总结'] as const;
+// Tab 索引约定：0=解释, 1=复习, 2=统计, 3=计划, 4=总结, 5=故事
+const TABS = ['解释', '复习', '统计', '计划', '总结', '故事'] as const;
 
 export interface SidePanelTabsProps {
   panelTab: number;

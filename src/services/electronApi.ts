@@ -46,7 +46,15 @@ const fallbackElectronAPI: ElectronAPI = {
     error: 'Electron API不可用'
   }),
   getHighlightsDailyCount: async () => ({ error: 'Electron API不可用' }),
-  getTodayHighlights: async () => ({ error: 'Electron API不可用' })
+  getTodayHighlights: async () => ({ error: 'Electron API不可用' }),
+  generateTTS: async () => ({ success: false, error: 'Electron API不可用' }),
+  readAudioFile: async () => ({ success: false, error: 'Electron API不可用' }),
+  saveStory: async () => ({ error: 'Electron API不可用' }),
+  updateStoryAudio: async () => ({ error: 'Electron API不可用' }),
+  getStories: async () => ({ error: 'Electron API不可用' }),
+  getStory: async () => ({ error: 'Electron API不可用' }),
+  deleteStory: async () => ({ error: 'Electron API不可用' }),
+  downloadStoryFile: async () => ({ success: false, error: 'Electron API不可用' })
 };
 
 let mockElectronAPI: ElectronAPI | null = null;

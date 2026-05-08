@@ -35,6 +35,17 @@ import type {
   StudyPlanRow,
   SaveStudyPlanPayload
 } from '../types/plan';
+import type {
+  StoryRow,
+  GenerateTTSPayload,
+  GenerateTTSResult,
+  ReadAudioFileResult,
+  SaveStoryPayload,
+  SaveStoryResult,
+  UpdateStoryAudioPayload,
+  DownloadStoryFilePayload,
+  DownloadStoryFileResult
+} from '../types/story';
 
 export const IPC_CHANNELS = {
   invoke: {
@@ -64,7 +75,15 @@ export const IPC_CHANNELS = {
     submitReview: 'submitReview',
     getHighlightsStats: 'getHighlightsStats',
     getHighlightsDailyCount: 'getHighlightsDailyCount',
-    getTodayHighlights: 'getTodayHighlights'
+    getTodayHighlights: 'getTodayHighlights',
+    generateTTS: 'generateTTS',
+    readAudioFile: 'readAudioFile',
+    saveStory: 'saveStory',
+    updateStoryAudio: 'updateStoryAudio',
+    getStories: 'getStories',
+    getStory: 'getStory',
+    deleteStory: 'deleteStory',
+    downloadStoryFile: 'downloadStoryFile'
   },
   send: {
     updateWatchTime: 'updateWatchTime',
@@ -205,6 +224,16 @@ export interface IpcClient {
   getHighlightsStats: () => Promise<HighlightsStats>;
   getHighlightsDailyCount: (options: { days?: number }) => Promise<HighlightDailyCount[] | { error: string }>;
   getTodayHighlights: () => Promise<Highlight[] | { error: string }>;
+
+  // 故事 / TTS
+  generateTTS: (payload: GenerateTTSPayload) => Promise<GenerateTTSResult>;
+  readAudioFile: (filePath: string) => Promise<ReadAudioFileResult>;
+  saveStory: (payload: SaveStoryPayload) => Promise<SaveStoryResult>;
+  updateStoryAudio: (payload: UpdateStoryAudioPayload) => Promise<{ success?: boolean; error?: string }>;
+  getStories: (params?: { limit?: number; offset?: number }) => Promise<StoryRow[] | { error: string }>;
+  getStory: (params: { id: number }) => Promise<StoryRow | null | { error: string }>;
+  deleteStory: (params: { id: number }) => Promise<{ success?: boolean; error?: string }>;
+  downloadStoryFile: (payload: DownloadStoryFilePayload) => Promise<DownloadStoryFileResult>;
 }
 
 export const ipcClient: IpcClient = {
@@ -282,7 +311,16 @@ export const ipcClient: IpcClient = {
   submitReview: (options) => invoke(IPC_CHANNELS.invoke.submitReview, options),
   getHighlightsStats: () => invoke(IPC_CHANNELS.invoke.getHighlightsStats),
   getHighlightsDailyCount: (options) => invoke(IPC_CHANNELS.invoke.getHighlightsDailyCount, options),
-  getTodayHighlights: () => invoke(IPC_CHANNELS.invoke.getTodayHighlights)
+  getTodayHighlights: () => invoke(IPC_CHANNELS.invoke.getTodayHighlights),
+
+  generateTTS: (payload) => invoke(IPC_CHANNELS.invoke.generateTTS, payload),
+  readAudioFile: (filePath) => invoke(IPC_CHANNELS.invoke.readAudioFile, filePath),
+  saveStory: (payload) => invoke(IPC_CHANNELS.invoke.saveStory, payload),
+  updateStoryAudio: (payload) => invoke(IPC_CHANNELS.invoke.updateStoryAudio, payload),
+  getStories: (params) => invoke(IPC_CHANNELS.invoke.getStories, params || {}),
+  getStory: (params) => invoke(IPC_CHANNELS.invoke.getStory, params),
+  deleteStory: (params) => invoke(IPC_CHANNELS.invoke.deleteStory, params),
+  downloadStoryFile: (payload) => invoke(IPC_CHANNELS.invoke.downloadStoryFile, payload)
 };
 
 export default ipcClient;

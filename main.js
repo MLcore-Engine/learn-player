@@ -188,12 +188,31 @@ app.whenReady().then(async () => {
         );
       `);
 
+      // 故事 / TTS 表
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS stories (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          title TEXT,
+          body_en TEXT NOT NULL,
+          body_zh TEXT,
+          vocab_words TEXT,
+          style TEXT,
+          difficulty TEXT,
+          model TEXT,
+          voice TEXT,
+          audio_path TEXT,
+          audio_size INTEGER,
+          created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        );
+      `);
+
       // 索引
       db.exec(`
         CREATE INDEX IF NOT EXISTS idx_highlights_next_review ON highlights(next_review);
         CREATE INDEX IF NOT EXISTS idx_highlights_status ON highlights(status);
         CREATE INDEX IF NOT EXISTS idx_highlights_created_at ON highlights(created_at);
         CREATE INDEX IF NOT EXISTS idx_study_plans_status ON study_plans(status);
+        CREATE INDEX IF NOT EXISTS idx_stories_created_at ON stories(created_at);
       `);
 
       console.log('[S1] highlights / study_plans 表就绪');

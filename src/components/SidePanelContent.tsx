@@ -4,6 +4,7 @@ import ReviewTab from './tabs/ReviewTab';
 import StatsTab from './tabs/StatsTab';
 import PlanTab from './tabs/PlanTab';
 import SummaryTab from './tabs/SummaryTab';
+import StoryTab from './tabs/StoryTab';
 import { Box } from '@mui/material';
 
 export interface SidePanelContentProps {
@@ -11,7 +12,7 @@ export interface SidePanelContentProps {
   onBackToSubtitle: () => void;
 }
 
-// Tab 索引约定：0=解释, 1=复习, 2=统计, 3=计划, 4=总结
+// Tab 索引约定：0=解释, 1=复习, 2=统计, 3=计划, 4=总结, 5=故事
 const renderTab = (panelTab: number, onBackToSubtitle: () => void): React.ReactNode => {
   switch (panelTab) {
     case 0:
@@ -24,6 +25,8 @@ const renderTab = (panelTab: number, onBackToSubtitle: () => void): React.ReactN
       return <PlanTab onBackToSubtitle={onBackToSubtitle} />;
     case 4:
       return <SummaryTab onBackToSubtitle={onBackToSubtitle} />;
+    case 5:
+      return <StoryTab onBackToSubtitle={onBackToSubtitle} />;
     default:
       return <AIContainer onBackToSubtitles={onBackToSubtitle} />;
   }

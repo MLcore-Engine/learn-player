@@ -19,6 +19,17 @@ import type {
   StudyPlanRow,
   SaveStudyPlanPayload
 } from './plan';
+import type {
+  StoryRow,
+  GenerateTTSPayload,
+  GenerateTTSResult,
+  ReadAudioFileResult,
+  SaveStoryPayload,
+  SaveStoryResult,
+  UpdateStoryAudioPayload,
+  DownloadStoryFilePayload,
+  DownloadStoryFileResult
+} from './story';
 
 // ============ 基础 IPC 动词 ============
 
@@ -184,6 +195,16 @@ export interface ElectronAPI {
   getHighlightsStats: () => Promise<HighlightsStats>;
   getHighlightsDailyCount: (params: { days?: number }) => Promise<HighlightDailyCount[] | { error: string }>;
   getTodayHighlights: () => Promise<Highlight[] | { error: string }>;
+
+  // 故事 / TTS
+  generateTTS: (payload: GenerateTTSPayload) => Promise<GenerateTTSResult>;
+  readAudioFile: (filePath: string) => Promise<ReadAudioFileResult>;
+  saveStory: (payload: SaveStoryPayload) => Promise<SaveStoryResult>;
+  updateStoryAudio: (payload: UpdateStoryAudioPayload) => Promise<{ success?: boolean; error?: string }>;
+  getStories: (params?: { limit?: number; offset?: number }) => Promise<StoryRow[] | { error: string }>;
+  getStory: (params: { id: number }) => Promise<StoryRow | null | { error: string }>;
+  deleteStory: (params: { id: number }) => Promise<{ success?: boolean; error?: string }>;
+  downloadStoryFile: (payload: DownloadStoryFilePayload) => Promise<DownloadStoryFileResult>;
 }
 
 // ============ 对 HighlightStatus 的兼容重导出，防止循环依赖 ============

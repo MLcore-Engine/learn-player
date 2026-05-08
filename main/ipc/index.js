@@ -1432,6 +1432,258 @@ function registerIpcHandlers({ app, ipcMain, dialog, BrowserWindow, store, state
       return { error: error.message };
     }
   });
+
+  // ===== 故事 / TTS =====
+  const STEPFUN_TTS_URL = 'https://api.stepfun.com/v1/audio/speech';
+
+  const getStoriesDir = () => {
+    const dir = path.join(app.getPath('userData'), 'stories');
+    try { fs.mkdirSync(dir, { recursive: true }); } catch (_) {}
+    return dir;
+  };
+
+  ipcMain.handle('generateTTS', async (event, payload = {}) => {
+    const {
+      text,
+      voice = 'boyinnansheng',
+      model = 'step-tts-mini',
+      apiKey,
+      format = 'mp3',
+      speed = 1.0,
+      instruction = ''
+    } = payload;
+    if (!text || typeof text !== 'string') {
+      return { success: false, error: 'text 必填' };
+    }
+    if (!apiKey) {
+      return { success: false, error: '缺少 API Key' };
+    }
+    try {
+      const cleaned = stripMarkdown(text);
+      const chunks = splitForTTS(cleaned, 900);
+      const buffers = [];
+      const isAudio25 = model === 'stepaudio-2.5-tts';
+      const trimmedInstruction = (instruction || '').toString().slice(0, 200).trim();
+      for (const chunk of chunks) {
+        if (!chunk.trim()) continue;
+        const body = { model, input: chunk, voice, response_format: format, speed };
+        if (isAudio25 && trimmedInstruction) {
+          body.instruction = trimmedInstruction;
+        }
+        const response = await axios.post(
+          STEPFUN_TTS_URL,
+          body,
+          {
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${apiKey}`
+            },
+            responseType: 'arraybuffer',
+            timeout: 120000
+          }
+        );
+        buffers.push(Buffer.from(response.data));
+      }
+      if (!buffers.length) return { success: false, error: '文本为空' };
+      const buf = Buffer.concat(buffers);
+      const dir = getStoriesDir();
+      const fileName = `tts_${Date.now()}_${Math.random().toString(36).slice(2, 8)}.${format}`;
+      const filePath = path.join(dir, fileName);
+      await fs.promises.writeFile(filePath, buf);
+      return { success: true, filePath, size: buf.length, format, chunks: buffers.length };
+    } catch (error) {
+      const msg = error?.response?.data
+        ? Buffer.isBuffer(error.response.data)
+          ? error.response.data.toString('utf8')
+          : JSON.stringify(error.response.data)
+        : error.message;
+      console.error('generateTTS 失败:', msg);
+      return { success: false, error: msg };
+    }
+  });
+
+  ipcMain.handle('readAudioFile', async (event, filePath) => {
+    try {
+      if (!filePath || typeof filePath !== 'string') {
+        return { success: false, error: 'filePath 必填' };
+      }
+      const buf = await fs.promises.readFile(filePath);
+      return { success: true, base64: buf.toString('base64'), size: buf.length };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  });
+
+  ipcMain.handle('saveStory', (event, payload = {}) => {
+    const db = getDb();
+    if (!db) return { error: '数据库未就绪' };
+    try {
+      const {
+        title = '',
+        bodyEn = '',
+        bodyZh = '',
+        vocabWords = [],
+        style = '',
+        difficulty = '',
+        model = '',
+        voice = '',
+        audioPath = null,
+        audioSize = null
+      } = payload;
+      const stmt = db.prepare(`
+        INSERT INTO stories (title, body_en, body_zh, vocab_words, style, difficulty, model, voice, audio_path, audio_size)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `);
+      const info = stmt.run(
+        title,
+        bodyEn,
+        bodyZh,
+        JSON.stringify(vocabWords || []),
+        style,
+        difficulty,
+        model,
+        voice,
+        audioPath,
+        audioSize
+      );
+      return { success: true, id: info.lastInsertRowid };
+    } catch (error) {
+      console.error('saveStory error:', error);
+      return { error: error.message };
+    }
+  });
+
+  ipcMain.handle('updateStoryAudio', (event, payload = {}) => {
+    const db = getDb();
+    if (!db) return { error: '数据库未就绪' };
+    try {
+      const { id, audioPath, audioSize, voice, model } = payload;
+      db.prepare(`
+        UPDATE stories SET audio_path = ?, audio_size = ?, voice = COALESCE(?, voice), model = COALESCE(?, model)
+        WHERE id = ?
+      `).run(audioPath || null, audioSize || null, voice || null, model || null, id);
+      return { success: true };
+    } catch (error) {
+      console.error('updateStoryAudio error:', error);
+      return { error: error.message };
+    }
+  });
+
+  ipcMain.handle('getStories', (event, { limit = 50, offset = 0 } = {}) => {
+    const db = getDb();
+    if (!db) return { error: '数据库未就绪' };
+    try {
+      const rows = db.prepare(`
+        SELECT * FROM stories ORDER BY created_at DESC LIMIT ? OFFSET ?
+      `).all(limit, offset);
+      return rows.map((r) => ({ ...r, vocab_words: safeParseJson(r.vocab_words, []) }));
+    } catch (error) {
+      console.error('getStories error:', error);
+      return { error: error.message };
+    }
+  });
+
+  ipcMain.handle('getStory', (event, { id } = {}) => {
+    const db = getDb();
+    if (!db) return { error: '数据库未就绪' };
+    try {
+      const row = db.prepare('SELECT * FROM stories WHERE id = ?').get(id);
+      if (!row) return null;
+      return { ...row, vocab_words: safeParseJson(row.vocab_words, []) };
+    } catch (error) {
+      console.error('getStory error:', error);
+      return { error: error.message };
+    }
+  });
+
+  ipcMain.handle('deleteStory', async (event, { id } = {}) => {
+    const db = getDb();
+    if (!db) return { error: '数据库未就绪' };
+    try {
+      const row = db.prepare('SELECT audio_path FROM stories WHERE id = ?').get(id);
+      db.prepare('DELETE FROM stories WHERE id = ?').run(id);
+      if (row && row.audio_path) {
+        try { await fs.promises.unlink(row.audio_path); } catch (_) {}
+      }
+      return { success: true };
+    } catch (error) {
+      console.error('deleteStory error:', error);
+      return { error: error.message };
+    }
+  });
+
+  ipcMain.handle('downloadStoryFile', async (event, payload = {}) => {
+    try {
+      const { suggestedName = 'story', content, sourcePath, mimeFilters } = payload;
+      const filters = Array.isArray(mimeFilters) && mimeFilters.length
+        ? mimeFilters
+        : [{ name: 'All Files', extensions: ['*'] }];
+      const defaultPath = path.join(app.getPath('downloads'), suggestedName);
+      const { filePath, canceled } = await dialog.showSaveDialog({ defaultPath, filters });
+      if (canceled || !filePath) {
+        return { success: false, canceled: true };
+      }
+      if (sourcePath) {
+        await fs.promises.copyFile(sourcePath, filePath);
+      } else if (typeof content === 'string') {
+        await fs.promises.writeFile(filePath, content, 'utf8');
+      } else {
+        return { success: false, error: '缺少内容' };
+      }
+      return { success: true, filePath };
+    } catch (error) {
+      console.error('downloadStoryFile error:', error);
+      return { success: false, error: error.message };
+    }
+  });
+}
+
+function safeParseJson(text, fallback) {
+  if (!text) return fallback;
+  try { return JSON.parse(text); } catch (_) { return fallback; }
+}
+
+// 移除 ** 加粗、`code`、# 标题等会被 TTS 念出的 markdown 痕迹
+function stripMarkdown(text) {
+  return String(text)
+    .replace(/\*\*(.+?)\*\*/g, '$1')
+    .replace(/__(.+?)__/g, '$1')
+    .replace(/`([^`]+)`/g, '$1')
+    .replace(/^#{1,6}\s+/gm, '')
+    .replace(/^[-*]\s+/gm, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+}
+
+// StepFun TTS 单次输入上限 1000 字符，按句子切片，避免超限。
+function splitForTTS(text, maxLen = 900) {
+  if (!text) return [];
+  if (text.length <= maxLen) return [text];
+  // 优先按段落切，再按句子切
+  const paragraphs = text.split(/\n{2,}|(?<=[.!?。！？])\s+/);
+  const chunks = [];
+  let current = '';
+  for (const p of paragraphs) {
+    if (!p) continue;
+    if ((current + ' ' + p).trim().length <= maxLen) {
+      current = current ? current + ' ' + p : p;
+    } else {
+      if (current) chunks.push(current);
+      if (p.length <= maxLen) {
+        current = p;
+      } else {
+        // 段落本身超长：按 maxLen 硬切
+        let i = 0;
+        while (i < p.length) {
+          chunks.push(p.slice(i, i + maxLen));
+          i += maxLen;
+        }
+        current = '';
+      }
+    }
+  }
+  if (current) chunks.push(current);
+  return chunks;
 }
 
 module.exports = {

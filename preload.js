@@ -37,6 +37,15 @@ const allowedInvokeChannels = [
   'getHighlightsStats',
   'getHighlightsDailyCount',
   'getTodayHighlights',
+  // 故事 / TTS
+  'generateTTS',
+  'readAudioFile',
+  'saveStory',
+  'updateStoryAudio',
+  'getStories',
+  'getStory',
+  'deleteStory',
+  'downloadStoryFile',
 ];
 
 const allowedSendChannels = [
@@ -260,7 +269,17 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Stats
   getHighlightsStats: () => ipcRenderer.invoke('getHighlightsStats'),
   getHighlightsDailyCount: (params) => ipcRenderer.invoke('getHighlightsDailyCount', params),
-  getTodayHighlights: () => ipcRenderer.invoke('getTodayHighlights')
+  getTodayHighlights: () => ipcRenderer.invoke('getTodayHighlights'),
+
+  // ============== 故事 / TTS ==============
+  generateTTS: (params) => ipcRenderer.invoke('generateTTS', params),
+  readAudioFile: (filePath) => ipcRenderer.invoke('readAudioFile', filePath),
+  saveStory: (params) => ipcRenderer.invoke('saveStory', params),
+  updateStoryAudio: (params) => ipcRenderer.invoke('updateStoryAudio', params),
+  getStories: (params) => ipcRenderer.invoke('getStories', params),
+  getStory: (params) => ipcRenderer.invoke('getStory', params),
+  deleteStory: (params) => ipcRenderer.invoke('deleteStory', params),
+  downloadStoryFile: (params) => ipcRenderer.invoke('downloadStoryFile', params)
 });
 
 console.log('--- Preload script: END ---'); 
