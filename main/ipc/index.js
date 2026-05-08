@@ -527,6 +527,7 @@ function registerIpcHandlers({ app, ipcMain, dialog, BrowserWindow, store, state
     try {
       // 强制启用流式
       const payload = { ...requestData, stream: true };
+      console.log(`【主进程】performAIStream 开始 requestId=${requestId} apiUrl=${apiUrl} model=${payload.model}`);
       const response = await axios.post(apiUrl, payload, {
         headers: {
           'Content-Type': 'application/json',
@@ -534,8 +535,22 @@ function registerIpcHandlers({ app, ipcMain, dialog, BrowserWindow, store, state
           Authorization: `Bearer ${apiKey}`
         },
         responseType: 'stream',
-        timeout: 0
+        timeout: 0,
+        validateStatus: () => true // 自己处理错误，让非 2xx 也能读 body
       });
+      console.log(`【主进程】performAIStream 收到响应 status=${response.status} content-type=${response.headers?.['content-type']}`);
+
+      if (response.status >= 400) {
+        // 读取完整错误 body 再报
+        const errBody = await new Promise((resolve) => {
+          let acc = '';
+          response.data.on('data', (c) => { acc += c.toString('utf8'); });
+          response.data.on('end', () => resolve(acc));
+          response.data.on('error', () => resolve(acc));
+        });
+        console.error(`【主进程】AI 流式 HTTP ${response.status} 错误 body:`, errBody.slice(0, 1000));
+        return { success: false, error: `HTTP ${response.status}: ${errBody.slice(0, 400)}` };
+      }
 
       const stream = response.data; // Node Readable
       let buffer = '';
@@ -623,7 +638,19 @@ function registerIpcHandlers({ app, ipcMain, dialog, BrowserWindow, store, state
 
       stream.on('end', () => {
         if (deltaCount === 0) {
-          console.warn('【主进程】SSE 流结束但 delta=0。前 500 字节原始数据:', rawCapture.slice(0, 500));
+          console.warn('【主进程】SSE 流结束但 delta=0。');
+          console.warn('【主进程】原始响应前 800 字节:', rawCapture.slice(0, 800));
+          // 尝试把 raw 解析成非 SSE 的错误 JSON
+          const trimmed = rawCapture.trim();
+          if (trimmed.startsWith('{')) {
+            try {
+              const obj = JSON.parse(trimmed);
+              const msg = obj?.error?.message || obj?.message || JSON.stringify(obj);
+              console.error('【主进程】API 返回非流 JSON 错误:', msg);
+              sendError(`API 返回错误: ${msg}`);
+              return;
+            } catch (_) { /* fall through */ }
+          }
         } else {
           console.log(`【主进程】SSE 流结束，共 ${deltaCount} 条 delta，requestId=${requestId}`);
         }
