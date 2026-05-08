@@ -106,12 +106,26 @@ const HighlightCard: React.FC<HighlightCardProps> = ({ highlight, onPlaySegment,
             bgcolor: '#1a1a1a',
             color: '#fff',
             display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center'
+            flexDirection: 'column',
+            overflow: 'hidden'
           }}
         >
-          <CardContent sx={{ p: 3, width: '100%' }}>
-            <Typography variant="body1" sx={{ mb: 2, lineHeight: 1.8, wordBreak: 'break-word' }}>
+          <CardContent
+            sx={{
+              p: 3,
+              width: '100%',
+              flex: 1,
+              minHeight: 0,
+              overflowY: 'auto',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'flex-start'
+            }}
+          >
+            <Typography
+              variant="body1"
+              sx={{ mb: 2, lineHeight: 1.8, wordBreak: 'break-word', whiteSpace: 'pre-wrap', width: '100%' }}
+            >
               {highlight.explanation || highlight.user_note || '（暂无解释）'}
             </Typography>
             {highlight.start_time != null && (
