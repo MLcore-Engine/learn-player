@@ -68,7 +68,7 @@ interface ExplanationRequestOptions extends ExplanationOptions {
 const defaultConfig: AiServiceConfig = {
   apiKey: '',
   apiUrl: 'https://api.stepfun.com/v1/chat/completions',
-  model: 'step-3.5-flash'
+  model: 'step-2-mini'
 };
 
 // 主 prompt 内容
