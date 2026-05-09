@@ -136,12 +136,12 @@ export const STEP_CHAT_MODELS: ModelOption[] = [
 
 /** StepFun TTS 模型 — 用来把文本转语音（与对话模型无关）。 */
 export const STEP_TTS_MODELS: ModelOption[] = [
-  { id: 'step-tts-mini', label: 'step-tts-mini', hint: '轻量、快速、便宜（默认）' },
-  { id: 'step-tts-2', label: 'step-tts-2', hint: '英文重音/连读更接近母语，质量更高' },
-  { id: 'stepaudio-2.5-tts', label: 'stepaudio-2.5-tts', hint: '支持 instruction 文本指令，可控更细', supportsInstruction: true }
+  { id: 'stepaudio-2.5-tts', label: 'stepaudio-2.5-tts', hint: '默认 · 效果最好，支持 instruction 控制口音/风格', supportsInstruction: true },
+  { id: 'step-tts-2', label: 'step-tts-2', hint: '英文重音/连读接近母语，质量高' },
+  { id: 'step-tts-mini', label: 'step-tts-mini', hint: '轻量、快速、便宜' }
 ];
 
 export const DEFAULT_CHAT_MODEL = 'step-2-mini';
 export const DEFAULT_TTS_VOICE = 'boyinnansheng';
-export const DEFAULT_TTS_MODEL = 'step-tts-mini';
+export const DEFAULT_TTS_MODEL = 'stepaudio-2.5-tts';
 export const DEFAULT_INSTRUCTION = 'Speak in a clear, neutral American English accent with natural intonation.';
