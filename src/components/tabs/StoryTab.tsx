@@ -86,7 +86,7 @@ const StoryTab: React.FC<StoryTabProps> = ({ onBackToSubtitle }) => {
   const [includeSentences, setIncludeSentences] = useState<boolean>(false);
   const [selectedWords, setSelectedWords] = useState<Set<string>>(new Set());
   const [customInput, setCustomInput] = useState<string>('');
-  const [style, setStyle] = useState<StoryStyle>('dialogue');
+  const [style, setStyle] = useState<StoryStyle>('short_story');
   const [difficulty, setDifficulty] = useState<StoryDifficulty>('B1');
   const [length, setLength] = useState<StoryLength>('medium');
   const [bilingual, setBilingual] = useState<boolean>(true);
@@ -459,9 +459,9 @@ const StoryTab: React.FC<StoryTabProps> = ({ onBackToSubtitle }) => {
               <FormControl size="small" sx={{ flex: 1 }}>
                 <InputLabel>体裁</InputLabel>
                 <Select label="体裁" value={style} onChange={(e) => setStyle(e.target.value as StoryStyle)}>
-                  <MenuItem value="dialogue">双人对话</MenuItem>
-                  <MenuItem value="short_story">短故事</MenuItem>
+                  <MenuItem value="short_story">励志/日常短故事</MenuItem>
                   <MenuItem value="scene">情景描写</MenuItem>
+                  <MenuItem value="dialogue">双人对话</MenuItem>
                 </Select>
               </FormControl>
               <FormControl size="small" sx={{ flex: 1 }}>

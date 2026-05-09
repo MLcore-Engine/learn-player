@@ -41,7 +41,7 @@ const LENGTH_HINT: Record<StoryLength, string> = {
 };
 
 const STYLE_HINT: Record<StoryStyle, string> = {
-  short_story: 'a short story with a clear plot',
+  short_story: 'a short story with a clear, uplifting plot (positive, motivational, or slice-of-life)',
   dialogue: 'a two-person dialogue (label speakers as A: / B:)',
   scene: 'a vivid scene description with one or two characters'
 };
@@ -52,6 +52,7 @@ const buildPrompt = (opts: GenerateStoryTextOptions): { system: string; user: st
     'You are an English teacher writing engaging learning material for Chinese learners.',
     'Use the target words naturally — every target word MUST appear at least once.',
     'Keep grammar at the requested CEFR level.',
+    'Tone: positive, uplifting, motivational, or warm slice-of-life. Avoid conflict, negativity, or dark themes.',
     'CRITICAL: Output a single valid JSON object and NOTHING else.',
     'No markdown fences, no prose before or after, no comments.',
     'The JSON MUST start with { and end with }.',
