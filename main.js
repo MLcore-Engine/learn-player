@@ -29,13 +29,14 @@ registerIpcHandlers({
   autoUpdater
 });
 
+// 设置应用名称：必须在任何 app.getPath('userData') 之前调用，
+// 否则 dev 模式下读到 'lep' 路径、打包后读到 'LEP' 路径，旧数据会"看起来丢失"。
+app.setName('LEP');
+
 // 数据存储目录（放在用户目录，避免在 asar 内创建）
 const appDataPath = app.getPath('userData');
 const DATA_PATH = path.join(appDataPath, 'data');
 const DB_PATH = path.join(DATA_PATH, 'userdata.db');
-
-// 设置应用名称，用于 macOS 菜单
-app.setName('LEP');
 
 let mainWindow;
 let db;
@@ -47,6 +48,26 @@ console.log('应用路径信息:', {
   DB_PATH,
   lastVideoDir: store.get('lastVideoDir') || app.getPath('videos')
 });
+
+// 历史兼容：以前 setName 在 getPath 之后，dev 模式下会落到 'lep' 目录；
+// 现在统一到 'LEP'。如果新目录不存在但旧目录有数据，搬过去而不是新建空 DB。
+try {
+  const legacyDir = path.join(path.dirname(appDataPath), 'lep');
+  const legacyDb = path.join(legacyDir, 'data', 'userdata.db');
+  if (!fs.existsSync(DB_PATH) && fs.existsSync(legacyDb) && legacyDir !== appDataPath) {
+    fs.mkdirSync(DATA_PATH, { recursive: true });
+    fs.copyFileSync(legacyDb, DB_PATH);
+    // 一并搬 stories 音频目录（如有）
+    const legacyStories = path.join(legacyDir, 'stories');
+    const newStories = path.join(appDataPath, 'stories');
+    if (fs.existsSync(legacyStories) && !fs.existsSync(newStories)) {
+      try { fs.cpSync(legacyStories, newStories, { recursive: true }); } catch (_) {}
+    }
+    console.log('[migrate] 已从旧目录拷贝 DB:', legacyDb, '->', DB_PATH);
+  }
+} catch (e) {
+  console.warn('[migrate] 旧 userData 迁移失败（可忽略）:', e.message);
+}
 
 // 确保数据目录存在
 try {

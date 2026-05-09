@@ -1410,19 +1410,20 @@ function registerIpcHandlers({ app, ipcMain, dialog, BrowserWindow, store, state
       ).get().count;
       const todayReviewed = db.prepare(`
         SELECT COUNT(*) as count FROM highlights
-        WHERE date(last_review) = date('now', 'localtime')
+        WHERE date(last_review, 'localtime') = date('now', 'localtime')
       `).get().count;
-      // streakDays: count consecutive days ending today with at least 1 review
+      // streakDays: 按 last_review 的本地日期，往前数连续天数
       const reviewDays = db.prepare(`
-        SELECT DISTINCT date(last_review) as day FROM highlights
+        SELECT DISTINCT date(last_review, 'localtime') as day FROM highlights
         WHERE last_review IS NOT NULL ORDER BY day DESC
       `).all().map(r => r.day);
       let streak = 0;
-      const today = new Date().toISOString().slice(0, 10);
       for (let i = 0; i < reviewDays.length; i++) {
         const expected = new Date();
         expected.setDate(expected.getDate() - i);
-        if (reviewDays[i] === expected.toISOString().slice(0, 10)) streak++;
+        // 用本地 YYYY-MM-DD 比较
+        const expectedKey = `${expected.getFullYear()}-${String(expected.getMonth() + 1).padStart(2, '0')}-${String(expected.getDate()).padStart(2, '0')}`;
+        if (reviewDays[i] === expectedKey) streak++;
         else break;
       }
       const statusMap = {};
@@ -1463,7 +1464,8 @@ function registerIpcHandlers({ app, ipcMain, dialog, BrowserWindow, store, state
       for (let i = days - 1; i >= 0; i--) {
         const d = new Date();
         d.setDate(d.getDate() - i);
-        const key = d.toISOString().slice(0, 10);
+        // 必须用本地 YYYY-MM-DD，否则跨午夜会和 SQL 的 date(...,'localtime') 错位一天
+        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
         result.push({ date: key, count: map[key] || 0 });
       }
       return result;
