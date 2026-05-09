@@ -29,12 +29,15 @@ registerIpcHandlers({
   autoUpdater
 });
 
-// 设置应用名称：必须在任何 app.getPath('userData') 之前调用，
-// 否则 dev 模式下读到 'lep' 路径、打包后读到 'LEP' 路径，旧数据会"看起来丢失"。
+// 统一 userData 路径：dev 模式下 app.getName() = 'lep'（package.json name），
+// 打包后 = 'LEP'（productName）。用 setPath 强制固定为 'LEP'，
+// 这样 dev 和打包版本永远读同一个目录，数据不会"消失"。
 app.setName('LEP');
+const _userDataBase = path.join(app.getPath('appData'), 'LEP');
+app.setPath('userData', _userDataBase);
 
 // 数据存储目录（放在用户目录，避免在 asar 内创建）
-const appDataPath = app.getPath('userData');
+const appDataPath = app.getPath('userData'); // 现在固定是 .../LEP
 const DATA_PATH = path.join(appDataPath, 'data');
 const DB_PATH = path.join(DATA_PATH, 'userdata.db');
 
