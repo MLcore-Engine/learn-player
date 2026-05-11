@@ -1,26 +1,103 @@
-# Dependencies
+# ============ Dependencies ============
 /node_modules
+**/node_modules
+/jspm_packages
+.pnp
+.pnp.js
 
-# Build output
+# ============ Build / packaging output ============
 /build
 /dist
+/dist-electron
+/out
+*.dmg
+*.exe
+*.AppImage
+*.deb
+*.snap
+*.zip
+*.tar.gz
+builder-debug.yml
+builder-effective-config.yaml
 
-# Logs
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-
-# Misc
-.DS_Store
+# ============ Secrets — NEVER commit ============
+.env
+.env.*
+!.env.example
+!**/.env.example
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
-docs/architecture.md
-resources/dictionary
+src/.env
+src/.env.*
+!src/.env.example
+**/secrets.json
+**/credentials.json
+**/api-key*
+**/apikey*
+**/*.pem
+**/*.key
+**/*.p12
+**/*.pfx
+**/*.cer
+**/*.crt
+**/.npmrc
+**/.yarnrc
+
+# ============ Local data / caches ============
+*.sqlite
+*.sqlite3
+*.db
+*.db-journal
+*.db-shm
+*.db-wal
+.cache/
+.parcel-cache/
+.eslintcache
+.stylelintcache
+.next/
+coverage/
+
+# ============ Logs ============
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# ============ Editor / IDE ============
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.history/
 .cursor/
 .claude/
 
+# ============ OS ============
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Desktop.ini
+
+# ============ Misc project ============
+docs/architecture.md
+resources/dictionary
 models/
 public/models/
+
+# ============ TypeScript / build artifacts ============
+*.tsbuildinfo
+.tsbuildinfo
+
+# ============ Electron / native ============
+*.node
+.electron-cache/
