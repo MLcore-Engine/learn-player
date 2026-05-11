@@ -69,21 +69,28 @@
   "build": {
     "extends": null,
     "appId": "com.mlcore-engine.lep",
-    "productName": "lep",
+    "productName": "LEP",
     "asar": {
       "smartUnpack": true,
       "ordering": "package.json"
     },
     "asarUnpack": [
       "node_modules/better-sqlite3/**",
-      "node_modules/@ffmpeg-installer/ffmpeg/**"
+      "node_modules/@ffmpeg-installer/${platform}-${arch}/**"
     ],
     "compression": "maximum",
     "files": [
       "build/**/*",
       "main.js",
       "preload.js",
-      "main/**"
+      "main/**",
+      "!**/*.map",
+      "!**/*.md",
+      "!**/test/**",
+      "!**/tests/**",
+      "!**/__tests__/**",
+      "!**/*.d.ts",
+      "!**/.bin/**"
     ],
     "directories": {
       "output": "dist",
@@ -98,16 +105,6 @@
           "**/*.jpg",
           "**/*.ico",
           "**/*.icns"
-        ]
-      }
-    ],
-    "extraFiles": [
-      {
-        "from": "node_modules/@ffmpeg-installer/ffmpeg/bin",
-        "to": "bin",
-        "filter": [
-          "ffmpeg",
-          "ffprobe"
         ]
       }
     ],

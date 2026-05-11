@@ -235,7 +235,16 @@ const useVideoJsPlayer = <TInfo = unknown>({
 
         console.log('【VideoPlayer】加载视频URL');
         const videoUrl = await ipcClient.getVideoHttpUrl(finalVideoPath);
-        (player as unknown as { src: (arg: { src: string; type: string }) => void }).src({ src: videoUrl, type: 'video/mp4' });
+        // 让浏览器/videojs 自动从扩展名/服务器 Content-Type 推断 MIME，
+        // 避免给 .mkv/.webm 强行贴 video/mp4 标签导致播不动。
+        const ext = (finalVideoPath.split('.').pop() || '').toLowerCase();
+        const mimeMap: Record<string, string> = {
+          mp4: 'video/mp4', m4v: 'video/mp4', mov: 'video/quicktime',
+          mkv: 'video/x-matroska', webm: 'video/webm', ts: 'video/mp2t',
+          avi: 'video/x-msvideo', flv: 'video/x-flv', wmv: 'video/x-ms-wmv'
+        };
+        const mime = mimeMap[ext] || 'video/mp4';
+        (player as unknown as { src: (arg: { src: string; type: string }) => void }).src({ src: videoUrl, type: mime });
         (player as unknown as { play: () => Promise<void> }).play().catch(e => console.error('播放失败:', e));
 
         if (onPlayerReadyRef.current && !canceled) {

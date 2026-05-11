@@ -117,6 +117,8 @@ export interface ExportPdfResult {
 export interface PrepareVideoResult {
   success?: boolean;
   path?: string;
+  /** true 表示走了 ffmpeg 转码，false 表示原文件可直接播放 */
+  converted?: boolean;
   error?: string;
 }
 

@@ -266,7 +266,7 @@ function registerIpcHandlers({ app, ipcMain, dialog, BrowserWindow, store, state
         defaultPath: getLastVideoDir(),
         properties: ['openFile'],
         filters: [
-          { name: '视频文件', extensions: ['mp4', 'mkv', 'avi', 'mov'] }
+          { name: '视频文件', extensions: ['mp4', 'mkv', 'avi', 'mov', 'webm', 'flv', 'wmv', 'ts', 'm4v'] }
         ]
       });
 
@@ -715,203 +715,72 @@ function registerIpcHandlers({ app, ipcMain, dialog, BrowserWindow, store, state
     }
   });
 
-  // 视频格式转换处理程序 - 增强版
-  ipcMain.handle('convertVideo', async (event, options) => {
-    const {
-      inputPath,
-      outputPath,
-      videoCodec = 'libx264',
-      audioCodec = 'aac',
-      format = 'mp4',
-      quality = 'medium',
-      preset = 'medium'
-    } = options;
+  // ===== 视频准备：智能 codec 检测，能直接播就不转 =====
+  // 浏览器内的 Chromium 可以播 H.264/AAC 容器无关；只有 codec 不兼容才转码。
+  const VIDEO_PLAYABLE_CODECS = new Set(["h264", "avc1", "avc"]);
+  const AUDIO_PLAYABLE_CODECS = new Set(["aac", "mp4a"]);
 
-    console.log('开始转换视频:', { inputPath, outputPath, videoCodec, audioCodec, quality, preset });
-
-    try {
-      // 检查输入文件
-      if (!fs.existsSync(inputPath)) {
-        throw new Error('输入文件不存在');
-      }
-
-      // 检查输出目录
-      const outputDir = path.dirname(outputPath);
-      if (!fs.existsSync(outputDir)) {
-        fs.mkdirSync(outputDir, { recursive: true });
-      }
-
-      return new Promise((resolve, reject) => {
-        const ffmpegCommand = ffmpeg(inputPath)
-          .output(outputPath)
-          .videoCodec(videoCodec)
-          .audioCodec(audioCodec)
-          .format(format);
-
-        // 根据质量设置参数
-        switch (quality) {
-          case 'high':
-            ffmpegCommand
-              .videoBitrate('2000k')
-              .audioBitrate('192k')
-              .size('1920x1080');
-            break;
-          case 'medium':
-            ffmpegCommand
-              .videoBitrate('1200k')
-              .audioBitrate('128k')
-              .size('1280x720');
-            break;
-          case 'fast':
-            ffmpegCommand
-              .videoBitrate('800k')
-              .audioBitrate('96k')
-              .size('854x480');
-            break;
-          default:
-            // 默认使用中等质量
-            ffmpegCommand
-              .videoBitrate('1200k')
-              .audioBitrate('128k')
-              .size('1280x720');
-        }
-
-        // 设置编码预设（速度vs质量平衡）
-        if (preset) {
-          ffmpegCommand.outputOptions(`-preset ${preset}`);
-        }
-
-        // 其他优化选项
-        ffmpegCommand
-          .outputOptions('-movflags faststart') // MP4快速启动
-          .outputOptions('-avoid_negative_ts make_zero') // 避免负时间戳
-          .on('start', (commandLine) => {
-            console.log('转换命令:', commandLine);
-          })
-          .on('progress', (progress) => {
-            console.log('转换进度:', progress);
-            // 发送进度到渲染进程
-            if (event.sender && !event.sender.isDestroyed()) {
-              event.sender.send('conversion-progress', {
-                ...progress,
-                inputPath,
-                outputPath
-              });
-            }
-          })
-          .on('end', () => {
-            console.log('视频转换完成:', outputPath);
-            // 验证输出文件
-            if (fs.existsSync(outputPath) && fs.statSync(outputPath).size > 0) {
-              const stats = fs.statSync(outputPath);
-              resolve({
-                success: true,
-                outputPath,
-                message: '视频转换成功',
-                fileSize: stats.size,
-                conversionOptions: { videoCodec, audioCodec, quality, preset }
-              });
-            } else {
-              reject({
-                success: false,
-                error: '转换后的文件无效'
-              });
-            }
-          })
-          .on('error', (err) => {
-            console.error('视频转换错误:', err);
-            reject({
-              success: false,
-              error: err.message || '视频转换失败'
-            });
-          })
-          .run();
+  function probeVideo(filePath) {
+    return new Promise((resolve, reject) => {
+      ffmpeg.ffprobe(filePath, (err, data) => {
+        if (err) return reject(err);
+        resolve(data);
       });
-    } catch (error) {
-      console.error('视频转换过程出错:', error);
-      return {
-        success: false,
-        error: error.message || '视频转换失败'
-      };
-    }
-  });
+    });
+  }
 
-  // 检查视频格式
-  ipcMain.handle('checkVideoFormat', async (event, filePath) => {
-    console.log('检查视频格式:', filePath);
+  function pickStream(streams, type) {
+    if (!Array.isArray(streams)) return null;
+    return streams.find((s) => s && s.codec_type === type) || null;
+  }
 
+  async function decideVideoStrategy(inputPath) {
     try {
-      // 首先检查文件是否存在
-      if (!fs.existsSync(filePath)) {
-        throw new Error('文件不存在');
-      }
-
-      // 检查文件大小
-      const stats = fs.statSync(filePath);
-      if (stats.size === 0) {
-        throw new Error('文件大小为0');
-      }
-
-      // 使用 Promise 包装 ffprobe
-      const metadata = await new Promise((resolve, reject) => {
-        ffmpeg.ffprobe(filePath, (err, data) => {
-          if (err) {
-            console.error('FFprobe错误:', err);
-            reject(new Error(`ffprobe错误: ${err.message}`));
-            return;
-          }
-          resolve(data);
-        });
-      });
-
-      // 检查元数据格式
-      if (!metadata || !metadata.format) {
-        throw new Error('无法获取视频格式信息');
-      }
-
-      const result = {
-        success: true,
-        format: metadata.format.format_name,
-        isMP4: metadata.format.format_name.includes('mp4'),
-        duration: metadata.format.duration,
-        size: metadata.format.size,
-        bitrate: metadata.format.bit_rate
-      };
-
-      console.log('视频格式检查结果:', result);
-      return result;
-
-    } catch (error) {
-      console.error('检查视频格式时发生错误:', error);
-      return {
-        success: false,
-        error: error.message || '未知错误',
-        code: error.code || 'UNKNOWN_ERROR'
-      };
+      const meta = await probeVideo(inputPath);
+      const v = pickStream(meta?.streams, "video");
+      const a = pickStream(meta?.streams, "audio");
+      const vc = (v?.codec_name || "").toLowerCase();
+      const ac = (a?.codec_name || "").toLowerCase();
+      const formatName = (meta?.format?.format_name || "").toLowerCase();
+      const isMp4Container = /mp4|m4v|mov/.test(formatName);
+      const isMatroska = /matroska|webm/.test(formatName);
+      const playableCodec = VIDEO_PLAYABLE_CODECS.has(vc) && (!a || AUDIO_PLAYABLE_CODECS.has(ac));
+      // mp4 / mov 容器 + H.264/AAC：直接放
+      // mkv / webm 容器 + H.264/AAC：Chromium 也能放（webm/mkv 大部分支持）
+      const directPlay = playableCodec && (isMp4Container || isMatroska);
+      return { directPlay, vc, ac, formatName, duration: meta?.format?.duration };
+    } catch (err) {
+      console.warn("[probe] 探测失败，将走转码路径:", err.message);
+      return { directPlay: false, vc: "", ac: "", formatName: "", duration: 0, error: err.message };
     }
-  });
+  }
 
-  // prepareVideo: 转换 mkv/avi 到 mp4
+
+  // prepareVideo: 探测 codec，能直接播就不转，否则转 H.264/AAC mp4
   ipcMain.handle('prepareVideo', async (event, inputPath) => {
-    const ext = path.extname(inputPath).toLowerCase();
-    if (ext !== '.mp4') {
-      // 确保缓存目录存在
+    try {
+      if (!fs.existsSync(inputPath)) {
+        return { success: false, error: '文件不存在' };
+      }
+
+      const { directPlay, vc, ac, formatName } = await decideVideoStrategy(inputPath);
+      console.log(`[prepareVideo] ${path.basename(inputPath)} codec=${vc}/${ac} format=${formatName} directPlay=${directPlay}`);
+
+      if (directPlay) {
+        return { success: true, path: inputPath, converted: false };
+      }
+
+      // 需要转码
       if (!fs.existsSync(CACHE_CONFIG.tmpDir)) {
         await fs.promises.mkdir(CACHE_CONFIG.tmpDir, { recursive: true });
       }
-
+      const ext = path.extname(inputPath).toLowerCase();
       const outputPath = path.join(CACHE_CONFIG.tmpDir, path.basename(inputPath, ext) + '.mp4');
 
-      // 如果缓存文件不存在，进行转换
       if (!fs.existsSync(outputPath)) {
         await new Promise((resolve, reject) => {
           ffmpeg(inputPath)
-            .outputOptions([
-              '-preset veryfast',
-              '-crf 28',
-              '-movflags faststart',
-              '-threads 0'
-            ])
+            .outputOptions(['-preset veryfast', '-crf 28', '-movflags faststart', '-threads 0'])
             .output(outputPath)
             .videoCodec('libx264')
             .audioCodec('aac')
@@ -922,12 +791,12 @@ function registerIpcHandlers({ app, ipcMain, dialog, BrowserWindow, store, state
         });
       }
 
-      // 检查缓存大小，如果超过限制则清理
       await cleanupCache();
-
-      return outputPath;
+      return { success: true, path: outputPath, converted: true };
+    } catch (error) {
+      console.error('[prepareVideo] 失败:', error.message);
+      return { success: false, error: error.message };
     }
-    return inputPath;
   });
 
   // 添加清理缓存的 IPC 处理程序

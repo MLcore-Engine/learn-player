@@ -361,7 +361,7 @@ app.whenReady().then(async () => {
         defaultPath: store.get('lastVideoDir') || app.getPath('videos'),
         properties: ['openFile'],
         filters: [
-          { name: '视频文件', extensions: ['mp4', 'mkv', 'avi', 'mov'] }
+          { name: '视频文件', extensions: ['mp4', 'mkv', 'avi', 'mov', 'webm', 'flv', 'wmv', 'ts', 'm4v'] }
         ]
       });
       

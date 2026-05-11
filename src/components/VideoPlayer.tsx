@@ -65,8 +65,12 @@ const VideoPlayer = React.memo<VideoPlayerProps>(
           }
 
           const result = await ipcClient.prepareVideo(inputPath);
-          const resultPath = result.path ?? inputPath;
-          console.log('【VideoPlayer】视频格式处理结果:', resultPath);
+          if (result && result.success === false) {
+            throw new Error(result.error || '视频处理失败');
+          }
+          const resultPath = result?.path ?? inputPath;
+          const converted = (result as { converted?: boolean })?.converted;
+          console.log('【VideoPlayer】视频处理结果:', { resultPath, converted });
           return resultPath;
         } catch (error) {
           console.error('视频格式处理错误:', error);

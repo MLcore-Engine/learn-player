@@ -9,6 +9,24 @@ let videoServerPort = null;
 let videoServerError = null;
 let isListening = false;
 
+// 按扩展名返回合适的 MIME，保证 <video> 元素能正确识别。
+const MIME_BY_EXT = {
+  '.mp4': 'video/mp4',
+  '.m4v': 'video/mp4',
+  '.mov': 'video/quicktime',
+  '.mkv': 'video/x-matroska',
+  '.webm': 'video/webm',
+  '.ts': 'video/mp2t',
+  '.avi': 'video/x-msvideo',
+  '.flv': 'video/x-flv',
+  '.wmv': 'video/x-ms-wmv'
+};
+
+function mimeFor(filePath) {
+  const ext = path.extname(filePath).toLowerCase();
+  return MIME_BY_EXT[ext] || 'video/mp4';
+}
+
 /**
  * 启动视频 HTTP 服务器。
  * 优先绑定固定端口；被占用时自动回退到随机可用端口，避免永久卡死。
@@ -87,11 +105,12 @@ function handleRequest(req, res) {
 
   const stat = fs.statSync(filePath);
   const fileSize = stat.size;
+  const contentType = mimeFor(filePath);
   const range = req.headers.range;
   if (!range) {
     res.writeHead(200, {
       'Content-Length': fileSize,
-      'Content-Type': 'video/mp4',
+      'Content-Type': contentType,
       'Accept-Ranges': 'bytes'
     });
     return fs.createReadStream(filePath).pipe(res);
@@ -105,7 +124,7 @@ function handleRequest(req, res) {
     'Content-Range': `bytes ${start}-${end}/${fileSize}`,
     'Accept-Ranges': 'bytes',
     'Content-Length': chunksize,
-    'Content-Type': 'video/mp4'
+    'Content-Type': contentType
   });
   return fs.createReadStream(filePath, { start, end }).pipe(res);
 }
