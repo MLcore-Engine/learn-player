@@ -49,6 +49,11 @@ jobs:
       - name: Build for ${{ matrix.target }}
         run: npm run build:${{ matrix.target }}
         env:
+          # CRA (react-scripts) 在 CI=true 时把 ESLint warning 当 error。
+          # 本地 dev/打包时 CI 默认未设，行为是允许 warning。
+          # 这里强制 false，让 CI 跟本地一致 —— 否则一个无害的
+          # react-hooks/exhaustive-deps 警告就让整个构建挂掉。
+          CI: false
           # electron-builder 需要 GH_TOKEN 才能 publish，但我们用单独的 release job 上传，
           # 这里设 never 防止它意外尝试上传到 release。
           ELECTRON_BUILDER_PUBLISH: never
