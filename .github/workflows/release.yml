@@ -1,0 +1,119 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: '可选：手动指定 release 的 tag 名（不填则只构建不发布）'
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            target: mac
+            artifact_glob: 'dist/*.dmg'
+          - os: windows-latest
+            target: win
+            artifact_glob: 'dist/*.exe'
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      # 跳过 postinstall 里的 `npm prune --production`（它会把 electron-builder
+      # 等 devDeps 全删掉，导致后续打包脚本找不到工具）。
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Rebuild native modules for Electron
+        run: npx electron-builder install-app-deps
+
+      - name: Build for ${{ matrix.target }}
+        run: npm run build:${{ matrix.target }}
+        env:
+          # electron-builder 需要 GH_TOKEN 才能 publish，但我们用单独的 release job 上传，
+          # 这里设 never 防止它意外尝试上传到 release。
+          ELECTRON_BUILDER_PUBLISH: never
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.os }}-installer
+          path: ${{ matrix.artifact_glob }}
+          if-no-files-found: error
+          retention-days: 30
+
+  release:
+    name: Publish GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.tag != '')
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: List artifacts
+        run: find artifacts -type f -printf '%p  %s bytes\n'
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+          name: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+          generate_release_notes: true
+          files: |
+            artifacts/**/*.dmg
+            artifacts/**/*.exe
+          body: |
+            ## 📦 下载
+
+            - **macOS (Apple Silicon)**: `LEP-*-arm64.dmg`
+            - **Windows (x64)**: `LEP-Setup-*.exe`
+
+            > Intel Mac 用户：暂未提供 x64 包；如需请在 issue 区留言。
+
+            ## ⚠️ 首次安装提示
+
+            ### macOS：提示"已损坏，无法打开"
+            macOS Gatekeeper 对未签名应用的默认拦截，**App 没坏**。打开「终端」运行一行命令即可绕过：
+
+            ```bash
+            xattr -cr /Applications/LEP.app
+            ```
+
+            然后正常双击启动。
+
+            ### Windows：弹"Windows 已保护你的电脑"
+            微软 SmartScreen 对未签名安装包的默认拦截。在弹窗里点：
+
+            1. **更多信息**
+            2. **仍要运行**
+
+            之后正常完成安装。
+
+            ## 🔑 配置 API Key
+
+            首次启动后，在应用内的「API Key 设置」里粘贴你的 [StepFun API Key](https://platform.stepfun.com/)。

@@ -86,40 +86,81 @@
 
 ---
 
-## 安装与运行
+## 下载安装（普通用户）
+
+去 [Releases 页面](../../releases/latest) 下载对应平台的安装包：
+
+| 平台 | 文件 |
+|---|---|
+| macOS（Apple Silicon / M1/M2/M3/M4） | `LEP-*-arm64.dmg` |
+| Windows 10/11 (x64) | `LEP-Setup-*.exe` |
+
+> Intel Mac 用户暂未提供 x64 包，可自行从源码打包；或在 issue 区留言我加进发布矩阵。
+
+### ⚠️ macOS 首次打开提示"已损坏"？
+
+不是真的损坏 —— 是 macOS Gatekeeper 对未签名应用的默认拦截。打开「终端」跑一行命令绕过：
+
+```bash
+xattr -cr /Applications/LEP.app
+```
+
+之后正常双击启动。
+
+### ⚠️ Windows 弹"Windows 已保护你的电脑"？
+
+是微软 SmartScreen 对未签名安装包的默认拦截。在弹窗里：
+
+1. 点 **更多信息**
+2. 点 **仍要运行**
+
+之后正常完成安装。
+
+### 🔑 配置 API Key
+
+应用启动后，在「API Key 设置」里粘贴你的 [StepFun API Key](https://platform.stepfun.com/) — 这是 AI 讲解、故事生成、TTS 语音所需的密钥。
+
+---
+
+## 开发与自行打包
 
 ### 环境要求
-- Node.js >= 14
-- npm >= 6
+- Node.js >= 18
+- npm >= 9
 
-### 安装步骤
-
+### 启动开发
 ```bash
 git clone <repo-url>
 cd learn-english-player
 npm install
-```
-
-创建 `.env` 文件，填入 StepFun API Key：
-
-```
-STEP_API_KEY=your_step_api_key_here
-STEP_API_URL=https://api.stepfun.com/v1/chat/completions
-REACT_APP_STEP_API_KEY=your_step_api_key_here
-REACT_APP_STEP_API_URL=https://api.stepfun.com/v1/chat/completions
-```
-
-启动开发环境：
-
-```bash
 npm run dev
 ```
 
-打包为桌面应用：
+API Key 可以在启动后的应用内设置，也可以放进 `src/.env`（**不要提交到 git**，已在 `.gitignore` 排除）：
+
+```
+STEP_API_KEY=your_step_api_key_here
+```
+
+### 本地打包
 
 ```bash
-npm run build:mac    # macOS
-npm run build:win    # Windows
+npm run build:mac    # 当前 Mac 架构（arm64 / x64）
+npm run build:win    # Windows（需在 Windows 上执行）
+```
+
+产物在 `dist/` 目录。
+
+### 自动发布（GitHub Actions）
+
+仓库已配置 `.github/workflows/release.yml`：
+
+- 推一个 `v*` 开头的 tag，会同时在 macOS Runner 打 arm64 dmg、Windows Runner 打 exe，并自动创建 GitHub Release。
+- 也可以在 Actions 页手动触发（`workflow_dispatch`）。
+
+```bash
+git tag v0.3.0
+git push origin v0.3.0   # 触发自动构建 + 发布
 ```
 
 ---
