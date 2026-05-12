@@ -42,7 +42,8 @@ src/.env.*
 **/*.pfx
 **/*.cer
 **/*.crt
-**/.npmrc
+# 仅忽略 home 下的 npm 认证文件，项目根 .npmrc（配置）允许提交
+~/.npmrc
 **/.yarnrc
 
 # ============ Local data / caches ============
