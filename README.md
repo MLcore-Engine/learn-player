@@ -116,9 +116,55 @@ xattr -cr /Applications/LEP.app
 
 之后正常完成安装。
 
-### 🔑 配置 API Key
+### 🔑 配置 StepFun API Key
 
-应用启动后，在「API Key 设置」里粘贴你的 [StepFun API Key](https://platform.stepfun.com/) — 这是 AI 讲解、故事生成、TTS 语音所需的密钥。
+LEP 的 AI 讲解、故事生成、TTS 语音都通过 **StepFun（阶跃星辰）API** 完成。需要你自己注册一个账号、申请一个 API Key 才能用（用量按 token 计费，但额度很小，几块钱可以学很久）。
+
+#### 第 1 步：注册 StepFun 账号
+
+打开 [https://platform.stepfun.com/](https://platform.stepfun.com/) → 右上角注册。手机号或邮箱都可以。
+
+新用户通常有免费体验额度（约几百万 token），够用几周。
+
+#### 第 2 步：生成 API Key
+
+登录后：
+
+1. 左侧菜单进入 **「接口密钥」** 或 **API Keys** 页面
+2. 点 **「创建新密钥」** → 起个名字（如 `lep-desktop`）→ 创建
+3. **复制弹窗里的密钥**（形如 `4a758e1ab6...nXCXE86eDoV60mu`），关掉弹窗后**无法再次查看**，请妥善保存
+
+> ⚠️ 这个 key 等于你账户的访问凭证，**不要分享、不要 commit 到 git、不要发到群里**。
+
+#### 第 3 步：在 LEP 里配置
+
+启动 LEP 后：
+
+1. 顶部菜单或主界面找 **「API Key 设置」**（齿轮 / 钥匙图标）
+2. 把刚才复制的密钥粘进 **API Key** 输入框
+3. **Model URL** 留空即可（默认 `https://api.stepfun.com/v1/chat/completions`，已正确）
+4. 点保存
+
+密钥会用 AES-256 加密后存进本地 `~/Library/Application Support/LEP/config.json`（macOS）或 `%APPDATA%\LEP\config.json`（Windows），**不会上传到任何远端服务器**。
+
+#### 第 4 步：充值（可选）
+
+免费额度用完后，到 [充值页面](https://platform.stepfun.com/pay) 充值。一般 10 块钱够你查几千个单词 + 生成几十段故事配音。
+
+#### 验证配置是否生效
+
+LEP 里随便点字幕中的一个单词 → 右侧「解释」面板应该出现 KK 音标、释义、例句。如果显示「未设置 API Key」或「401 Unauthorized」，回到设置页重新粘贴。
+
+#### 默认使用的模型
+
+| 用途 | 模型 | 说明 |
+|---|---|---|
+| 单词/句子讲解 | `step-2-mini` | 非推理型，速度快 |
+| 故事生成 | `step-2-mini` | 同上，输出快 |
+| OCR 视觉识别 | `step-1v-8k` | 视觉模型 |
+| 语音合成 | `stepaudio-2.5-tts` | 支持口音控制 |
+
+这些都在代码里写死了，不需要你配置。如果你想换模型，去对应代码文件改默认值。
 
 ---
 
