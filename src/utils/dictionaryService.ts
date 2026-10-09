@@ -24,6 +24,38 @@ interface LookupWordRawResult {
   error?: string;
 }
 
+/**
+ * 把 DictionaryResult 格式化成 Markdown（**加粗** + 换行），
+ * 供前端复用现有的 **bold** 渲染逻辑。
+ * 抽成纯函数以便单测。
+ */
+export const formatDictionaryResult = (result: DictionaryResult): string => {
+  const lines: string[] = [`**${result.word}** ${result.phonetic}`];
+
+  const grouped = new Map<string, DictionaryDefinition[]>();
+  for (const def of result.definitions) {
+    const bucket = grouped.get(def.type) ?? [];
+    bucket.push(def);
+    grouped.set(def.type, bucket);
+  }
+
+  for (const [type, defs] of grouped) {
+    lines.push('', `**${type.toUpperCase()}**`);
+    for (const def of defs) {
+      lines.push(def.english, def.chinese, '');
+    }
+  }
+
+  if (result.synonyms.length > 0) {
+    lines.push('**同义词**');
+    for (const syn of result.synonyms) {
+      lines.push(`${syn.english} - ${syn.chinese}`);
+    }
+  }
+
+  return lines.join('\n');
+};
+
 function cleanHtml(html: string): string {
   return html
     .replace(/<[^>]+>/g, '')
@@ -33,11 +65,11 @@ function cleanHtml(html: string): string {
 }
 
 function extractKKPhonetic(html: string): string | null {
-  const kkMatch = html.match(/K\.K\.[^\[]*\[<FONT[^>]*>([^<]+)<\/FONT>\]/);
+  const kkMatch = html.match(/K\.K\.[^[]*\[<FONT[^>]*>([^<]+)<\/FONT>\]/);
   if (kkMatch) {
     return cleanHtml(kkMatch[1]);
   }
-  const kkMatch2 = html.match(/K\.K\.[^\[]*\[([^\]]+)\]/);
+  const kkMatch2 = html.match(/K\.K\.[^[]*\[([^\]]+)\]/);
   return kkMatch2 ? cleanHtml(kkMatch2[1]) : null;
 }
 
@@ -67,7 +99,7 @@ function extractDefinitions(html: string): DictionaryDefinition[] {
           const chnMatch = item.match(/<DIV style="COLOR: #01259a">([\s\S]*?)<\/DIV>/);
           if (engMatch && chnMatch) {
             let english = cleanHtml(engMatch[1]);
-            const numbered = english.match(/([1-9][\.|\)]\s*[\s\S]*)/);
+            const numbered = english.match(/([1-9][.|)]\s*[\s\S]*)/);
             if (numbered) {
               english = numbered[1];
             }
@@ -86,7 +118,7 @@ function extractDefinitions(html: string): DictionaryDefinition[] {
         const chnMatch = item.match(/<DIV style="COLOR: #01259a">([\s\S]*?)<\/DIV>/);
         if (engMatch && chnMatch) {
           let english = cleanHtml(engMatch[1]);
-          const numbered = english.match(/([1-9][\.|\)]\s*[\s\S]*)/);
+          const numbered = english.match(/([1-9][.|)]\s*[\s\S]*)/);
           if (numbered) {
             english = numbered[1];
           }
@@ -186,4 +218,5 @@ class DictionaryService {
   }
 }
 
-export default new DictionaryService();
+const dictionaryService = new DictionaryService();
+export default dictionaryService;

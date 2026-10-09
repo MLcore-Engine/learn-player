@@ -14,6 +14,10 @@ export interface ContextualBubbleProps {
   onPlaySegment?: ((startTime: number) => void) | null;
   startTime?: number | null;
   loading?: boolean;
+  /** 本地 mdict 字典查询回调；传入后气泡显示「📖 字典」按钮 */
+  onDictionaryLookup?: (text: string) => void;
+  /** 字典查询进行中 */
+  dictLoading?: boolean;
   onClose: () => void;
 }
 
@@ -28,6 +32,8 @@ const ContextualBubble: React.FC<ContextualBubbleProps> = ({
   onPlaySegment,
   startTime,
   loading = false,
+  onDictionaryLookup,
+  dictLoading = false,
   onClose
 }) => {
   const ref = useRef<HTMLDivElement | null>(null);
@@ -90,6 +96,18 @@ const ContextualBubble: React.FC<ContextualBubbleProps> = ({
         >
           {loading ? <CircularProgress size={14} color="inherit" /> : '✦ 英文解释'}
         </Button>
+
+        {onDictionaryLookup && (
+          <Button
+            variant="outlined"
+            size="small"
+            disabled={dictLoading || loading}
+            onClick={() => onDictionaryLookup(text)}
+            sx={{ fontSize: '12px', py: 0.5, px: 1, borderColor: '#66bb6a', color: '#a5d6a7' }}
+          >
+            {dictLoading ? <CircularProgress size={14} color="inherit" /> : '📖 字典'}
+          </Button>
+        )}
 
         {startTime != null && onPlaySegment && (
           <Button

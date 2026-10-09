@@ -1,5 +1,7 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
+import { Box } from '@mui/material';
 import ContextualBubble, { type BubblePosition } from './ContextualBubble';
+import dictionaryService, { formatDictionaryResult } from '../utils/dictionaryService';
 import type { Language } from '../types/highlight';
 
 export interface OCRResultModalProps {
@@ -16,6 +18,15 @@ const OCRResultModal = React.memo<OCRResultModalProps>(
     const [bubbleText, setBubbleText] = useState<string>('');
     const [bubblePosition, setBubblePosition] = useState<BubblePosition>({ x: 0, y: 0 });
     const [bubbleStartTime, setBubbleStartTime] = useState<number | null>(null);
+    const [dictResult, setDictResult] = useState<string>('');
+    const [dictLoading, setDictLoading] = useState<boolean>(false);
+    const [dictError, setDictError] = useState<string>('');
+
+    // 结果变化或关闭时清空上一次的字典查询
+    useEffect(() => {
+      setDictResult('');
+      setDictError('');
+    }, [result, isOpen]);
 
     const handleWordClick = useCallback((text: string, event: React.MouseEvent) => {
       if (!text || !text.trim()) return;
@@ -24,10 +35,34 @@ const OCRResultModal = React.memo<OCRResultModalProps>(
       setBubbleStartTime(null);
     }, []);
 
+    /** 本地 mdict 字典查询：不消耗 API，离线可用 */
+    const handleDictionaryLookup = useCallback(async (word: string): Promise<void> => {
+      const w = word.trim();
+      if (!w) return;
+      setDictLoading(true);
+      setDictError('');
+      try {
+        const r = await dictionaryService.lookup(w);
+        if (!r) {
+          setDictResult('');
+          setDictError(`本地字典未找到「${w}」`);
+          return;
+        }
+        setDictResult(formatDictionaryResult(r));
+      } catch (e) {
+        setDictResult('');
+        setDictError((e as Error).message || '字典查询失败');
+      } finally {
+        setDictLoading(false);
+      }
+    }, []);
+
     if (!isOpen) return null;
 
     const handleClose = (): void => {
       setBubbleText('');
+      setDictResult('');
+      setDictError('');
       onClose();
     };
 
@@ -122,12 +157,52 @@ const OCRResultModal = React.memo<OCRResultModalProps>(
           ×
         </span>
 
+        {/* 本地字典查询结果 */}
+        {dictLoading && (
+          <Box sx={{ mb: 1, display: 'flex', justifyContent: 'center' }}>
+            <span style={{ fontSize: 13, color: '#666' }}>字典查询中...</span>
+          </Box>
+        )}
+        {dictError && (
+          <Box sx={{ mb: 1, fontSize: 13, color: '#d32f2f' }}>{dictError}</Box>
+        )}
+        {dictResult && (
+          <Box
+            data-testid="ocr-dict-result"
+            sx={{
+              mb: 1.5,
+              p: 1.5,
+              background: '#f5f5f5',
+              borderRadius: 1,
+              fontSize: 14,
+              lineHeight: 1.6,
+              whiteSpace: 'pre-wrap',
+              overflow: 'auto',
+              maxHeight: '30vh',
+              '& strong': { color: 'primary.main' }
+            }}
+            dangerouslySetInnerHTML={{
+              __html: dictResult
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+                .replace(/\n/g, '<br/>')
+            }}
+          />
+        )}
+
         {/* ContextualBubble */}
         <ContextualBubble
           text={bubbleText}
           position={bubblePosition}
           startTime={bubbleStartTime}
           loading={isLoading}
+          dictLoading={dictLoading}
+          onDictionaryLookup={(text) => {
+            void handleDictionaryLookup(text);
+            setBubbleText('');
+          }}
           onExplain={(text) => {
             onExplain('zh', text);
             setBubbleText('');
