@@ -1,253 +1,137 @@
-# 学习Agent使用指南
+# 学习助手使用指南（Learning Agent）
+
+> 本文档描述当前代码库（TypeScript 重构后）的真实实现。历史上曾存在的
+> `vocabulary` / `vocabulary_reviews` / `ai_queries` / `query_history` 四张表已在
+> S1 数据层统一时**废弃并移除**，所有学习数据现在都集中在 `highlights` 一张表里。
 
 ## 概述
 
-学习Agent是一个智能英语学习助手系统，集成了以下核心功能：
+学习助手由侧边栏的 6 个 Tab 组成：
 
-1. **学习分析** - 分析用户的学习数据，包括学习时长、单词查询频率、学习进度等
-2. **学习计划** - 使用大语言模型生成个性化学习计划
-3. **背单词** - 基于Anki式间隔重复算法（SM-2）的智能背单词系统
+| # | Tab | 组件 | 作用 |
+|---|---|---|---|
+| 0 | 解释 | `containers/AIContainer.tsx` → `components/LearningAssistant.tsx` | AI 讲解、追问、流式输出 |
+| 1 | 复习 | `components/tabs/ReviewTab.tsx` + `HighlightCard.tsx` | SM-2 间隔重复翻卡复习 |
+| 2 | 统计 | `components/tabs/StatsTab.tsx` | 学习时长 / 查询量 / 掌握度图表 |
+| 3 | 计划 | `components/tabs/PlanTab.tsx` | AI / 模板两种方式生成学习计划 |
+| 4 | 总结 | `components/tabs/SummaryTab.tsx` | 按天导出学习摘要 PDF |
+| 5 | 故事 | `components/tabs/StoryTab.tsx` | 生词驱动故事生成 + TTS 配音 |
 
-## 技术架构
+核心学习闭环：
 
-### 数据库表结构
-
-#### 1. vocabulary（词汇表）
-存储单词及其学习进度：
-- `id`: 主键
-- `word`: 单词（唯一）
-- `phonetic`: 音标
-- `meaning`: 含义
-- `example`: 例句
-- `explanation`: AI解释
-- `ease`: 易度因子（SM-2算法）
-- `interval`: 复习间隔（天）
-- `repetitions`: 复习次数
-- `next_review`: 下次复习时间
-- `last_review`: 上次复习时间
-
-#### 2. vocabulary_reviews（复习记录表）
-记录每次复习的详细信息：
-- `vocabulary_id`: 单词ID
-- `quality`: 评分（0-3）
-- `ease_before/after`: 易度因子变化
-- `interval_before/after`: 间隔变化
-
-#### 3. study_plans（学习计划表）
-存储AI生成的学习计划：
-- `plan_data`: 计划文本内容
-- `structured_plan`: 结构化计划数据（JSON）
-- `days`: 计划天数
-- `status`: 状态（active/completed）
-- `progress`: 完成进度（0-100）
-
-### 服务层
-
-#### learningAnalyticsService.js
-提供学习数据分析功能：
-- `getLearningOverview()` - 获取学习概况
-- `analyzeLearningPattern()` - 分析学习模式
-- `getLearningReport(options)` - 获取学习报告
-- `getWordFrequencyStats(limit)` - 获取单词频率统计
-
-#### studyPlanService.js
-提供学习计划生成和管理：
-- `generateStudyPlan(electronAPI, options)` - 生成学习计划
-- `getCurrentStudyPlan(electronAPI)` - 获取当前计划
-- `updatePlanProgress(electronAPI, progress)` - 更新进度
-
-#### spacedRepetitionService.js
-实现SM-2间隔重复算法：
-- `getWordsToReview(electronAPI, limit)` - 获取需要复习的单词
-- `submitReview(electronAPI, wordId, quality)` - 提交复习结果
-- `addWord(electronAPI, wordData)` - 添加单词
-- `extractWordsFromQueries(electronAPI, limit)` - 从查询记录提取单词
-- `getLearningStats(electronAPI)` - 获取学习统计
-
-## SM-2算法说明
-
-### 算法参数
-- **初始易度因子**: 2.5
-- **最小易度因子**: 1.3
-- **易度变化量**: 0.15
-- **评分等级**:
-  - 0: 重来（Again）
-  - 1: 困难（Hard）
-  - 2: 良好（Good）
-  - 3: 简单（Easy）
-
-### 间隔计算规则
-1. **重来（0）或困难（1）**：
-   - 降低易度因子
-   - 重置复习次数为0
-   - 间隔设为1天
-
-2. **良好（2）或简单（3）**：
-   - 增加易度因子（简单时更明显）
-   - 增加复习次数
-   - 计算新间隔：
-     - 第1次复习: 1天
-     - 第2次复习: 6天
-     - 第3次及以上: `interval * ease`（天）
-
-## 使用流程
-
-### 1. 学习分析
-
-查看学习概况和学习模式：
-- 总学习时长
-- 总查询单词数
-- 学习天数
-- 今日查询数
-- 最活跃时段
-- 学习频率
-- 最近趋势
-
-### 2. 生成学习计划
-
-1. 点击"生成新计划"按钮
-2. 系统会分析你的学习数据
-3. 调用大语言模型生成个性化学习计划
-4. 计划包含：
-   - 每日学习目标
-   - 单词学习计划
-   - 视频学习计划
-   - 复习安排
-   - 学习建议
-
-### 3. 背单词
-
-#### 初始设置
-1. **提取单词**：点击"从查询记录提取单词"，系统会自动从你的AI查询记录中提取单词
-
-#### 复习流程
-1. 查看单词（不显示答案）
-2. 点击"显示答案"查看详细信息
-3. 根据记忆情况选择评分：
-   - **重来**：完全不记得
-   - **困难**：需要提示才能想起
-   - **良好**：能正确回忆
-   - **简单**：非常熟悉
-4. 系统根据评分自动计算下次复习时间
-5. 继续下一个单词
-
-#### 复习策略
-- 系统会根据SM-2算法自动安排复习时间
-- 记忆越牢固，复习间隔越长
-- 记忆不牢固，会缩短间隔频繁复习
-
-## UI组件使用
-
-### LearningAgent组件
-
-在应用中使用：
-
-```jsx
-import LearningAgent from './components/LearningAgent';
-
-// 在页面中渲染
-<LearningAgent />
+```
+看视频 → 点字幕/选句 → AI 讲解 → 自动入库(highlights) → SM-2 复习 → 统计/计划/总结
+                                                    ↘ 生词变故事 + 配音
 ```
 
-组件包含三个标签页：
-1. **学习分析** - 显示学习数据和统计
-2. **学习计划** - 显示和管理学习计划
-3. **背单词** - 间隔重复复习界面
+## 数据库表结构
 
-## API接口
+### highlights（唯一学习数据源）
 
-所有API通过 `window.electronAPI` 调用：
+每一次 AI 讲解都会 UPSERT 一行；重复查询同一 `(video_path, original_text)` 只会把
+`query_count + 1`，不会产生重复行。
 
-### 学习分析
-```javascript
-// 获取学习概况
-const overview = await window.electronAPI.getLearningOverview();
+| 字段 | 说明 |
+|---|---|
+| `id` | 主键（TEXT） |
+| `video_path` / `video_title` | 来源视频 |
+| `start_time` / `end_time` | 字幕时间轴，可跳回原片位置 |
+| `original_text` | 摘取的单词或句子 |
+| `context_before` / `context_after` | 上下文 |
+| `explanation` | AI 讲解内容 |
+| `user_note` | 用户备注 |
+| `language` | `zh` / `en` |
+| `status` | `learning` / `reviewed` / `mastered` / `archived` |
+| `ease` / `interval` / `repetitions` | SM-2 状态 |
+| `next_review` / `last_review` | 复习调度 |
+| `query_count` / `last_queried_at` | 查询频次（识别高频生词） |
+| `UNIQUE(video_path, original_text)` | 去重约束 |
 
-// 分析学习模式
-const pattern = await window.electronAPI.analyzeLearningPattern();
+### study_plans（学习计划）
 
-// 获取学习报告
-const report = await window.electronAPI.getLearningReport({ days: 7 });
+| 字段 | 说明 |
+|---|---|
+| `plan_data` | Markdown 计划正文（`**加粗**` 由前端渲染） |
+| `structured_plan` | JSON：`{days, focus, stats, source, model, weeklyGoal, dailyFocus[], recommendations[], dueCount, recentWords[]}` |
+| `days` / `status` / `progress` | 计划天数 / `active\|completed` / 完成进度 |
 
-// 获取单词频率统计
-const stats = await window.electronAPI.getWordFrequencyStats({ limit: 50 });
+### stories（故事与配音）
+
+| 字段 | 说明 |
+|---|---|
+| `body_en` / `body_zh` | 英文正文（目标词加粗）/ 中文翻译 |
+| `vocab_words` | 使用的生词（JSON 数组） |
+| `style` / `difficulty` / `model` / `chat_model` | 故事风格 / CEFR 难度 / TTS 模型 / 对话模型 |
+| `voice` / `audio_path` / `audio_size` | 音色 / 生成的 MP3 路径 / 大小 |
+
+## 服务层（`src/services/`，全部 TypeScript）
+
+| 模块 | 职责 |
+|---|---|
+| `ipcClient.ts` | 所有 IPC 调用的唯一入口，通道名集中在 `IPC_CHANNELS` |
+| `aiService.ts` | 提示词组装（KK 音标 + few-shot）、流式讲解、词汇故事 |
+| `aiConfigService.ts` | 配置解析：env → electron-store → 默认值 |
+| `highlightService.ts` | highlights 的增删改查 |
+| `studyPlanService.ts` | 学习计划生成（AI + 模板回退） |
+| `storyService.ts` | 故事文本生成、TTS、历史记录、下载 |
+
+> 组件**不直接**调 `window.electronAPI`，一律走 `ipcClient`，这样类型由
+> `src/types/ipc.ts` 的 `ElectronAPI` 接口统一约束。
+
+## 学习计划生成
+
+`studyPlanService.generateStudyPlan({ days, focus, source })`：
+
+1. **采集上下文**：`getHighlightsStats()` + `getDueHighlights()` + `getTodayHighlights()`
+2. **AI 模式**（默认）：把学习数据交给 `step-2-mini`，要求只返回 JSON
+   `{weekly_goal, daily_focus[], recommendations[], encouragement}`，再渲染成 Markdown
+3. **模板模式**：不调用 AI，本地按统计数字拼装基础计划
+4. **自动回退**：AI 模式下未配 Key / 网络失败 / 返回非法 JSON / 返回为空，
+   都会回退到模板计划，并通过 `fallbackReason` 告知前端（UI 上显示警告条）
+
+## SM-2 间隔重复
+
+- 调度与写入都在**主进程** `main/ipc/index.js` 的 `submitReview` handler 中完成，
+  直接更新 `highlights` 行的 SRS 列。
+- 评分等级：`0` 重来 / `1` 困难 / `2` 良好 / `3` 简单
+- 初始 `ease = 2.5`，下限 `1.3`
+- 第 1 次复习间隔 1 天，第 2 次 6 天，第 3 次起 `interval * ease`
+- 前端翻卡 UI：`HighlightCard.tsx`（正反面）+ `ReviewTab.tsx`（驱动与队列）
+
+## 故事与配音（Story + TTS）
+
+1. 在「故事」Tab 勾选 / 随机抽取生词，选择风格（短故事 / 对话 / 场景）、CEFR 难度、篇幅
+2. `storyService.generateStoryText()` 用 JSON 模式流式生成 `{title, body_en, body_zh}`，
+   目标词在 `body_en` 中以 `**` 包裹以便高亮
+3. `generateAudio()` 调 `generateTTS`：StepFun 限制单次 1000 字符，主进程会按句子边界
+   切分（≤900 字符/请求）再把多段 MP3 拼接成一个文件
+4. TTS 模型：`stepaudio-2.5-tts`（默认，支持 instruction 控口音）/ `step-tts-2` / `step-tts-mini`
+5. 结果写入 `stories` 表，可试听、下载 MP3 / Markdown、点击历史恢复、删除
+
+## 测试
+
+```bash
+CI=true npm test -- --watchAll=false                        # 全部
+CI=true npm test -- --watchAll=false --testPathPattern=studyPlanService
 ```
 
-### 学习计划
-```javascript
-// 保存学习计划
-await window.electronAPI.saveStudyPlan({
-  planData: '计划文本...',
-  structuredPlan: { /* 结构化数据 */ },
-  days: 7
-});
-
-// 获取当前计划
-const plan = await window.electronAPI.getCurrentStudyPlan();
-
-// 更新进度
-await window.electronAPI.updatePlanProgress({ progress: 50 });
-```
-
-### 背单词
-```javascript
-// 获取需要复习的单词
-const words = await window.electronAPI.getWordsToReview({ limit: 20 });
-
-// 提交复习结果
-await window.electronAPI.updateVocabularyCard({
-  wordId: 1,
-  ease: 2.5,
-  interval: 6,
-  repetitions: 2,
-  nextReview: '2024-01-01T00:00:00.000Z',
-  lastReview: '2023-12-25T00:00:00.000Z',
-  quality: 2  // 0-3
-});
-
-// 添加单词
-await window.electronAPI.addVocabularyWord({
-  word: 'example',
-  phonetic: '/ɪgˈzæmpl/',
-  meaning: '例子',
-  example: 'This is an example.',
-  explanation: 'AI解释内容...'
-});
-
-// 从查询记录提取单词
-const result = await window.electronAPI.extractWordsFromQueries({ limit: 50 });
-
-// 获取词汇统计
-const stats = await window.electronAPI.getVocabularyStats();
-```
+`src/services/studyPlanService.test.ts` 覆盖：模板模式不调 AI、AI 模式正常解析、
+markdown 围栏容错、无 Key / 非法 JSON / 空响应 / 主进程失败四类回退、`days` 边界钳制、
+`daily_focus` 截断、上下文采集失败时的降级。
 
 ## 注意事项
 
-1. **数据库初始化**：应用启动时会自动创建必要的数据库表
-2. **AI API配置**：确保已配置AI API密钥才能生成学习计划
-3. **单词提取**：提取单词功能会从 `ai_queries` 表中提取单个单词（不含空格）
-4. **复习时间**：系统会自动计算下次复习时间，无需手动设置
-5. **数据持久化**：所有数据存储在SQLite数据库中，应用重启后数据不会丢失
+1. **API Key 必填**：AI 讲解、故事、TTS 都走 StepFun；未配置时计划类功能自动降级为模板，不报错中断
+2. **密钥安全**：Key 以 AES-256-CBC 加密存于 electron-store，不要提交 `src/.env`
+3. **新增 IPC 通道**要同步改 4 处：`main/ipc/index.js`、`preload.js`、
+   `src/services/ipcClient.ts`、`src/types/ipc.ts`
+4. **主进程仍是 JS**，渲染进程是全 TS strict；跨进程类型契约以 `src/types/ipc.ts` 为准
 
-## 扩展建议
+## 后续可扩展
 
-未来可以添加的功能：
-- 单词分组和标签
-- 自定义复习计划
-- 学习曲线可视化
-- 导出学习数据
-- 多设备同步
-- 单词发音功能
-- 例句自动生成
+- 学习曲线可视化（目前统计Tab仅柱状图）
+- 自定义复习计划 / 每日目标持久化
+- 导出学习数据（CSV / JSON）
+- 单词发音（单独播放单词而非整篇故事）
 - 学习提醒通知
-
-## 技术限制
-
-- 大模型上下文限制：200K tokens
-- 单词提取：目前只支持单个单词（不含空格）
-- 学习计划：基于文本格式，结构化解析可能需要优化
-- 复习算法：使用SM-2算法，可根据需要调整参数
-
-## 总结
-
-这个学习Agent系统提供了完整的英语学习管理功能，通过数据分析和AI辅助，帮助用户制定和执行个性化的学习计划。间隔重复算法确保单词记忆效果，学习分析功能帮助用户了解自己的学习状况。
+- Windows / macOS 代码签名（消除首次安装的安全拦截提示）

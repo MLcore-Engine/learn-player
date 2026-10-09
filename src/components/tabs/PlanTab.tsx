@@ -1,10 +1,11 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { Box, Typography, Button, CircularProgress, Paper, Stack } from '@mui/material';
-import { ArrowBack, Refresh, AutoAwesome } from '@mui/icons-material';
+import { Box, Typography, Button, CircularProgress, Paper, Stack, ToggleButton, ToggleButtonGroup, Alert, Chip } from '@mui/material';
+import { ArrowBack, Refresh, AutoAwesome, Bolt } from '@mui/icons-material';
 import studyPlanService from '../../services/studyPlanService';
-import type { StudyPlanRow, StructuredPlan } from '../../types/plan';
+import type { StudyPlanRow, StructuredPlan, PlanSource } from '../../types/plan';
 
 type Phase = 'loading' | 'ready' | 'generating' | 'error';
+type PlanMode = 'ai' | 'template';
 
 // 前端展示用的 plan 形态 —— 兼容 getCurrentStudyPlan 返回的 StudyPlanRow
 // 和 generateStudyPlan 返回的 {planText, plan, days, createdAt}
@@ -42,6 +43,9 @@ const PlanTab: React.FC<PlanTabProps> = ({ onBackToSubtitle }) => {
   const [phase, setPhase] = useState<Phase>('loading');
   const [plan, setPlan] = useState<DisplayPlan | null>(null);
   const [error, setError] = useState<string>('');
+  const [mode, setMode] = useState<PlanMode>('ai');
+  const [notice, setNotice] = useState<string>('');
+  const [planSource, setPlanSource] = useState<PlanSource | null>(null);
 
   const loadCurrent = useCallback(async (): Promise<void> => {
     setPhase('loading');
@@ -49,6 +53,7 @@ const PlanTab: React.FC<PlanTabProps> = ({ onBackToSubtitle }) => {
     try {
       const result = (await studyPlanService.getCurrentStudyPlan()) as StudyPlanRow | null;
       setPlan(result || null);
+      setPlanSource(result?.structuredPlan?.source ?? null);
       setPhase('ready');
     } catch (e) {
       console.error('PlanTab 加载失败:', e);
@@ -64,14 +69,19 @@ const PlanTab: React.FC<PlanTabProps> = ({ onBackToSubtitle }) => {
   const handleGenerate = async (): Promise<void> => {
     setPhase('generating');
     setError('');
+    setNotice('');
     try {
-      const result = await studyPlanService.generateStudyPlan({ days: 7, focus: 'comprehensive' });
+      const result = await studyPlanService.generateStudyPlan({ days: 7, focus: 'comprehensive', source: mode });
       setPlan({
         plan_data: result.planText,
         structuredPlan: result.plan,
         days: result.days,
         created_at: result.createdAt
       });
+      setPlanSource(result.source);
+      if (result.source === 'template' && mode === 'ai' && result.fallbackReason) {
+        setNotice(`AI 生成失败，已回退到模板计划：${result.fallbackReason}`);
+      }
       setPhase('ready');
     } catch (e) {
       console.error('生成计划失败:', e);
@@ -79,6 +89,24 @@ const PlanTab: React.FC<PlanTabProps> = ({ onBackToSubtitle }) => {
       setPhase('error');
     }
   };
+
+  const modeSelector = (
+    <ToggleButtonGroup
+      size="small"
+      exclusive
+      value={mode}
+      onChange={(_e, next: PlanMode | null) => {
+        if (next) setMode(next);
+      }}
+    >
+      <ToggleButton value="ai">
+        <AutoAwesome fontSize="small" sx={{ mr: 0.5 }} /> AI 生成
+      </ToggleButton>
+      <ToggleButton value="template">
+        <Bolt fontSize="small" sx={{ mr: 0.5 }} /> 快速模板
+      </ToggleButton>
+    </ToggleButtonGroup>
+  );
 
   const renderBody = (): React.ReactNode => {
     if (phase === 'loading') {
@@ -109,6 +137,9 @@ const PlanTab: React.FC<PlanTabProps> = ({ onBackToSubtitle }) => {
       return (
         <Paper variant="outlined" sx={{ p: 3, textAlign: 'center' }}>
           <Typography variant="body1" sx={{ mb: 2 }}>还没有学习计划</Typography>
+          <Stack direction="row" spacing={1} justifyContent="center" alignItems="center" sx={{ mb: 2 }}>
+            {modeSelector}
+          </Stack>
           <Button variant="contained" startIcon={<AutoAwesome />} onClick={handleGenerate}>
             生成 7 天计划
           </Button>
@@ -118,9 +149,24 @@ const PlanTab: React.FC<PlanTabProps> = ({ onBackToSubtitle }) => {
 
     return (
       <Box sx={{ flex: 1, overflow: 'auto', pr: 1 }}>
+        {notice && (
+          <Alert severity="warning" sx={{ mb: 1 }} onClose={() => setNotice('')}>
+            {notice}
+          </Alert>
+        )}
         <Paper variant="outlined" sx={{ p: 2 }}>
-          <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
-            <Typography variant="subtitle2">当前计划（{plan.days || 7} 天）</Typography>
+          <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }} flexWrap="wrap" gap={1}>
+            <Stack direction="row" spacing={1} alignItems="center">
+              <Typography variant="subtitle2">当前计划（{plan.days || 7} 天）</Typography>
+              {planSource && (
+                <Chip
+                  size="small"
+                  color={planSource === 'ai' ? 'primary' : 'default'}
+                  icon={planSource === 'ai' ? <AutoAwesome /> : <Bolt />}
+                  label={planSource === 'ai' ? 'AI 生成' : '模板生成'}
+                />
+              )}
+            </Stack>
             <Typography variant="caption" color="text.secondary">
               {plan.created_at ? new Date(plan.created_at).toLocaleDateString() : ''}
             </Typography>
@@ -128,11 +174,12 @@ const PlanTab: React.FC<PlanTabProps> = ({ onBackToSubtitle }) => {
           {renderPlanText(plan.plan_data)}
         </Paper>
 
-        <Box sx={{ mt: 2, textAlign: 'center' }}>
+        <Stack direction="row" spacing={1} justifyContent="center" alignItems="center" sx={{ mt: 2 }}>
+          {modeSelector}
           <Button size="small" variant="outlined" startIcon={<AutoAwesome />} onClick={handleGenerate}>
             重新生成
           </Button>
-        </Box>
+        </Stack>
       </Box>
     );
   };

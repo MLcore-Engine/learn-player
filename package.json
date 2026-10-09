@@ -25,6 +25,7 @@
     "build:all": "npm run package -- --mac --win --linux",
     "analyze": "source-map-explorer 'build/static/js/*.js'",
     "build:analyze": "GENERATE_SOURCEMAP=true npm run build && npm run analyze",
+    "test": "react-app-rewired test",
     "prune-deps": "npm prune --production"
   },
   "author": "adam gao",
@@ -50,6 +51,7 @@
     "video.js": "^8.22.0"
   },
   "devDependencies": {
+    "@types/jest": "^29.5.14",
     "@types/node": "^25.6.0",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
@@ -89,6 +91,8 @@
       "!**/test/**",
       "!**/tests/**",
       "!**/__tests__/**",
+      "!**/*.test.ts",
+      "!**/*.test.tsx",
       "!**/*.d.ts",
       "!**/.bin/**"
     ],

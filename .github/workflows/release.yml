@@ -23,10 +23,23 @@ jobs:
         include:
           - os: macos-latest
             target: mac
+            arch_arg: '--arm64'
             artifact_glob: 'dist/*.dmg'
+            artifact_name: macos-arm64
+            label: 'macOS arm64'
+          # Intel Mac：GitHub 唯一的 Intel macOS Runner
+          - os: macos-13
+            target: mac
+            arch_arg: '--x64'
+            artifact_glob: 'dist/*.dmg'
+            artifact_name: macos-x64
+            label: 'macOS x64 (Intel)'
           - os: windows-latest
             target: win
+            arch_arg: ''
             artifact_glob: 'dist/*.exe'
+            artifact_name: windows-x64
+            label: 'Windows x64'
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout
@@ -46,8 +59,8 @@ jobs:
       - name: Rebuild native modules for Electron
         run: npx electron-builder install-app-deps
 
-      - name: Build for ${{ matrix.target }}
-        run: npm run build:${{ matrix.target }}
+      - name: Build for ${{ matrix.label }}
+        run: npm run build:${{ matrix.target }} -- ${{ matrix.arch_arg }}
         env:
           # CRA (react-scripts) 在 CI=true 时把 ESLint warning 当 error。
           # 本地 dev/打包时 CI 默认未设，行为是允许 warning。
@@ -61,7 +74,7 @@ jobs:
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.os }}-installer
+          name: ${{ matrix.artifact_name }}
           path: ${{ matrix.artifact_glob }}
           if-no-files-found: error
           retention-days: 30
@@ -95,10 +108,9 @@ jobs:
           body: |
             ## 📦 下载
 
-            - **macOS (Apple Silicon)**: `LEP-*-arm64.dmg`
-            - **Windows (x64)**: `LEP-Setup-*.exe`
-
-            > Intel Mac 用户：暂未提供 x64 包；如需请在 issue 区留言。
+            - **macOS (Apple Silicon / M1/M2/M3/M4)**: `LEP-*-arm64.dmg`
+            - **macOS (Intel)**: `LEP-*-x64.dmg`
+            - **Windows 10/11 (x64)**: `LEP-Setup-*.exe`
 
             ## ⚠️ 首次安装提示
 
