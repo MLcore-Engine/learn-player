@@ -509,8 +509,15 @@ app.whenReady().then(async () => {
   Menu.setApplicationMenu(menu);
 
   // 检查更新(仅在生产环境)
+  //
+  // 注意：autoUpdater.checkForUpdatesAndNotify() 返回 Promise。本地打包
+  // （未配置 publish / 没有 app-update.yml）时它会 reject，若不 catch 就会变成
+  // UnhandledPromiseRejection —— 新版 Node 默认直接终止进程，表现为「App 莫名其妙退出」。
+  // 这里统一 catch 并降级为日志，保证没有更新配置时也能正常启动。
   if (!process.env.DEV_SERVER_URL) {
-    autoUpdater.checkForUpdatesAndNotify();
+    autoUpdater.checkForUpdatesAndNotify().catch((err) => {
+      log.warn('自动更新检查已跳过（可能未配置发布源）:', err && err.message ? err.message : err);
+    });
   }
 });
 
@@ -523,10 +530,16 @@ app.on('will-quit', () => {
 });
 
 // 监听更新事件
+// mainWindow 可能为 null（窗口尚未创建或已销毁），发送前必须判空，
+  // 否则 "Cannot read properties of null (reading 'webContents')"。
 autoUpdater.on('update-available', () => {
-  mainWindow.webContents.send('update-available');
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send('update-available');
+  }
 });
 
 autoUpdater.on('update-downloaded', () => {
-  mainWindow.webContents.send('update-downloaded');
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send('update-downloaded');
+  }
 });
