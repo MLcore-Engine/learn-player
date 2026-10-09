@@ -1,7 +1,8 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { Box, Typography, Button, CircularProgress, Paper, Stack, ToggleButton, ToggleButtonGroup, Alert, Chip } from '@mui/material';
-import { ArrowBack, Refresh, AutoAwesome, Bolt } from '@mui/icons-material';
+import { Box, Typography, Button, CircularProgress, Paper, Stack, ToggleButton, ToggleButtonGroup, Alert, Chip, LinearProgress } from '@mui/material';
+import { ArrowBack, Refresh, AutoAwesome, Bolt, CheckCircle } from '@mui/icons-material';
 import studyPlanService from '../../services/studyPlanService';
+import { calcPlanDayIndex, calcPlanProgress } from '../../utils/learningStats';
 import type { StudyPlanRow, StructuredPlan, PlanSource } from '../../types/plan';
 
 type Phase = 'loading' | 'ready' | 'generating' | 'error';
@@ -14,6 +15,7 @@ interface DisplayPlan {
   structuredPlan?: StructuredPlan | null;
   days?: number;
   created_at?: string;
+  progress?: number;
 }
 
 const renderPlanText = (text: string | undefined): React.ReactNode => (
@@ -46,6 +48,9 @@ const PlanTab: React.FC<PlanTabProps> = ({ onBackToSubtitle }) => {
   const [mode, setMode] = useState<PlanMode>('ai');
   const [notice, setNotice] = useState<string>('');
   const [planSource, setPlanSource] = useState<PlanSource | null>(null);
+  const [dayIndex, setDayIndex] = useState(1);
+  const [progress, setProgress] = useState(0);
+  const [savingProgress, setSavingProgress] = useState(false);
 
   const loadCurrent = useCallback(async (): Promise<void> => {
     setPhase('loading');
@@ -54,6 +59,7 @@ const PlanTab: React.FC<PlanTabProps> = ({ onBackToSubtitle }) => {
       const result = (await studyPlanService.getCurrentStudyPlan()) as StudyPlanRow | null;
       setPlan(result || null);
       setPlanSource(result?.structuredPlan?.source ?? null);
+      applyPlanSchedule(result || null);
       setPhase('ready');
     } catch (e) {
       console.error('PlanTab 加载失败:', e);
@@ -66,19 +72,30 @@ const PlanTab: React.FC<PlanTabProps> = ({ onBackToSubtitle }) => {
     loadCurrent();
   }, [loadCurrent]);
 
+  /** 由 created_at 推算当前是第几天，并同步进度条 */
+  const applyPlanSchedule = useCallback((p: DisplayPlan | null): void => {
+    const days = p?.days ?? 7;
+    const idx = calcPlanDayIndex(p?.created_at, days);
+    const pct = typeof p?.progress === 'number' ? p.progress : calcPlanProgress(idx, days);
+    setDayIndex(idx);
+    setProgress(Math.min(Math.max(pct, 0), 100));
+  }, []);
+
   const handleGenerate = async (): Promise<void> => {
     setPhase('generating');
     setError('');
     setNotice('');
     try {
       const result = await studyPlanService.generateStudyPlan({ days: 7, focus: 'comprehensive', source: mode });
-      setPlan({
+      const next: DisplayPlan = {
         plan_data: result.planText,
         structuredPlan: result.plan,
         days: result.days,
         created_at: result.createdAt
-      });
+      };
+      setPlan(next);
       setPlanSource(result.source);
+      applyPlanSchedule(next);
       if (result.source === 'template' && mode === 'ai' && result.fallbackReason) {
         setNotice(`AI 生成失败，已回退到模板计划：${result.fallbackReason}`);
       }
@@ -87,6 +104,20 @@ const PlanTab: React.FC<PlanTabProps> = ({ onBackToSubtitle }) => {
       console.error('生成计划失败:', e);
       setError((e as Error).message || '生成失败');
       setPhase('error');
+    }
+  };
+
+  const handleMarkTodayDone = async (): Promise<void> => {
+    setSavingProgress(true);
+    try {
+      await studyPlanService.updatePlanProgress({ progress: calcPlanProgress(dayIndex, plan?.days ?? 7) });
+      setProgress(calcPlanProgress(dayIndex, plan?.days ?? 7));
+      setNotice(`已记录第 ${dayIndex} 天完成，继续保持！`);
+    } catch (e) {
+      console.error('更新计划进度失败:', e);
+      setError((e as Error).message || '更新进度失败');
+    } finally {
+      setSavingProgress(false);
     }
   };
 
@@ -161,6 +192,7 @@ const PlanTab: React.FC<PlanTabProps> = ({ onBackToSubtitle }) => {
               {planSource && (
                 <Chip
                   size="small"
+                  data-testid="plan-source-chip"
                   color={planSource === 'ai' ? 'primary' : 'default'}
                   icon={planSource === 'ai' ? <AutoAwesome /> : <Bolt />}
                   label={planSource === 'ai' ? 'AI 生成' : '模板生成'}
@@ -172,6 +204,25 @@ const PlanTab: React.FC<PlanTabProps> = ({ onBackToSubtitle }) => {
             </Typography>
           </Stack>
           {renderPlanText(plan.plan_data)}
+        </Paper>
+
+        <Paper variant="outlined" sx={{ p: 2, mt: 2 }}>
+          <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
+            <Typography variant="subtitle2">
+              第 {dayIndex} / {plan.days || 7} 天
+            </Typography>
+            <Typography variant="caption" color="text.secondary">{progress}%</Typography>
+          </Stack>
+          <LinearProgress variant="determinate" value={progress} sx={{ mb: 1.5, height: 8, borderRadius: 4 }} />
+          <Button
+            size="small"
+            variant="outlined"
+            startIcon={<CheckCircle />}
+            disabled={savingProgress || progress >= 100}
+            onClick={handleMarkTodayDone}
+          >
+            {savingProgress ? '保存中...' : progress >= 100 ? '计划已完成' : '标记今天已完成'}
+          </Button>
         </Paper>
 
         <Stack direction="row" spacing={1} justifyContent="center" alignItems="center" sx={{ mt: 2 }}>

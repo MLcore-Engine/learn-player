@@ -3,16 +3,16 @@ import { Box, Typography, Button, CircularProgress, Paper, Stack, Grid } from '@
 import { ArrowBack, Refresh } from '@mui/icons-material';
 import { ipcClient } from '../../services/ipcClient';
 import { useTimeStats } from '../../contexts/AppContext';
+import { buildMasteryDistribution, calcMasteryRate, formatDuration } from '../../utils/learningStats';
 import type { HighlightsStats, HighlightDailyCount } from '../../types/highlight';
 
 type Phase = 'loading' | 'ready' | 'error';
 
-const formatDuration = (seconds: number): string => {
-  if (!seconds || seconds <= 0) return '0m';
-  const h = Math.floor(seconds / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  if (h > 0) return `${h}h ${m}m`;
-  return `${m}m`;
+const LEVEL_COLOR: Record<string, string> = {
+  learning: 'warning.main',
+  reviewed: 'info.main',
+  mastered: 'success.main',
+  archived: 'text.disabled'
 };
 
 const StatCard: React.FC<{ label: string; value: number }> = ({ label, value }) => (
@@ -55,6 +55,47 @@ const BarChart: React.FC<{ data: HighlightDailyCount[] }> = ({ data }) => {
         );
       })}
     </Box>
+  );
+};
+
+const MasteryBar: React.FC<{ stats: HighlightsStats | null }> = ({ stats }) => {
+  const { total, segments } = buildMasteryDistribution(stats);
+  const rate = calcMasteryRate(stats);
+  const visible = segments.filter((s) => s.count > 0);
+
+  if (total === 0) {
+    return (
+      <Typography variant="body2" color="text.secondary">
+        还没有学习数据，去点几个单词试试吧。
+      </Typography>
+    );
+  }
+
+  return (
+    <Stack spacing={1}>
+      <Stack direction="row" spacing={0.5} sx={{ height: 12, borderRadius: 6, overflow: 'hidden' }}>
+        {visible.map((s) => (
+          <Box
+            key={s.level}
+            sx={{ width: `${s.percent}%`, bgcolor: LEVEL_COLOR[s.level] }}
+            title={`${s.label}: ${s.count}`}
+          />
+        ))}
+      </Stack>
+      <Stack direction="row" flexWrap="wrap" gap={1.5}>
+        {segments.map((s) => (
+          <Stack key={s.level} direction="row" spacing={0.5} alignItems="center">
+            <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: LEVEL_COLOR[s.level] }} />
+            <Typography variant="caption" color="text.secondary">
+              {s.label} {s.count}（{s.percent}%）
+            </Typography>
+          </Stack>
+        ))}
+      </Stack>
+      <Typography variant="caption" color="text.secondary">
+        掌握率 {rate}%
+      </Typography>
+    </Stack>
   );
 };
 
@@ -118,10 +159,16 @@ const StatsTab: React.FC<StatsTabProps> = ({ onBackToSubtitle }) => {
           <Grid size={{ xs: 6, sm: 4 }}><StatCard label="总词数" value={stats?.totalHighlights ?? 0} /></Grid>
           <Grid size={{ xs: 6, sm: 4 }}><StatCard label="今日新增" value={todayNew} /></Grid>
           <Grid size={{ xs: 6, sm: 4 }}><StatCard label="今日复习" value={stats?.todayReviewed ?? 0} /></Grid>
+          <Grid size={{ xs: 6, sm: 4 }}><StatCard label="待复习" value={stats?.pendingHighlights ?? 0} /></Grid>
           <Grid size={{ xs: 6, sm: 4 }}><StatCard label="已掌握" value={stats?.masteredHighlights ?? 0} /></Grid>
           <Grid size={{ xs: 6, sm: 4 }}><StatCard label="连续天数" value={stats?.streakDays ?? 0} /></Grid>
           <Grid size={{ xs: 6, sm: 4 }}><StatCard label="视频数" value={stats?.totalVideos ?? 0} /></Grid>
         </Grid>
+
+        <Paper variant="outlined" sx={{ p: 2, mb: 2 }}>
+          <Typography variant="subtitle2" sx={{ mb: 1 }}>掌握度分布</Typography>
+          <MasteryBar stats={stats} />
+        </Paper>
 
         <Paper variant="outlined" sx={{ p: 2, mb: 2 }}>
           <Typography variant="subtitle2" sx={{ mb: 1 }}>学习时长</Typography>

@@ -17,9 +17,11 @@ npm run build:mac        # macOS package (dmg/zip)
 npm run build:win        # Windows package (nsis/portable)
 npm run debug            # Electron with inspector on port 5858
 npx tsc --noEmit         # Type-check renderer (src/) without emitting
+CI=true npm test -- --watchAll=false   # Run jest unit/component tests
 ```
 
-There is no test suite configured.
+Tests live next to the code as `*.test.ts` / `*.test.tsx` (jest + @testing-library/react).
+`src/setupTests.ts` loads `@testing-library/jest-dom` matchers.
 
 ## Language Split
 
