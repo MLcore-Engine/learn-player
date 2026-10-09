@@ -52,6 +52,15 @@ const PlanTab: React.FC<PlanTabProps> = ({ onBackToSubtitle }) => {
   const [progress, setProgress] = useState(0);
   const [savingProgress, setSavingProgress] = useState(false);
 
+  /** 由 created_at 推算当前是第几天，并同步进度条 */
+  const applyPlanSchedule = useCallback((p: DisplayPlan | null): void => {
+    const days = p?.days ?? 7;
+    const idx = calcPlanDayIndex(p?.created_at, days);
+    const pct = typeof p?.progress === 'number' ? p.progress : calcPlanProgress(idx, days);
+    setDayIndex(idx);
+    setProgress(Math.min(Math.max(pct, 0), 100));
+  }, []);
+
   const loadCurrent = useCallback(async (): Promise<void> => {
     setPhase('loading');
     setError('');
@@ -66,20 +75,11 @@ const PlanTab: React.FC<PlanTabProps> = ({ onBackToSubtitle }) => {
       setError((e as Error).message || '加载失败');
       setPhase('error');
     }
-  }, []);
+  }, [applyPlanSchedule]);
 
   useEffect(() => {
     loadCurrent();
   }, [loadCurrent]);
-
-  /** 由 created_at 推算当前是第几天，并同步进度条 */
-  const applyPlanSchedule = useCallback((p: DisplayPlan | null): void => {
-    const days = p?.days ?? 7;
-    const idx = calcPlanDayIndex(p?.created_at, days);
-    const pct = typeof p?.progress === 'number' ? p.progress : calcPlanProgress(idx, days);
-    setDayIndex(idx);
-    setProgress(Math.min(Math.max(pct, 0), 100));
-  }, []);
 
   const handleGenerate = async (): Promise<void> => {
     setPhase('generating');
