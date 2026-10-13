@@ -1,7 +1,7 @@
 import { useCallback, useState, useRef } from 'react';
 import { useAI, useVideo } from '../contexts/AppContext';
 import aiService from '../services/aiService';
-import { createHighlight } from '../services/highlightService';
+import { createHighlight, findCachedExplanation } from '../services/highlightService';
 import type { Language } from '../types/highlight';
 
 type OcrStatus = 'idle' | 'loading' | 'success' | 'error';
@@ -129,6 +129,39 @@ const useExplainFlow = ({ hasExternalSubtitles }: UseExplainFlowOptions): UseExp
         setExplanation('');
         const player = playerRef.current as unknown as { currentTime?: () => number } | null;
         const currentTime = startTimeFromSubtitle ?? player?.currentTime?.() ?? null;
+
+        // 缓存优先：同一视频下同一文本之前讲解过，直接复用，不消耗 API 额度。
+        // 复用后仍走一次 createHighlight 的 UPSERT，把 query_count + 1，
+        // 保证「高频生词」统计不失真。
+        //
+        // 缓存只是优化，任何异常都必须降级为「未命中」继续走 AI，
+        // 绝不能让查缓存失败导致用户拿不到讲解。
+        let cached: string | null = null;
+        try {
+          cached = await findCachedExplanation(videoPath || '', text);
+        } catch (e) {
+          console.error('讲解缓存查询失败，降级为实时请求:', e);
+          cached = null;
+        }
+        if (cached) {
+          if (gen !== generationRef.current) return;
+          setExplanation(cached);
+          try {
+            const r = await createHighlight({
+              video_path: videoPath || '',
+              original_text: text,
+              start_time: currentTime ?? 0,
+              language: lang,
+              explanation: cached,
+              status: 'learning'
+            });
+            if (r && r.error) console.error('缓存命中后更新生词本失败:', r.error);
+          } catch (e) {
+            console.error('缓存命中后更新生词本失败:', e);
+          }
+          return;
+        }
+
         const explanation = await aiService.streamExplanation(
           text,
           {

@@ -186,6 +186,7 @@ export interface ElectronAPI {
   createHighlight: (data: CreateHighlightInput) => Promise<CreateHighlightResult>;
   getHighlights: (params: GetHighlightsOptions) => Promise<Highlight[] | { error: string }>;
   getHighlight: (params: { id: string }) => Promise<Highlight | { error: string }>;
+  findHighlight: (params: { videoPath: string; text: string }) => Promise<Highlight | null | { error: string }>;
   updateHighlight: (params: { id: string } & Partial<Highlight>) => Promise<{ success?: boolean; error?: string }>;
   deleteHighlight: (params: { id: string }) => Promise<{ success?: boolean; error?: string }>;
 

@@ -516,7 +516,9 @@ app.whenReady().then(async () => {
   // 这里统一 catch 并降级为日志，保证没有更新配置时也能正常启动。
   if (!process.env.DEV_SERVER_URL) {
     autoUpdater.checkForUpdatesAndNotify().catch((err) => {
-      log.warn('自动更新检查已跳过（可能未配置发布源）:', err && err.message ? err.message : err);
+      // 只取首行，避免把整个 HTTP 响应体（含 headers）刷进日志
+      const msg = err && err.message ? String(err.message).split('\n')[0] : String(err);
+      log.warn('自动更新检查失败（不影响使用）:', msg);
     });
   }
 });

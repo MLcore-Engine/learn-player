@@ -30,6 +30,7 @@ const fallbackElectronAPI: ElectronAPI = {
   createHighlight: async () => ({ error: 'Electron API不可用' }),
   getHighlights: async () => ({ error: 'Electron API不可用' }),
   getHighlight: async () => ({ error: 'Electron API不可用' }),
+  findHighlight: async () => null,
   updateHighlight: async () => ({ error: 'Electron API不可用' }),
   deleteHighlight: async () => ({ error: 'Electron API不可用' }),
   getDueHighlights: async () => ({ error: 'Electron API不可用' }),

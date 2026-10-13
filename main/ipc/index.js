@@ -1139,6 +1139,21 @@ function registerIpcHandlers({ app, ipcMain, dialog, BrowserWindow, store, state
   });
 
   // updateHighlight
+  ipcMain.handle('findHighlight', (event, { videoPath, text } = {}) => {
+    const db = getDb();
+    if (!db) return { error: '数据库未初始化' };
+    try {
+      // 复用 highlights 的 UNIQUE(video_path, original_text) 索引，O(1) 命中
+      const highlight = db
+        .prepare('SELECT * FROM highlights WHERE video_path = ? AND original_text = ?')
+        .get(videoPath || '', text);
+      return highlight || null;
+    } catch (error) {
+      console.error('findHighlight error:', error);
+      return { error: error.message };
+    }
+  });
+
   ipcMain.handle('updateHighlight', (event, { id, ...fields }) => {
     const db = getDb();
     if (!db) return { error: '数据库未初始化' };

@@ -24,22 +24,30 @@ jobs:
           - os: macos-latest
             target: mac
             arch_arg: '--arm64'
-            artifact_glob: 'dist/*.dmg'
             artifact_name: macos-arm64
             label: 'macOS arm64'
+            artifact_paths: |
+              dist/*.dmg
+              dist/*.zip
+              dist/latest*.yml
           # Intel Mac：GitHub 唯一的 Intel macOS Runner
           - os: macos-13
             target: mac
             arch_arg: '--x64'
-            artifact_glob: 'dist/*.dmg'
             artifact_name: macos-x64
             label: 'macOS x64 (Intel)'
+            artifact_paths: |
+              dist/*.dmg
+              dist/*.zip
+              dist/latest*.yml
           - os: windows-latest
             target: win
             arch_arg: ''
-            artifact_glob: 'dist/*.exe'
             artifact_name: windows-x64
             label: 'Windows x64'
+            artifact_paths: |
+              dist/*.exe
+              dist/latest*.yml
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout
@@ -75,7 +83,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact_name }}
-          path: ${{ matrix.artifact_glob }}
+          # 必须带上 latest*.yml —— electron-updater 靠它定位最新版，
+          # 少了它 App 内自动更新会 404（Cannot find latest-mac.yml）。
+          path: ${{ matrix.artifact_paths }}
           if-no-files-found: error
           retention-days: 30
 
@@ -105,6 +115,8 @@ jobs:
           files: |
             artifacts/**/*.dmg
             artifacts/**/*.exe
+            artifacts/**/*.zip
+            artifacts/**/latest*.yml
           body: |
             ## 📦 下载
 

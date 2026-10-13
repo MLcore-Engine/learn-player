@@ -69,6 +69,7 @@ export const IPC_CHANNELS = {
     createHighlight: 'createHighlight',
     getHighlights: 'getHighlights',
     getHighlight: 'getHighlight',
+    findHighlight: 'findHighlight',
     updateHighlight: 'updateHighlight',
     deleteHighlight: 'deleteHighlight',
     getDueHighlights: 'getDueHighlights',
@@ -217,6 +218,7 @@ export interface IpcClient {
   createHighlight: (data: CreateHighlightInput) => Promise<CreateHighlightResult>;
   getHighlights: (options: GetHighlightsOptions) => Promise<Highlight[] | { error: string }>;
   getHighlight: (options: { id: string }) => Promise<Highlight | { error: string }>;
+  findHighlight: (options: { videoPath: string; text: string }) => Promise<Highlight | null | { error: string }>;
   updateHighlight: (options: { id: string } & Partial<Highlight>) => Promise<{ success?: boolean; error?: string }>;
   deleteHighlight: (options: { id: string }) => Promise<{ success?: boolean; error?: string }>;
   getDueHighlights: (options: GetDueHighlightsOptions) => Promise<Highlight[] | { error: string }>;
@@ -305,6 +307,7 @@ export const ipcClient: IpcClient = {
   createHighlight: (data) => invoke(IPC_CHANNELS.invoke.createHighlight, data),
   getHighlights: (options) => invoke(IPC_CHANNELS.invoke.getHighlights, options),
   getHighlight: (options) => invoke(IPC_CHANNELS.invoke.getHighlight, options),
+  findHighlight: (options) => invoke(IPC_CHANNELS.invoke.findHighlight, options),
   updateHighlight: (options) => invoke(IPC_CHANNELS.invoke.updateHighlight, options),
   deleteHighlight: (options) => invoke(IPC_CHANNELS.invoke.deleteHighlight, options),
   getDueHighlights: (options) => invoke(IPC_CHANNELS.invoke.getDueHighlights, options),

@@ -209,13 +209,22 @@ npm run build:win    # Windows（需在 Windows 上执行）
 
 仓库已配置 `.github/workflows/release.yml`：
 
-- 推一个 `v*` 开头的 tag，会同时在 macOS Runner 打 arm64 dmg、Windows Runner 打 exe，并自动创建 GitHub Release。
+- 推一个 `v*` 开头的 tag，会在 3 个 Runner 上并行打包并自动创建 GitHub Release：
+  - `macos-latest` → `LEP-*-arm64.dmg`（Apple Silicon）
+  - `macos-13` → `LEP-*-x64.dmg`（Intel Mac）
+  - `windows-latest` → `LEP-Setup-*.exe`
 - 也可以在 Actions 页手动触发（`workflow_dispatch`）。
 
 ```bash
-git tag v0.3.0
-git push origin v0.3.0   # 触发自动构建 + 发布
+git tag v1.0.0
+git push origin v1.0.0   # 触发自动构建 + 发布
 ```
+
+> **自动更新**：`package.json` 的 `build.publish` 已配置为 GitHub Provider，
+> electron-builder 会为每个平台生成 `latest-mac.yml` / `latest.yml`，
+> workflow 会把这些文件一起上传到 Release。App 启动时会读取它们检查新版本，
+> 所以**只有走这条 CI 流程产出的 Release 才能被自动更新识别**；
+> 手动本地打包上传的 Release 缺少这些文件，App 会跳过更新检查（不影响使用）。
 
 ---
 

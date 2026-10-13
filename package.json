@@ -76,6 +76,12 @@
     "extends": null,
     "appId": "com.mlcore-engine.lep",
     "productName": "LEP",
+    "publish": {
+      "provider": "github",
+      "owner": "MLcore-Engine",
+      "repo": "learn-player",
+      "releaseType": "draft"
+    },
     "asar": {
       "smartUnpack": true,
       "ordering": "package.json"

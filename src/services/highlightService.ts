@@ -51,6 +51,29 @@ export async function getHighlight(id: string): Promise<HighlightResult> {
   }
 }
 
+/**
+ * 按 (videoPath, text) 精确查找已有讲解。
+ *
+ * highlights 的 UNIQUE(video_path, original_text) 保证同一视频下同一文本只有一行，
+ * 因此命中即可直接复用 explanation，不必再打一次 LLM。
+ * 任何失败都返回 null（缓存未命中），由调用方继续走正常 AI 流程。
+ */
+export async function findCachedExplanation(
+  videoPath: string,
+  text: string
+): Promise<string | null> {
+  if (!text || !text.trim()) return null;
+  try {
+    const r = await ipcClient.findHighlight({ videoPath: videoPath || '', text });
+    if (!r || 'error' in r) return null;
+    const explanation = (r as Highlight).explanation;
+    return explanation && explanation.trim() ? explanation : null;
+  } catch (error) {
+    console.error('findCachedExplanation error:', error);
+    return null;
+  }
+}
+
 export interface UpdateHighlightInput extends Partial<Highlight> {
   id: string;
 }

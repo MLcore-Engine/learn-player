@@ -30,6 +30,7 @@ const allowedInvokeChannels = [
   'createHighlight',
   'getHighlights',
   'getHighlight',
+  'findHighlight',
   'updateHighlight',
   'deleteHighlight',
   'getDueHighlights',
@@ -261,6 +262,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   createHighlight: (highlightData) => ipcRenderer.invoke('createHighlight', highlightData),
   getHighlights: (params) => ipcRenderer.invoke('getHighlights', params),
   getHighlight: (params) => ipcRenderer.invoke('getHighlight', params),
+  findHighlight: (params) => ipcRenderer.invoke('findHighlight', params),
   updateHighlight: (params) => ipcRenderer.invoke('updateHighlight', params),
   deleteHighlight: (params) => ipcRenderer.invoke('deleteHighlight', params),
   // SRS
