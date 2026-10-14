@@ -533,7 +533,7 @@ app.on('will-quit', () => {
 
 // 监听更新事件
 // mainWindow 可能为 null（窗口尚未创建或已销毁），发送前必须判空，
-  // 否则 "Cannot read properties of null (reading 'webContents')"。
+// 否则 "Cannot read properties of null (reading 'webContents')"。
 autoUpdater.on('update-available', () => {
   if (mainWindow && !mainWindow.isDestroyed()) {
     mainWindow.webContents.send('update-available');

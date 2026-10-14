@@ -216,8 +216,8 @@ npm run build:win    # Windows（需在 Windows 上执行）
 - 也可以在 Actions 页手动触发（`workflow_dispatch`）。
 
 ```bash
-git tag v1.0.0
-git push origin v1.0.0   # 触发自动构建 + 发布
+git tag v1.1.0
+git push origin v1.1.0   # 触发自动构建 + 发布
 ```
 
 > **自动更新**：`package.json` 的 `build.publish` 已配置为 GitHub Provider，
