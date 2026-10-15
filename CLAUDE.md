@@ -23,6 +23,22 @@ CI=true npm test -- --watchAll=false   # Run jest unit/component tests
 Tests live next to the code as `*.test.ts` / `*.test.tsx` (jest + @testing-library/react).
 `src/setupTests.ts` loads `@testing-library/jest-dom` matchers.
 
+`src/services/ipcIntegration.test.ts` 是唯一需要原生模块的测试：它直接
+`require` 生产代码 `main/ipc/index.js`，用注入的假 `ipcMain` 捕获 handler，
+再对**真实 better-sqlite3** 调用它们（覆盖 `findHighlight` / `createHighlight`
+UPSERT / `getHighlightsStats`）。
+
+⚠️ `better-sqlite3` 的 ABI 问题：`postinstall` 会按 **Electron** ABI 编译它，
+而 jest 跑在纯 Node 下，两者不兼容，表现为 `Could not locate the bindings file`。
+该测试检测到这种情况会**整体跳过**（不会让 `npm test` 失败）。如需启用：
+
+```bash
+npm rebuild better-sqlite3    # 按 Node ABI 重新编译
+```
+
+注意：这会让 `npm run package` 需要再跑一次 `npx electron-builder install-app-deps`
+才能恢复 Electron ABI。两者不要同时需要。
+
 ## Language Split
 
 - **Renderer (`src/`)**: TypeScript, full `strict: true`. Every `.ts`/`.tsx`.
