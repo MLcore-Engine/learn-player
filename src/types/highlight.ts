@@ -68,6 +68,8 @@ export interface GetHighlightsOptions {
 export interface GetDueHighlightsOptions {
   limit?: number;
   status?: HighlightStatus;
+  /** 排除某个状态（复习队列用它排除 archived） */
+  excludeStatus?: HighlightStatus;
 }
 
 /** SM-2 复习结果评分 0-3 */

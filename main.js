@@ -398,7 +398,8 @@ app.whenReady().then(async () => {
     const { canceled, filePaths } = await dialog.showOpenDialog(mainWindow, {
       defaultPath: store.get('lastVideoDir') || app.getPath('videos'),
       properties: ['openFile'],
-      filters: [{ name: '字幕文件', extensions: ['srt', 'vtt', 'ass', 'ssa'] }]
+      // 只列真正支持的格式：底层 subtitle 包仅支持 SRT / VTT
+      filters: [{ name: '字幕文件', extensions: ['srt', 'vtt'] }]
     });
     if (canceled || filePaths.length === 0) return;
     // 调用现有的 loadSubtitle 事件处理逻辑

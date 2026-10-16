@@ -7,6 +7,7 @@ const { parseSync } = require('subtitle');
 const { extractFrame, cleanupTempFile } = require('../videoFrameExtractor');
 const { ffmpeg } = require('../media/ffmpeg');
 const { getVideoServerPort, startVideoServer } = require('../services/videoServer');
+const { calculateSM2, nextReviewStatus } = require('../srs');
 
 const algorithm = 'aes-256-cbc';
 const encryptionSecret = crypto.createHash('sha256').update('lep-very-secret-key-replace-me').digest('base64').substring(0, 32);
@@ -156,16 +157,32 @@ async function cleanupCache() {
 }
 
 // 添加字典文件路径
-const DICT_PATH = path.join(__dirname, '..', '..', 'resources', 'dictionary', '美国传统词典双解.mdx');
+// 默认路径（随应用打包或手动放进 resources/dictionary/）
+const DEFAULT_DICT_PATH = path.join(__dirname, '..', '..', 'resources', 'dictionary', '美国传统词典双解.mdx');
 
 // 添加字典实例缓存
 let dictInstance = null;
+let dictInstancePath = null;
+
+/**
+ * 解析当前生效的字典路径。
+ * 优先级：用户在设置里自选的路径 > 默认路径。
+ * 自选路径失效（文件被删/移动）时回退到默认路径。
+ */
+function resolveDictPath(store) {
+  const custom = store && typeof store.get === 'function' ? store.get('dictionaryPath') : null;
+  if (custom && fs.existsSync(custom)) {
+    return { path: custom, isCustom: true };
+  }
+  return { path: DEFAULT_DICT_PATH, isCustom: false };
+}
 
 // 检查字典文件是否存在
-function checkDictionaryFile() {
+function checkDictionaryFile(store) {
+  const { path: dictPath } = resolveDictPath(store);
   try {
-    if (!fs.existsSync(DICT_PATH)) {
-      console.error('字典文件不存在:', DICT_PATH);
+    if (!fs.existsSync(dictPath)) {
+      console.error('字典文件不存在:', dictPath);
       return false;
     }
     return true;
@@ -175,11 +192,13 @@ function checkDictionaryFile() {
   }
 }
 
-// 获取字典实例
-function getDictionaryInstance() {
-  if (!dictInstance) {
+// 获取字典实例（路径变化时自动重建）
+function getDictionaryInstance(store) {
+  const { path: dictPath } = resolveDictPath(store);
+  if (!dictInstance || dictInstancePath !== dictPath) {
     const { MDX } = require('js-mdict');
-    dictInstance = new MDX(DICT_PATH);
+    dictInstance = new MDX(dictPath);
+    dictInstancePath = dictPath;
   }
   return dictInstance;
 }
@@ -302,7 +321,9 @@ function registerIpcHandlers({ app, ipcMain, dialog, BrowserWindow, store, state
         defaultPath: defaultDir,
         properties: ['openFile'],
         filters: [
-          { name: '字幕文件', extensions: ['srt', 'vtt', 'ass', 'ssa'] }
+          // 只列真正支持的格式：底层 subtitle 包仅支持 SRT / VTT，
+          // ASS/SSA 选进来只会得到一句看不懂的解析报错。
+          { name: '字幕文件', extensions: ['srt', 'vtt'] }
         ]
       });
 
@@ -336,6 +357,18 @@ function registerIpcHandlers({ app, ipcMain, dialog, BrowserWindow, store, state
       return;
     }
     try {
+      // subtitle 包只支持 SRT / VTT。ASS/SSA 硬解析会抛
+      // "expected timestamp at row 1" 这种对用户毫无意义的错，
+      // 这里提前拦截并给出可操作的提示。
+      const ext = path.extname(subtitlePath).toLowerCase();
+      if (ext === '.ass' || ext === '.ssa') {
+        mainWindow.webContents.send('subtitleLoaded', {
+          success: false,
+          error: '暂不支持 ASS/SSA 字幕，请先转换为 SRT 或 VTT 格式'
+        });
+        return;
+      }
+
       const subtitleContent = fs.readFileSync(subtitlePath, 'utf8');
       const parsedSubtitles = parseSync(subtitleContent);
       console.log(`【主进程】成功解析字幕文件: ${subtitlePath}, 共 ${parsedSubtitles.length} 条`);
@@ -837,11 +870,11 @@ function registerIpcHandlers({ app, ipcMain, dialog, BrowserWindow, store, state
   // 添加字典查询的IPC处理
   ipcMain.handle('lookupWord', async (event, word) => {
     try {
-      if (!checkDictionaryFile()) {
+      if (!checkDictionaryFile(store)) {
         throw new Error('字典文件不存在');
       }
 
-      const dict = getDictionaryInstance();
+      const dict = getDictionaryInstance(store);
       const def = dict.lookup(word);
 
       if (!def || !def.definition) {
@@ -854,6 +887,50 @@ function registerIpcHandlers({ app, ipcMain, dialog, BrowserWindow, store, state
       };
     } catch (error) {
       console.error('字典查询失败:', error);
+      return { success: false, error: error.message };
+    }
+  });
+
+  // 字典状态：供渲染层判断能否用本地字典，以及在缺失时引导用户自选文件
+  ipcMain.handle('getDictionaryStatus', () => {
+    const { path: dictPath, isCustom } = resolveDictPath(store);
+    return {
+      exists: fs.existsSync(dictPath),
+      path: dictPath,
+      isCustom,
+      defaultPath: DEFAULT_DICT_PATH
+    };
+  });
+
+  // 让用户自选 .mdx 字典文件；选择后写入 electron-store 并重置实例缓存
+  ipcMain.handle('selectDictionaryFile', async () => {
+    try {
+      const result = await dialog.showOpenDialog(getMainWindow(), {
+        title: '选择 mdict 字典文件（.mdx）',
+        properties: ['openFile'],
+        filters: [{ name: 'MDict Dictionary', extensions: ['mdx'] }]
+      });
+      if (result.canceled || !result.filePaths || result.filePaths.length === 0) {
+        return { canceled: true };
+      }
+      const picked = result.filePaths[0];
+      if (!fs.existsSync(picked)) {
+        return { success: false, error: '文件不存在' };
+      }
+      // 先验证能加载，避免存进去一个坏路径
+      try {
+        const { MDX } = require('js-mdict');
+        new MDX(picked);
+      } catch (e) {
+        return { success: false, error: `无法加载该字典文件: ${e.message}` };
+      }
+
+      store.set('dictionaryPath', picked);
+      dictInstance = null;
+      dictInstancePath = null;
+      return { success: true, exists: true, path: picked, isCustom: true };
+    } catch (error) {
+      console.error('选择字典文件失败:', error);
       return { success: false, error: error.message };
     }
   });
@@ -1201,32 +1278,10 @@ function registerIpcHandlers({ app, ipcMain, dialog, BrowserWindow, store, state
 
   // ===== T1-3: SRS handlers =====
 
-  // SM-2 algorithm simplified implementation
-  function calculateSM2(highlight, quality) {
-    let { ease, interval, repetitions } = highlight;
-    // quality: 0=blackout, 1=hard, 2=good, 3=easy
-    if (quality < 2) {
-      // 重来或困难：重新开始
-      repetitions = 0;
-      interval = 1;
-    } else {
-      // 良好或简单
-      if (repetitions === 0) interval = 1;
-      else if (repetitions === 1) interval = 6;
-      else interval = Math.round(interval * ease);
-      repetitions += 1;
-    }
-    // 更新 ease
-    ease = ease + (0.1 - (3 - quality) * (0.08 + (3 - quality) * 0.02));
-    if (ease < 1.3) ease = 1.3;
-    // 下次复习时间
-    const next_review = new Date();
-    next_review.setDate(next_review.getDate() + interval);
-    return { ease, interval, repetitions, next_review: next_review.toISOString() };
-  }
+  // SM-2 与状态流转已抽到 main/srs.js（纯函数，可单测）
 
   // getDueHighlights
-  ipcMain.handle('getDueHighlights', (event, { limit = 20, status } = {}) => {
+  ipcMain.handle('getDueHighlights', (event, { limit = 20, status, excludeStatus } = {}) => {
     const db = getDb();
     if (!db) return { error: '数据库未初始化' };
     try {
@@ -1237,6 +1292,12 @@ function registerIpcHandlers({ app, ipcMain, dialog, BrowserWindow, store, state
       if (status) {
         sql += ' AND status = ?';
         params.push(status);
+      }
+      // 复习队列要排除用户主动归档的词，但不能按 status='learning' 过滤 ——
+      // 那样 status 已推进到 reviewed/mastered 但还没到期的词会被永久漏掉。
+      if (excludeStatus) {
+        sql += ' AND (status IS NULL OR status != ?)';
+        params.push(excludeStatus);
       }
 
       sql += ' ORDER BY next_review ASC NULLS FIRST, created_at ASC LIMIT ?';
@@ -1264,16 +1325,22 @@ function registerIpcHandlers({ app, ipcMain, dialog, BrowserWindow, store, state
 
       // Calculate new SRS values using SM-2
       const { ease, interval, repetitions, next_review } = calculateSM2(highlight, quality);
+      // 同步推进学习状态：learning → reviewed → mastered
+      const status = nextReviewStatus(highlight.status, quality, repetitions, interval);
 
       // Update highlight
       db.prepare(`
         UPDATE highlights
-        SET ease = ?, interval = ?, repetitions = ?, next_review = ?,
+        SET ease = ?, interval = ?, repetitions = ?, next_review = ?, status = ?,
             last_review = datetime('now'), updated_at = datetime('now')
         WHERE id = ?
-      `).run(ease, interval, repetitions, next_review, id);
+      `).run(ease, interval, repetitions, next_review, status, id);
 
-      return { success: true, srs_data: { ease, interval, repetitions, next_review } };
+      return {
+        success: true,
+        srs_data: { ease, interval, repetitions, next_review },
+        status
+      };
     } catch (error) {
       console.error('submitReview error:', error);
       return { error: error.message };

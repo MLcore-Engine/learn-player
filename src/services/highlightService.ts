@@ -101,10 +101,11 @@ export async function deleteHighlight(id: string): Promise<{ success?: boolean; 
 
 export async function getDueHighlights({
   limit = 20,
-  status
+  status,
+  excludeStatus
 }: GetDueHighlightsOptions = {}): Promise<HighlightListResult> {
   try {
-    return await ipcClient.getDueHighlights({ limit, status });
+    return await ipcClient.getDueHighlights({ limit, status, excludeStatus });
   } catch (error) {
     console.error('getDueHighlights error:', error);
     return { error: (error as Error).message };

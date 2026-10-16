@@ -1,7 +1,8 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { Box } from '@mui/material';
+import { Box, Button } from '@mui/material';
 import ContextualBubble, { type BubblePosition } from './ContextualBubble';
 import dictionaryService, { formatDictionaryResult } from '../utils/dictionaryService';
+import { ipcClient } from '../services/ipcClient';
 import type { Language } from '../types/highlight';
 
 export interface OCRResultModalProps {
@@ -21,11 +22,13 @@ const OCRResultModal = React.memo<OCRResultModalProps>(
     const [dictResult, setDictResult] = useState<string>('');
     const [dictLoading, setDictLoading] = useState<boolean>(false);
     const [dictError, setDictError] = useState<string>('');
+    const [notice, setNotice] = useState<string>('');
 
     // 结果变化或关闭时清空上一次的字典查询
     useEffect(() => {
       setDictResult('');
       setDictError('');
+      setNotice('');
     }, [result, isOpen]);
 
     const handleWordClick = useCallback((text: string, event: React.MouseEvent) => {
@@ -57,12 +60,32 @@ const OCRResultModal = React.memo<OCRResultModalProps>(
       }
     }, []);
 
+    /** 字典文件缺失时，引导用户自选 .mdx */
+    const handlePickDictionary = useCallback(async (): Promise<void> => {
+      setDictLoading(true);
+      try {
+        const r = await ipcClient.selectDictionaryFile();
+        if (r && r.canceled) return;
+        if (r && r.error) {
+          setDictError(r.error);
+          return;
+        }
+        setDictError('');
+        setNotice('字典文件已配置，再次点击「字典」即可查询');
+      } catch (e) {
+        setDictError((e as Error).message || '选择字典文件失败');
+      } finally {
+        setDictLoading(false);
+      }
+    }, []);
+
     if (!isOpen) return null;
 
     const handleClose = (): void => {
       setBubbleText('');
       setDictResult('');
       setDictError('');
+      setNotice('');
       onClose();
     };
 
@@ -158,13 +181,23 @@ const OCRResultModal = React.memo<OCRResultModalProps>(
         </span>
 
         {/* 本地字典查询结果 */}
+        {notice && (
+          <Box sx={{ mb: 1, fontSize: 13, color: '#2e7d32' }}>{notice}</Box>
+        )}
         {dictLoading && (
           <Box sx={{ mb: 1, display: 'flex', justifyContent: 'center' }}>
             <span style={{ fontSize: 13, color: '#666' }}>字典查询中...</span>
           </Box>
         )}
         {dictError && (
-          <Box sx={{ mb: 1, fontSize: 13, color: '#d32f2f' }}>{dictError}</Box>
+          <Box sx={{ mb: 1, fontSize: 13, color: '#d32f2f' }}>
+            {dictError}
+            {dictError.includes('字典文件不存在') && (
+              <Button size="small" sx={{ ml: 1, fontSize: 12 }} onClick={handlePickDictionary} disabled={dictLoading}>
+                选择 .mdx 字典文件
+              </Button>
+            )}
+          </Box>
         )}
         {dictResult && (
           <Box

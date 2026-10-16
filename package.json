@@ -153,6 +153,14 @@
       "react-app/jest"
     ]
   },
+  "jest": {
+    "roots": [
+      "<rootDir>/main"
+    ],
+    "testMatch": [
+      "<rootDir>/main/**/*.{spec,test}.{js,mjs}"
+    ]
+  },
   "browserslist": {
     "production": [
       ">0.2%",

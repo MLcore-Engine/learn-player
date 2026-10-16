@@ -18,7 +18,9 @@ import type {
   ExportPdfPayload,
   ExportPdfResult,
   PrepareVideoResult,
-  UpdatePlanProgressPayload
+  UpdatePlanProgressPayload,
+  DictionaryStatus,
+  SelectDictionaryResult
 } from '../types/ipc';
 import type {
   CreateHighlightInput,
@@ -63,6 +65,8 @@ export const IPC_CHANNELS = {
     cleanupVideoCache: 'cleanupVideoCache',
     checkFileExists: 'checkFileExists',
     lookupWord: 'lookupWord',
+    getDictionaryStatus: 'getDictionaryStatus',
+    selectDictionaryFile: 'selectDictionaryFile',
     saveStudyPlan: 'saveStudyPlan',
     getCurrentStudyPlan: 'getCurrentStudyPlan',
     updatePlanProgress: 'updatePlanProgress',
@@ -210,6 +214,8 @@ export interface IpcClient {
   cleanupVideoCache: () => Promise<{ success?: boolean; error?: string }>;
 
   lookupWord: (word: string) => Promise<unknown>;
+  getDictionaryStatus: () => Promise<DictionaryStatus>;
+  selectDictionaryFile: () => Promise<SelectDictionaryResult>;
 
   saveStudyPlan: (data: SaveStudyPlanPayload) => Promise<{ success?: boolean; error?: string }>;
   getCurrentStudyPlan: () => Promise<StudyPlanRow | null>;
@@ -299,6 +305,8 @@ export const ipcClient: IpcClient = {
   cleanupVideoCache: () => invoke(IPC_CHANNELS.invoke.cleanupVideoCache),
 
   lookupWord: (word) => invoke(IPC_CHANNELS.invoke.lookupWord, word),
+  getDictionaryStatus: () => invoke(IPC_CHANNELS.invoke.getDictionaryStatus),
+  selectDictionaryFile: () => invoke(IPC_CHANNELS.invoke.selectDictionaryFile),
 
   saveStudyPlan: (data) => invoke(IPC_CHANNELS.invoke.saveStudyPlan, data),
   getCurrentStudyPlan: () => invoke(IPC_CHANNELS.invoke.getCurrentStudyPlan),

@@ -21,6 +21,8 @@ const allowedInvokeChannels = [
   'cleanupVideoCache',
   'checkFileExists',
   'lookupWord',
+  'getDictionaryStatus',
+  'selectDictionaryFile',
   'export-learning-today-pdf',
   // 学习计划
   'saveStudyPlan',
@@ -251,6 +253,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // 字典查询
   lookupWord: (word) => ipcRenderer.invoke('lookupWord', word),
+  getDictionaryStatus: () => ipcRenderer.invoke('getDictionaryStatus'),
+  selectDictionaryFile: () => ipcRenderer.invoke('selectDictionaryFile'),
 
   // ============== 学习计划 ==============
   saveStudyPlan: (data) => ipcRenderer.invoke('saveStudyPlan', data),

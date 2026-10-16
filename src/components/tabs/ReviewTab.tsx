@@ -29,7 +29,9 @@ const ReviewTab: React.FC<ReviewTabProps> = ({ onBackToSubtitle }) => {
     setError('');
     try {
       const [dueResult, statsResult] = await Promise.all([
-        getDueHighlights({ limit: 20, status: 'learning' }),
+        // 只排除用户主动归档的词。不能用 status='learning' 过滤：status 现在会
+        // 随复习推进到 reviewed/mastered，那样还没到期的词会被永久漏出队列。
+        getDueHighlights({ limit: 20, excludeStatus: 'archived' }),
         ipcClient.getHighlightsStats()
       ]);
 

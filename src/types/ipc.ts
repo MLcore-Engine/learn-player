@@ -101,6 +101,26 @@ export interface PerformAIRequestResult {
   error?: string;
 }
 
+/** getDictionaryStatus 返回：本地 mdict 字典的可用性 */
+export interface DictionaryStatus {
+  exists: boolean;
+  /** 当前生效的 .mdx 路径 */
+  path: string;
+  /** 是否是用户自选的路径（false = 用内置默认路径） */
+  isCustom: boolean;
+  /** 内置默认路径，用于 UI 提示用户把文件放哪 */
+  defaultPath: string;
+}
+
+export interface SelectDictionaryResult {
+  canceled?: boolean;
+  success?: boolean;
+  error?: string;
+  exists?: boolean;
+  path?: string;
+  isCustom?: boolean;
+}
+
 export interface ExportPdfPayload {
   html: string;
   title: string;
@@ -173,6 +193,8 @@ export interface ElectronAPI {
 
   // 字典
   lookupWord: (word: string) => Promise<unknown>;
+  getDictionaryStatus: () => Promise<DictionaryStatus>;
+  selectDictionaryFile: () => Promise<SelectDictionaryResult>;
 
   // PDF 导出
   'export-learning-today-pdf'?: (payload: ExportPdfPayload) => Promise<ExportPdfResult>;
